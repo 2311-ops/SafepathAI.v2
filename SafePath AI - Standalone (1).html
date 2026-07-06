@@ -1,0 +1,292 @@
+# SafePath AI — System Design & Architecture
+
+> Companion to `README.md` (which covers the visual design system + all 36 screens).
+> This document is the **engineering blueprint**: stack, architecture, data models, services, APIs, security, and a build order. Hand both files to Claude Code to start the project.
+
+---
+
+## 1. Product in one paragraph
+SafePath AI is a cross-platform **Flutter** app (iOS + Android) for family safety and real-time location intelligence: live location on a shared map, geofenced places, an emergency **SOS** system (including a silent/duress mode), a **Walk-Me-Home** escort flow with escalation, AI behavioral insights (safety score, anomaly detection, ETA prediction) with plain-language explanations, and a health & wellness module with elderly-care abnormal-pattern alerts. Positioning: **privacy-first, explainable-AI, software-only**.
+
+## 2. Guiding technical principles
+1. **Safety paths never fail silently.** SOS, duress, and Walk-Me-Home escalation must work with degraded connectivity — queue-and-retry, local fallbacks (SMS), and idempotent server handling.
+2. **Privacy is enforced server-side, not just in the UI.** Every location/health read is authorized against a mutual-consent policy and written to an immutable **visibility ledger**.
+3. **Explainability is a data contract.** Every score/anomaly/prediction returns a machine value **and** a human-readable `reason` + contributing factors. The client never invents explanations.
+4. **Real-time first, battery-aware.** Adaptive location cadence (geofence + significant-change when idle, high-frequency only during active SOS/walk sessions).
+5. **One app, role-adaptive.** Guardian / Member(Teen) / Elderly-care / Caregiver / Org-admin are the *same* build with capability flags, not separate apps.
+
+---
+
+## 3. Tech stack
+
+### Client (Flutter)
+| Concern | Choice | Notes |
+|---|---|---|
+| Language | Dart 3, Flutter (stable) | Material 3 + Cupertino-adaptive |
+| State mgmt | **Riverpod** (recommended) | Testable, compile-safe; Bloc acceptable if team prefers |
+| Routing | **go_router** | Declarative, deep-link + role guards |
+| Networking | **dio** + **retrofit** | Interceptors for auth/retry |
+| Realtime | **web_socket_channel** (or Firebase Realtime/Firestore listeners) | Live location + SOS streams |
+| Local DB | **drift** (SQLite) or **isar** | Offline cache, outbox queue |
+| Secure store | **flutter_secure_storage** | Tokens, decoy PIN hash |
+| Location | **geolocator** + **flutter_background_geolocation** (or platform geofencing) | Background + geofence transitions |
+| Maps | **google_maps_flutter** or **mapbox_maps_flutter** | Mapbox gives closer control of the calm styling |
+| Push | **firebase_messaging** | Data + notification messages, critical alerts |
+| Health | **health** package | HealthKit (iOS) / Health Connect (Android) |
+| Local notifs | **flutter_local_notifications** | Foreground service, silent duress |
+| Fonts/icons | **google_fonts** (Manrope, JetBrains Mono) + Material Symbols | See README tokens |
+| SVG/logo | inline `CustomPaint` (`safepath_logo.dart`) or `flutter_svg` | Provided in handoff |
+
+### Backend (reference architecture — adapt to team)
+- **API:** REST (OpenAPI-documented) for CRUD + **WebSocket** gateway for realtime. Optionally gRPC internally.
+- **Runtime:** Node/NestJS, Go, or Kotlin/Spring — any; keep the contract stable.
+- **DB:** PostgreSQL + **PostGIS** (geospatial: zones, containment, route stats). Redis for presence/pub-sub/live-location fan-out.
+- **Realtime fan-out:** Redis pub/sub or a managed service (Ably/Pusher/Firebase) behind the WS gateway.
+- **AI/insights:** a separate **insights service** (batch + streaming) producing safety scores, anomalies, ETAs, each with `reason` payloads. Model can start rules-based, then ML — the API contract is identical.
+- **Notifications:** FCM/APNs via a notification service that respects per-user prefs and quiet hours (but bypasses them for SOS).
+- **Auth:** OAuth2/OIDC + JWT access/refresh; device-bound refresh tokens.
+- **Managed shortcut:** If time-to-market matters, **Firebase** (Auth + Firestore + Cloud Functions + FCM + Crashlytics) covers ~80% of this; keep the geospatial/insights heavy-lifting in a Cloud Run service with PostGIS.
+
+---
+
+## 4. Client architecture (layers)
+
+```
+lib/
+  app/                     # bootstrap, theme, router, DI (ProviderScope)
+    theme/                 # ColorScheme, TextTheme from README tokens
+    router/                # go_router config + role guards
+  core/                    # cross-cutting
+    network/               # dio client, interceptors, ws client
+    error/                 # Failure types, Result<T>
+    location/              # location engine, cadence policy
+    notifications/         # push + local, channel setup
+    storage/               # drift db, secure storage, outbox
+    permissions/           # runtime perms flows
+  features/                # feature-first modules (each: data/domain/presentation)
+    auth/
+    circle/                # family circle, invites, permissions
+    map/                   # live map, presence, member chips
+    sos/                   # sos + duress
+    walk_home/
+    geofence/
+    history/
+    insights/              # safety score, anomaly, eta, heatmap
+    privacy/               # ledger, sharing controls, export/delete
+    notifications_center/
+    health/                # self + family wellness + elderly alerts
+    settings/
+  shared/                  # design-system widgets (buttons, cards, alert states, SafePathLogo, SosButton)
+```
+
+**Pattern:** feature-first + light Clean Architecture. Each feature has `data` (DTOs, repositories, data sources), `domain` (entities, use-cases where logic is non-trivial), `presentation` (Riverpod controllers/notifiers + widgets). Keep it pragmatic — don't over-abstract simple screens.
+
+**Design system as code:** build the shared widgets first from README tokens — `AppColors`, `AppText`, `SafeCard`, `CautionCard`, `AiExplainCard`, `SosButton`, `AppSwitch`, `StatTile`, `BottomNavScaffold`. Every screen composes these.
+
+---
+
+## 5. Roles & capabilities
+Model role as a **capability set**, resolved server-side and cached client-side:
+
+| Capability | Guardian | Member/Teen | Elderly | Caregiver | Org-Admin |
+|---|---|---|---|---|---|
+| See whole circle map | ✅ | own + shared | own + shared | assigned members | org members |
+| Manage permissions | ✅ | self only | self only | assigned | org scope |
+| Receive SOS as responder | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Elderly abnormal-pattern alerts | ✅ | — | — | ✅ | ✅ |
+| High-density dashboard | — | — | — | partial | ✅ |
+| Simplified/large UI mode | opt-in | opt-in | **default** | — | — |
+
+UI adapts via a `capabilities` provider; Elderly default enables large text scale + reduced nav depth.
+
+---
+
+## 6. Core domain models (client entities)
+
+```dart
+// Identity & circle
+User(id, name, email, avatarColor, role, capabilities, textScalePref)
+Circle(id, name, memberIds, createdBy)
+Membership(userId, circleId, role, status)  // pending|active|removed
+Permission(subjectId, viewerId,               // mutual, per-pair
+           shareLiveLocation, shareHistory,
+           sosResponder, shareWellness)
+Invite(code, circleId, invitedRole, expiresAt, status)
+
+// Location & geofencing
+LivePosition(userId, lat, lng, accuracy, battery, movement, ts, isOnline)
+PlaceStay(userId, placeId, enterTs, exitTs, mode)     // timeline node
+RouteSegment(userId, mode, distanceM, durationS, polyline)
+Geofence(id, name, kind, center, radiusM,
+         notifyEnter, notifyExit, occupantIds)
+ZoneEvent(geofenceId, userId, type, ts, onTime)       // enter|exit
+
+// SOS
+SosSession(id, userId, state,                          // idle|arming|armed|sent|resolved
+           startedAt, resolvedAt, streaming,
+           responders:[SosResponder], location)
+SosResponder(userId, channels:[push,sms,voice], status, statusTs)  // notified|delivered|seen|calling
+DuressConfig(enabled, decoyPinHash, fullySilent, showDecoy)
+
+// Walk-Me-Home
+WalkSession(id, userId, destination, watcherIds,
+            etaSeconds, status,                         // active|arrived|late_escalating
+            escalationCountdownS, polyline)
+
+// Insights (each carries explanation)
+SafetyScore(userId, value, band, reason, factors:[Factor])
+Anomaly(id, userId, kind, severity, reason, factors, ts, resolved)
+EtaPrediction(userId, arrivalTs, marginMin, confidence, inputs:[Factor])
+Factor(label, weight, positive)                        // drives "why" chips
+Heatmap(userId, cells:[{lat,lng,weight}], topPlaces)
+
+// Privacy
+VisibilityEntry(viewerId, subjectId, context, ts, wasSos)  // append-only ledger
+SharingState(liveLocation, history, wellness, timeBoxedUntil?)
+
+// Health
+HealthMetrics(userId, steps, kcal, distanceM, sleepMin, restingHr, healthScore, reason)
+FamilyWellness(userId, wellnessScore, status)
+ElderlyAlert(userId, kind, reason, lastMovementTs, location, battery)
+ConnectedDevice(id, name, kind, battery, lastSyncTs, shares:{hr,sleep,steps})
+```
+
+Every insight entity includes `reason:String` + `factors:[Factor]` — this is what powers the plain-language explanations the README requires. **Never render a bare number.**
+
+---
+
+## 7. API surface (representative)
+
+REST (all under `/v1`, JWT-authorized, policy-checked):
+```
+POST   /auth/register | /auth/login | /auth/refresh | /auth/password-reset
+GET    /me   PATCH /me
+POST   /circles        GET /circles/:id
+POST   /circles/:id/invites      POST /invites/:code/accept | /decline
+GET    /circles/:id/members      PATCH /members/:id/permissions   DELETE /members/:id
+GET    /members/:id/position                 # authorized live snapshot
+GET    /members/:id/history?date=            # timeline + segments
+GET    /geofences   POST /geofences   PATCH /geofences/:id   DELETE /geofences/:id
+GET    /geofences/:id/events
+POST   /sos                                  # create session (arm→sent)
+PATCH  /sos/:id  {state: resolved|cancelled}
+GET    /sos/:id                              # responder status
+PUT    /me/duress                            # config (pin hashed client-side)
+POST   /walk-sessions   PATCH /walk-sessions/:id  {status, checkin}
+GET    /insights/safety/:userId
+GET    /insights/anomalies?circleId=
+GET    /insights/eta/:userId
+GET    /insights/heatmap/:userId?range=
+GET    /privacy/ledger                        # who viewed me
+PUT    /privacy/sharing                        # toggles + time-boxed
+POST   /privacy/export   DELETE /privacy/data  # GDPR-style
+GET    /health/me   GET /health/family
+GET    /devices   POST /devices   PATCH /devices/:id
+GET    /notifications   POST /notifications/read
+```
+
+WebSocket (`/v1/stream`, authed on connect):
+```
+→ subscribe {topics:[circle:<id>, sos:<id>, walk:<id>]}
+← position.update {userId, lat,lng, battery, ts}
+← presence.change {userId, isOnline}
+← sos.update {sessionId, state, responders}
+← walk.update {sessionId, etaSeconds, status}
+← geofence.event {geofenceId, userId, type}
+← anomaly.new {anomaly}
+← ledger.append {entry}          # real-time "someone viewed you"
+```
+All realtime events are also delivered via push when the app is backgrounded/killed (esp. SOS = critical/high-priority).
+
+---
+
+## 8. Critical subsystems
+
+### 8.1 Location engine (battery-aware cadence)
+State machine controlling update frequency:
+- **Idle / stationary:** significant-location-change + geofence monitoring only.
+- **Moving:** medium cadence (e.g. 30–60s).
+- **Active session (SOS or Walk-Me-Home):** high cadence (~3s, matches the "updating every 3s" UI), foreground service + persistent notification on Android; iOS background location mode.
+- Positions are batched to an **outbox** and flushed; during SOS they stream immediately with retry.
+
+### 8.2 SOS + press-and-hold (sacred)
+- **Arm:** 3000ms press-and-hold (`GestureDetector` + `AnimationController`); ring stroke transitions mint→red past ~60%; release before 1.0 cancels, **nothing sent** (no server call until armed).
+- **Sent:** create `SosSession`, begin high-cadence stream, notify responders across push→SMS→voice escalation, show live-stream indicator + responder status.
+- **Resilience:** if network is down at trigger, fall back to device SMS to emergency contacts with a location link; server call is queued and idempotent (client-generated `sessionId`).
+- **Cancel/resolve:** hold-to-cancel; server marks resolved, notifies responders, appends to notifications + ledger.
+
+### 8.3 Silent / Duress mode
+- Decoy PIN hashed with a device salt in secure storage; comparison happens locally.
+- Entering it: silently create an SOS session flagged `duress` (no sound/vibration/banner), render the **decoy weather screen**, keep streaming in background. Only tell is a dim status dot. Server treats duress identically to SOS for responders but suppresses all local UI feedback.
+
+### 8.4 Walk-Me-Home + escalation
+- Session with destination, watchers, live ETA (from insights ETA service, refined by pace).
+- On ETA overrun **or** off-route stop → **late_escalating** with a 2-min client+server countdown; user can extend (+15m), mark safe, or convert to SOS. If countdown lapses with no check-in → auto-escalate to SOS to the circle.
+
+### 8.5 Geofencing
+- Register OS geofences for each `Geofence`; on transition emit `ZoneEvent`, evaluate `notifyEnter/Exit`, compute `onTime` vs usual schedule (insights). PostGIS validates containment server-side for authoritative events.
+
+### 8.6 Insights / explainability service
+- Inputs: location history, schedule patterns, geofence events, pace, battery, health signals.
+- Outputs: `SafetyScore`, `Anomaly`, `EtaPrediction`, `Heatmap` — **each with `reason` + weighted `factors`**. Start rules-based (documented thresholds → readable reasons), evolve to ML behind the same contract. Anomalies use **Caution amber**, never red (red is SOS-only).
+
+### 8.7 Privacy enforcement + ledger
+- Every authorized location/health read (map open, ETA check, SOS view) writes an **append-only** `VisibilityEntry`. Ledger is user-visible and real-time (`ledger.append`).
+- **Mutual visibility:** permissions are pairwise and symmetric by default — if A can see B, B sees that A viewed them.
+- **Time-boxed sharing:** `timeBoxedUntil` auto-expires server-side; client shows countdown.
+- **Export/Delete:** async jobs; delete performs full erasure + tombstones.
+
+### 8.8 Health module
+- Pull from HealthKit/Health Connect via `health`; sync steps/kcal/distance/sleep/HR. Compute `healthScore` + reason. Family wellness only surfaces members who opted in (mutual). Elderly abnormal-pattern detection (prolonged inactivity, routine deviation) → `ElderlyAlert` (amber) to Guardians/Caregivers.
+
+---
+
+## 9. Notifications
+- Channels: SOS (critical, bypasses quiet hours/DND where allowed), Geofence, Battery, Inactivity/Wellness, Visibility. Map to the Notifications Center feed + severity color (red=SOS, amber=caution, plain=info).
+- Data messages drive in-app state; notification messages for background. Respect per-user prefs except SOS.
+
+## 10. Offline & resilience
+- Outbox queue (drift) for positions, check-ins, SOS actions — flush on reconnect; all mutating safety actions idempotent via client IDs.
+- Cache last-known positions, circle, geofences, and today's timeline for offline viewing.
+- SMS fallback path for SOS when data is unavailable.
+
+## 11. Security & privacy
+- TLS everywhere; certificate pinning on the API.
+- JWT access (short) + device-bound refresh; biometric app-lock optional.
+- Decoy PIN: local-only hash, never transmitted in plaintext.
+- Least-privilege authorization on every read; server is source of truth for consent.
+- PII minimization; encryption at rest for location/health; audit log = the visibility ledger.
+- Platform compliance: iOS "Always" location justification, Android foreground-service + background-location disclosure, Health data usage strings, GDPR/CCPA export+delete.
+
+## 12. Testing
+- Unit: use-cases, cadence state machine, SOS/duress/escalation logic, permission resolver.
+- Widget: SosButton hold-to-arm (fires at 3s, cancels early), alert states, explanation cards.
+- Integration: SOS end-to-end (arm→sent→responder status→resolve), Walk-Me-Home overrun→escalation, geofence enter/exit → notification, offline outbox flush.
+- Golden tests for the design-system widgets against README tokens.
+
+## 13. Observability
+- Crashlytics/Sentry; structured logs; **safety-path SLOs** (SOS delivery latency, stream gap) alarmed separately. Never log precise location in analytics.
+
+---
+
+## 14. Suggested build order (milestones)
+1. **Foundation:** project scaffold, theme from README tokens, shared design-system widgets, go_router + role guards, DI, network+ws clients, drift/secure storage. → renders the design system board.
+2. **Auth + Circle:** register/login/reset, role selection, create circle, invite/accept, permissions. (Hero flow 1.)
+3. **Live Map:** presence + live positions, member chips, safe banner, bottom nav with SosButton. Location engine v1.
+4. **SOS + Duress:** press-and-hold arm, session, responder status, cancel/resolve, SMS fallback, decoy mode. (Hero flow 2.)
+5. **Walk-Me-Home:** start, live ETA, arrival, late→escalation. (Hero flow 3.)
+6. **Geofencing + History:** zones, transitions, timeline, route stats.
+7. **Insights:** safety score, anomalies, ETA, heatmap — with explanations. (Rules-based first.)
+8. **Privacy:** ledger, sharing controls, time-boxed, export/delete.
+9. **Health:** self dashboard, reports, family wellness, elderly alerts, connected devices.
+10. **Notifications Center + Settings**, then hardening: offline, resilience, accessibility (dynamic type, contrast), tests, store compliance.
+
+Milestones 1–5 deliver the three highest-stakes journeys end-to-end; everything after is additive.
+
+---
+
+## 15. Files in this handoff
+- `README.md` — visual design system + every screen, component, and interaction.
+- `SafePath AI.dc.html` / `SafePath AI - Standalone.html` — the high-fidelity mockups (primary visual reference).
+- `assets/safepath_logo.svg | .png | .dart` — logo in vector, raster, and ready-to-use Flutter `CustomPaint` widget.
+- `SYSTEM_DESIGN.md` — this document.
