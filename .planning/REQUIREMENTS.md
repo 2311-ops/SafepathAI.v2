@@ -154,13 +154,76 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated by roadmapper) | | Pending |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| AUTH-05 | Phase 1 | Pending |
+| FAM-01 | Phase 1 | Pending |
+| FAM-02 | Phase 1 | Pending |
+| FAM-03 | Phase 1 | Pending |
+| FAM-04 | Phase 1 | Pending |
+| FAM-05 | Phase 1 | Pending |
+| DESIGN-01 | Phase 1 | Pending |
+| LOC-01 | Phase 2 | Pending |
+| LOC-02 | Phase 2 | Pending |
+| LOC-03 | Phase 2 | Pending |
+| LOC-04 | Phase 2 | Pending |
+| LOC-05 | Phase 2 | Pending |
+| HIST-01 | Phase 2 | Pending |
+| HIST-02 | Phase 2 | Pending |
+| HIST-03 | Phase 2 | Pending |
+| NOTIF-01 | Phase 2 | Pending |
+| PRIV-01 | Phase 2 | Pending |
+| PRIV-02 | Phase 2 | Pending |
+| PRIV-03 | Phase 2 | Pending |
+| PRIV-04 | Phase 2 | Pending |
+| PRIV-05 | Phase 2 | Pending |
+| SOS-01 | Phase 3 | Pending |
+| SOS-02 | Phase 3 | Pending |
+| SOS-03 | Phase 3 | Pending |
+| SOS-04 | Phase 3 | Pending |
+| SOS-05 | Phase 3 | Pending |
+| SOS-06 | Phase 3 | Pending |
+| NOTIF-03 | Phase 3 | Pending |
+| DESIGN-02 | Phase 3 | Pending |
+| GEO-01 | Phase 4 | Pending |
+| GEO-02 | Phase 4 | Pending |
+| GEO-03 | Phase 4 | Pending |
+| NOTIF-02 | Phase 4 | Pending |
+| AI-01 | Phase 5 | Pending |
+| AI-02 | Phase 5 | Pending |
+| AI-03 | Phase 5 | Pending |
+| AI-04 | Phase 5 | Pending |
+| AI-05 | Phase 5 | Pending |
+| DASH-01 | Phase 5 | Pending |
+| DASH-02 | Phase 5 | Pending |
+| DASH-03 | Phase 5 | Pending |
+| NOTIF-04 | Phase 5 | Pending |
+| NOTIF-05 | Phase 5 | Pending |
+| WALK-01 | Phase 6 | Pending |
+| WALK-02 | Phase 6 | Pending |
+| WALK-03 | Phase 6 | Pending |
+| DURESS-01 | Phase 6 | Pending |
+| DURESS-02 | Phase 6 | Pending |
+| DURESS-03 | Phase 6 | Pending |
+| LEDGER-01 | Phase 6 | Pending |
+| LEDGER-02 | Phase 6 | Pending |
+| LEDGER-03 | Phase 6 | Pending |
+| PGEO-01 | Phase 6 | Pending |
+| PGEO-02 | Phase 6 | Pending |
+| XMOD-01 | Phase 6 | Pending |
+| XMOD-02 | Phase 6 | Pending |
+| EXTRA-01 | Phase 6 | Pending |
+| HEALTH-01 | Phase 7 | Pending |
+| HEALTH-02 | Phase 7 | Pending |
+| HEALTH-03 | Phase 7 | Pending |
 
 **Coverage:**
-- v1 requirements: 56 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 56 ⚠️ (expected until roadmap creation)
+- v1 requirements: 64 total
+- Mapped to phases: 64 (100%)
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-06*
-*Last updated: 2026-07-06 after initial definition*
+*Last updated: 2026-07-06 after roadmap creation (traceability populated; corrected v1 requirement count from 56 to 64 to match the actual requirement list above)*
