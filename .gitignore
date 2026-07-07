@@ -1,0 +1,25 @@
+# .NET
+backend/**/bin/
+backend/**/obj/
+*.user
+
+# Flutter / Dart
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/build/
+mobile/**/generated_plugin_registrant.dart
+mobile/.packages
+
+# IDE
+.vs/
+.vscode/
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets — never commit
+.env
+*.env
