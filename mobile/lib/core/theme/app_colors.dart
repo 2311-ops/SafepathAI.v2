@@ -10,8 +10,13 @@ import 'package:flutter/material.dart';
 /// (and the single flagged "Remove from circle" exception documented in
 /// 01-UI-SPEC.md) — never use them for routine warnings.
 abstract final class AppColors {
-  /// Deep Teal — Welcome screen gradient hero background (start/end stop).
+  /// Deep Teal — Welcome screen gradient hero background (end stop).
   static const Color deepTeal = Color(0xFF0C3A3F);
+
+  /// Lighter teal — Welcome screen gradient hero background (start stop;
+  /// [deepTeal] is the end stop). See 01-UI-SPEC.md Color section
+  /// ("`#1FA89B` -> `#0C3A3F`").
+  static const Color heroGradientStart = Color(0xFF1FA89B);
 
   /// Primary teal — CTA fills, focused-input borders, selected states.
   static const Color primaryTeal = Color(0xFF15807C);
