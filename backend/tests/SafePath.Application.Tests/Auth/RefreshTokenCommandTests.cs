@@ -58,7 +58,11 @@ public class RefreshTokenCommandTests : IDisposable
 
         Assert.False(reuse.Succeeded);
 
-        var allTokensForUser = db.RefreshTokens.Where(t => t.UserId == userId).ToList();
+        // ExecuteUpdateAsync writes straight to the database, bypassing the change tracker,
+        // so re-query through a fresh context (same underlying SQLite connection) rather than
+        // `db` — otherwise EF's identity map would return the stale, already-tracked instance.
+        using var verifyDb = _dbFactory.CreateContext();
+        var allTokensForUser = verifyDb.RefreshTokens.Where(t => t.UserId == userId).ToList();
         Assert.All(allTokensForUser, t => Assert.True(t.IsRevoked));
     }
 
