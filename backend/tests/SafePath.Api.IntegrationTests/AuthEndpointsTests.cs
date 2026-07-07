@@ -1,15 +1,22 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using SafePath.Application.Common.Models;
+using SafePath.Infrastructure.Persistence;
 
 namespace SafePath.Api.IntegrationTests;
 
-public class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+public class AuthEndpointsTests : IClassFixture<CustomWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly CustomWebApplicationFactory _factory;
 
-    public AuthEndpointsTests(WebApplicationFactory<Program> factory)
+    public AuthEndpointsTests(CustomWebApplicationFactory factory)
     {
         _factory = factory;
     }
@@ -65,5 +72,42 @@ public class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
         });
 
         Assert.Equal(HttpStatusCode.Unauthorized, loginResponse.StatusCode);
+    }
+}
+
+public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
+{
+    private readonly SqliteConnection _connection = new("DataSource=:memory:");
+
+    public CustomWebApplicationFactory()
+    {
+        _connection.Open();
+    }
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment("Development");
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll(typeof(DbContextOptions<ApplicationDbContext>));
+            services.RemoveAll(typeof(DbContextOptions));
+            services.RemoveAll(typeof(IDbContextOptionsConfiguration<ApplicationDbContext>));
+            services.RemoveAll(typeof(IDbContextOptionsConfiguration<DbContext>));
+            services.RemoveAll(typeof(ApplicationDbContext));
+            services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(_connection));
+
+            using var scope = services.BuildServiceProvider().CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            dbContext.Database.EnsureCreated();
+        });
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing)
+        {
+            _connection.Dispose();
+        }
     }
 }
