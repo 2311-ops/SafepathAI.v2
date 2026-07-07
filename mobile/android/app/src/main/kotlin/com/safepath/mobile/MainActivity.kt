@@ -1,0 +1,5 @@
+package com.safepath.mobile
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
