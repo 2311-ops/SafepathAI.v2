@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: backend-auth-foundation
 status: executing
-stopped_at: Completed 01-05-PLAN.md (family-circle backend); ready to plan/execute 01-07 (family-circle mobile UI)
-last_updated: "2026-07-09T08:41:14.718Z"
+stopped_at: Completed 01-08-PLAN.md (Google Sign-In via Supabase native OAuth); Phase 01 (backend-auth-foundation) plans all complete
+last_updated: "2026-07-09T11:20:31.924Z"
 last_activity: 2026-07-09
 last_activity_desc: Phase 01 execution resumed (wave continue)
 progress:
   total_phases: 7
   completed_phases: 0
-  total_plans: 7
-  completed_plans: 6
+  total_plans: 8
+  completed_plans: 7
   percent: 0
 ---
 
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 
 ## Current Position
 
-Phase: 01 (backend-auth-foundation) — EXECUTING
-Plan: 6 of 7 (01-05, family-circle backend, is the next real work; 01-04/01-06 satisfied without new code)
-Status: Ready to execute
-Last activity: 2026-07-09 — Phase 01 execution resumed (wave continue)
+Phase: 01 (backend-auth-foundation) — ALL PLANS COMPLETE
+Plan: 7 of 7 (01-08, Google Sign-In via Supabase native OAuth, just completed; 01-04/01-06 satisfied without new code)
+Status: Phase 01 plans complete — ready for phase transition/next phase planning
+Last activity: 2026-07-09 — Completed 01-08-PLAN.md
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01-backend-auth-foundation P05 | 27min | 3 tasks | 29 files |
+| Phase 01 P08 | 40min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,8 @@ Recent decisions affecting current work:
 - [Phase 01-05]: Family-circle backend (01-05) built against the post-migration Supabase Auth current-user mechanism (JWT sub claim via ICurrentUserService) instead of the original custom-JWT assumption; IFamilyAuthorizationService.RequireMembership/RequireRole is the sole server-side authorization mechanism (D5) for every family-scoped handler operating on an existing family
 - [Phase 01-05]: Added IInviteCodeGenerator as an Application-layer interface (not explicitly in the plan file list) so GenerateInviteCommand never references the concrete Infrastructure InviteCodeGenerator class, preserving the Clean Architecture boundary
 - [Phase 01-05]: RemoveMemberCommand guards against removing the last active Guardian of a family; FamilyCircle EF migration applied to the live Supabase database via dotnet ef database update
+- [Phase 01-08]: Reused the existing safepathai://reset-password redirect URL for Google OAuth (D-08-2) — zero new Supabase dashboard config; safepathai:// deep-link scheme (previously unregistered on Android/iOS) added as a prerequisite fix that also unblocks the pre-existing password-reset deep link. Google sign-in must reuse Supabase's Web OAuth client and avoid touching provider config the user set up separately.
+- [Phase 01-08]: `AuthController.build()` guards `WidgetsBinding.instance.addObserver`/`removeObserver` with try/catch — this feature's own established test convention drives `AuthController` via a bare `ProviderContainer` in plain `test()` bodies with no Flutter binding initialized, which would otherwise crash every such test the moment a `WidgetsBindingObserver` is registered.
 
 ### Pending Todos
 
@@ -97,6 +100,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T08:41:14.705Z
-Stopped at: Completed 01-05-PLAN.md (family-circle backend); ready to plan/execute 01-07 (family-circle mobile UI)
+Last session: 2026-07-09T11:20:14.970Z
+Stopped at: Completed 01-08-PLAN.md (Google Sign-In via Supabase native OAuth); Phase 01 (backend-auth-foundation) plans all complete
 Resume file: None

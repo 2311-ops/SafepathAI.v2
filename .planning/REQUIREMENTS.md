@@ -12,7 +12,7 @@
 - [ ] **AUTH-03**: User can log out
 - [ ] **AUTH-04**: User can reset their password via a one-time, expiring emailed link
 - [ ] **AUTH-05**: User is assigned a role (Guardian, Member, Caregiver, or org-level e.g. School Admin) during setup
-- [ ] **AUTH-06**: User can sign in with Google (Supabase-native OAuth) alongside email/password, from Welcome/Login/Register
+- [x] **AUTH-06**: User can sign in with Google (Supabase-native OAuth) alongside email/password, from Welcome/Login/Register
 
 ### Family Groups (FAM)
 
@@ -121,7 +121,7 @@
 
 ### Design System (DESIGN)
 
-- [ ] **DESIGN-01**: Every screen matches the existing 36-screen design system (colors, type, spacing, motion) recreated as Flutter widgets/`ThemeData`
+- [x] **DESIGN-01**: Every screen matches the existing 36-screen design system (colors, type, spacing, motion) recreated as Flutter widgets/`ThemeData`
 - [ ] **DESIGN-02**: The SOS button is implemented exactly per spec: always-visible, raised center of bottom nav, 64px circle, 3-second press-and-hold arming with a circular progress ring, release-to-cancel
 
 ## v2 Requirements
@@ -160,13 +160,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-03 | Phase 1 | Pending |
 | AUTH-04 | Phase 1 | Pending |
 | AUTH-05 | Phase 1 | Pending |
-| AUTH-06 | Phase 1 | Pending |
+| AUTH-06 | Phase 1 | Complete |
 | FAM-01 | Phase 1 | Complete |
 | FAM-02 | Phase 1 | Complete |
 | FAM-03 | Phase 1 | Complete |
 | FAM-04 | Phase 1 | Complete |
 | FAM-05 | Phase 1 | Complete |
-| DESIGN-01 | Phase 1 | Pending |
+| DESIGN-01 | Phase 1 | Complete |
 | LOC-01 | Phase 2 | Pending |
 | LOC-02 | Phase 2 | Pending |
 | LOC-03 | Phase 2 | Pending |
