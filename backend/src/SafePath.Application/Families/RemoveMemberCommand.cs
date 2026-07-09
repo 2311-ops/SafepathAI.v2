@@ -20,9 +20,38 @@ public class RemoveMemberCommandHandler : ICommandHandler<RemoveMemberCommand, R
         _authorization = authorization;
     }
 
-    public Task<RemoveMemberResult> Handle(RemoveMemberCommand command, CancellationToken cancellationToken = default)
+    public async Task<RemoveMemberResult> Handle(RemoveMemberCommand command, CancellationToken cancellationToken = default)
     {
-        // RED: implementation intentionally not yet written — see 01-05 Task 3 TDD RED/GREEN cycle.
-        throw new NotImplementedException();
+        await _authorization.RequireRole(command.CallerUserId, command.FamilyId, Role.Guardian, cancellationToken);
+
+        // Re-scoped to command.FamilyId — a Guardian of family A cannot remove a member of
+        // family B by guessing/reusing a memberId (IDOR prevention, locked decision D5).
+        var target = await _db.FamilyMembers.SingleOrDefaultAsync(
+            m => m.Id == command.MemberId && m.FamilyId == command.FamilyId && m.IsActive,
+            cancellationToken);
+
+        if (target is null)
+        {
+            throw new FamilyAuthorizationDeniedException(
+                $"FamilyMember {command.MemberId} is not an active member of family {command.FamilyId}.");
+        }
+
+        if (target.Role == Role.Guardian)
+        {
+            var activeGuardianCount = await _db.FamilyMembers.CountAsync(
+                m => m.FamilyId == command.FamilyId && m.IsActive && m.Role == Role.Guardian,
+                cancellationToken);
+
+            if (activeGuardianCount <= 1)
+            {
+                throw new InvalidOperationException("Cannot remove the last active Guardian of a family.");
+            }
+        }
+
+        target.IsActive = false;
+        target.RemovedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return new RemoveMemberResult(target.Id, true);
     }
 }

@@ -20,9 +20,26 @@ public class UpdateMemberPermissionsCommandHandler : ICommandHandler<UpdateMembe
         _authorization = authorization;
     }
 
-    public Task<UpdateMemberPermissionsResult> Handle(UpdateMemberPermissionsCommand command, CancellationToken cancellationToken = default)
+    public async Task<UpdateMemberPermissionsResult> Handle(UpdateMemberPermissionsCommand command, CancellationToken cancellationToken = default)
     {
-        // RED: implementation intentionally not yet written — see 01-05 Task 3 TDD RED/GREEN cycle.
-        throw new NotImplementedException();
+        await _authorization.RequireRole(command.CallerUserId, command.FamilyId, Role.Guardian, cancellationToken);
+
+        // Re-scoped to command.FamilyId — never trust that MemberId alone identifies the
+        // correct family (IDOR prevention, locked decision D5): a memberId belonging to a
+        // different family is treated as "not found in this family", not silently updated.
+        var target = await _db.FamilyMembers.SingleOrDefaultAsync(
+            m => m.Id == command.MemberId && m.FamilyId == command.FamilyId && m.IsActive,
+            cancellationToken);
+
+        if (target is null)
+        {
+            throw new FamilyAuthorizationDeniedException(
+                $"FamilyMember {command.MemberId} is not an active member of family {command.FamilyId}.");
+        }
+
+        target.Permissions = command.Permissions;
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return new UpdateMemberPermissionsResult(target.Id, target.Permissions);
     }
 }
