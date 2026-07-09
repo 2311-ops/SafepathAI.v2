@@ -1,0 +1,53 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-07-09T11:59:12Z",
+  "phase": "01",
+  "phase_name": "backend-auth-foundation",
+  "phase_dir": ".planning/phases/01-backend-auth-foundation",
+  "plan": 9,
+  "task": null,
+  "total_tasks": null,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": "01-01", "name": "Backend auth slice (later migrated to Supabase Auth)", "status": "done"},
+    {"id": "01-02", "name": "Flutter scaffold + design system + network/storage plumbing", "status": "done"},
+    {"id": "01-03", "name": "Auth screens (Welcome/Register/Role/Login) wired end-to-end", "status": "done"},
+    {"id": "01-04", "name": "Password reset backend", "status": "done", "note": "superseded — satisfied by Supabase Auth native reset, zero custom code needed"},
+    {"id": "01-05", "name": "Family-circle backend (entities, invites, permissions, IDOR-safe authz)", "status": "done", "commit": "82f29fc"},
+    {"id": "01-06", "name": "Password reset mobile screens", "status": "done", "note": "superseded — built directly against Supabase Auth"},
+    {"id": "01-08", "name": "Google Sign-In (browser OAuth flow)", "status": "done", "note": "superseded by 01-09 — browser flow replaced by native picker at user's request"},
+    {"id": "01-09", "name": "Google Sign-In (native picker, no visible URL)", "status": "done", "commit": "27f1172"}
+  ],
+  "remaining_tasks": [
+    {"id": "01-07", "name": "Family-circle mobile UI", "status": "code_complete_no_summary", "detail": "Code committed (132dd85, bd9288f), 69/69 tests pass, flutter analyze clean. Task 3 (manual E2E: create circle -> invite -> accept -> permissions -> remove) was never run. No 01-07-SUMMARY.md exists. This is the ONLY thing blocking Phase 1 completion."}
+  ],
+  "blockers": [
+    {
+      "description": "01-07's manual E2E verification requires two Supabase test accounts to get past 'email not confirmed'. Confirmation links use the safepathai:// custom scheme, which was NOT registered on Android/iOS until plan 01-08 added it. Two test accounts (youssefhassan.2311.2005+e2eguardian@gmail.com, +e2emember@gmail.com) were created via direct Supabase REST signup and confirmation emails sent, but confirmation was never completed (links opened in a desktop browser, which can't complete the safepathai:// PKCE exchange).",
+      "type": "human_action",
+      "workaround": "Retry now that 01-08 registered the deep-link scheme on both platforms: open the confirmation emails ON THE PHONE (where the app is installed) so the OS routes the safepathai:// link into the app itself, OR paste the raw confirmation link URLs here and I'll extract the token and confirm via Supabase's /auth/v1/verify REST endpoint directly."
+    },
+    {
+      "description": "01-09's native Google Sign-In is implemented and unit/widget tested but has NOT been manually verified on a real device — requires Google Play Services + the Android OAuth client (package com.safepath.mobile, debug SHA-1 BA:3B:AA:E7:71:FB:3B:D7:6A:30:9D:F4:EA:6C:46:67:AC:6B:43:39) actually correctly registered in Google Cloud Console. User confirmed this registration already exists but it was never independently verified by any agent.",
+      "type": "human_action",
+      "workaround": "On resume: rebuild+reinstall the app on a device, tap Continue with Google, confirm the native account picker appears with no browser/URL. If it fails with ApiException: 10 / DEVELOPER_ERROR, the SHA-1/package registration in Google Cloud Console is the first thing to check."
+    }
+  ],
+  "async_jobs": [],
+  "human_actions_pending": [
+    {"action": "Reconnect the SM A075F device (was intentionally disconnected by the user mid-session) — needed for both remaining blockers above", "context": "adb currently shows no devices attached", "blocking": true},
+    {"action": "Confirm the two e2eguardian/e2emember test accounts via the safepathai:// deep link (now that it's registered)", "context": "unblocks 01-07's manual E2E test", "blocking": true},
+    {"action": "Manually verify 01-09's native Google Sign-In end-to-end on-device", "context": "code is done and tested but never run for real", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "Disabled workflow.use_worktrees project-wide", "rationale": "origin/HEAD cannot be resolved in this repo, so isolation=\"worktree\" executors were forking from a stale, far-earlier commit (confirmed twice via worktree_branch_check halting). All plan executions this session ran sequentially on the main tree instead.", "phase": "01"},
+    {"decision": "01-04/01-06 marked complete-via-supersession, not executed as written", "rationale": "Backend migrated from custom JWT auth to Supabase-managed auth mid-phase; AUTH-04 is satisfied entirely by Supabase Auth's native resetPasswordForEmail/updateUser flow.", "phase": "01"},
+    {"decision": "Added plan 01-08 (Google Sign-In, browser OAuth) then plan 01-09 (Google Sign-In, native picker) superseding it", "rationale": "01-08 was built correctly per its own spec (signInWithOAuth, reusing the existing redirect URL, zero Supabase config changes). User then saw the raw Supabase project URL flash in the browser during the redirect and asked to hide it. Explained the real trade-offs (leave as-is / native picker+new native OAuth client / custom Supabase domain); user chose native picker. 01-09 replaced signInWithOAuth with google_sign_in + signInWithIdToken and removed 01-08's now-dead lifecycle-resume cancellation hack (native cancellation is directly awaitable, no browser-launch-fire-and-forget race).", "phase": "01"},
+    {"decision": "Fixed the Google Sign-In button icon", "rationale": "It was rendering a plain text 'G' in a circle, not Google's real four-color logomark — looked broken/generic. Replaced with a CustomPainter drawing the actual Google G path/colors, no image asset needed.", "phase": "01"},
+    {"decision": "Google sign-ups default to Member role, no new role-selection UI or backend endpoint", "rationale": "The existing handle_new_auth_user Postgres trigger already does COALESCE(raw_user_meta_data->>'role', 'Member') — Google's profile metadata has no custom role key, so it lands as Member automatically. Zero new code needed; documented as D-08-4/D-09-5.", "phase": "01"},
+    {"decision": "Google Sign-In button placed on Welcome + Login only, deliberately NOT on Register", "rationale": "Register is step 1 of a two-step drafted flow (RegisterDraft -> RoleSelectScreen -> register()) that only makes sense for password-based sign-up; Google auth is a single atomic action with no draft step. Welcome already serves as the 'new user' entry point.", "phase": "01"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "Ask the user to reconnect the SM A075F device (adb devices currently empty). Then: (1) relaunch the app via `flutter run -d <device> --dart-define-from-file=env.json --dart-define=API_BASE_URL=http://<LAN-IP>:5059` with the backend running (`ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://0.0.0.0:5059 dotnet run --project backend/src/SafePath.Api --no-launch-profile`), (2) resolve the two test-account email confirmations (see blockers), (3) manually run 01-07's E2E flow, write 01-07-SUMMARY.md via a continuation agent, (4) manually verify 01-09's native Google picker, (5) then run phase-level verification (gsd-verifier) and phase.complete to close Phase 1.",
+  "context_notes": "This session did a LOT: found and committed a large chunk of leftover uncommitted work from a prior interrupted session (the Supabase Auth migration's mobile-side completion), executed plans 01-05/01-07(partial)/01-08/01-09, discovered and fixed a real Android/iOS deep-link registration gap, disabled broken worktree isolation, and iterated on Google Sign-In twice per user feedback (icon fix, then a full flow-architecture change for URL privacy). Phase 1 is functionally almost done — 01-07 is the single remaining gap, and it's purely a verification/testing gap, not a code gap. Two secret JSON files (Google OAuth client_secret_*.json) were found sitting ungitignored at the repo root early in the session and were gitignored immediately — worth a reminder to the user to delete or securely store those outside the repo if not already handled."
+}
