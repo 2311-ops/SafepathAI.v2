@@ -5,7 +5,11 @@ using DomainRole = SafePath.Domain.Enums.Role;
 
 namespace SafePath.Infrastructure.Identity;
 
-/// <summary>Reads the sub/role claims from the current HTTP request's authenticated principal.</summary>
+/// <summary>
+/// Reads the authenticated caller from the current HTTP request.
+/// Supabase always includes <c>sub</c> for the user id. App-specific roles can
+/// be surfaced later with a custom access-token hook.
+/// </summary>
 public class CurrentUserService : ICurrentUserService
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
@@ -20,8 +24,8 @@ public class CurrentUserService : ICurrentUserService
         get
         {
             var principal = _httpContextAccessor.HttpContext?.User;
-            var sub = principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? principal?.FindFirst("sub")?.Value;
+            var sub = principal?.FindFirst("sub")?.Value
+                ?? principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             return Guid.TryParse(sub, out var id) ? id : null;
         }
     }
@@ -30,7 +34,9 @@ public class CurrentUserService : ICurrentUserService
     {
         get
         {
-            var role = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Role)?.Value;
+            var role = _httpContextAccessor.HttpContext?.User?.FindFirst("app_role")?.Value
+                ?? _httpContextAccessor.HttpContext?.User?.FindFirst("user_role")?.Value
+                ?? _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Role)?.Value;
             return Enum.TryParse<DomainRole>(role, out var parsed) ? parsed : null;
         }
     }

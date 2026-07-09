@@ -1,9 +1,7 @@
-using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.IdentityModel.Tokens;
 using SafePath.Application;
 using SafePath.Infrastructure;
 
@@ -22,35 +20,34 @@ builder.Services.AddOpenApi();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("Jwt:Key is not configured.");
-var jwtIssuer = builder.Configuration["Jwt:Issuer"]
-    ?? throw new InvalidOperationException("Jwt:Issuer is not configured.");
-var jwtAudience = builder.Configuration["Jwt:Audience"]
-    ?? throw new InvalidOperationException("Jwt:Audience is not configured.");
+var supabaseUrl = builder.Configuration["Supabase:Url"]
+    ?? throw new InvalidOperationException("Supabase:Url is not configured.");
+var supabaseAudience = builder.Configuration["Supabase:Audience"] ?? "authenticated";
+var supabaseIssuer = $"{supabaseUrl.TrimEnd('/')}/auth/v1";
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.TokenValidationParameters = new TokenValidationParameters
+        options.Authority = supabaseIssuer;
+        options.RequireHttpsMetadata = true;
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new()
         {
             ValidateIssuer = true,
-            ValidIssuer = jwtIssuer,
+            ValidIssuer = supabaseIssuer,
             ValidateAudience = true,
-            ValidAudience = jwtAudience,
+            ValidAudience = supabaseAudience,
             ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            // Pin the accepted algorithm to HS256 to close the alg-confusion / alg:none attack (T-01-03).
-            ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
+            NameClaimType = "sub",
+            RoleClaimType = "role",
             ClockSkew = TimeSpan.FromMinutes(1),
         };
     });
 
 builder.Services.AddAuthorization();
 
-// T-01-01: rate-limit /auth/login per-client to blunt credential-stuffing/brute-force attempts.
+// T-01-01: rate-limit the backend surface used for authenticated sign-in checks.
 builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter("login", limiterOptions =>

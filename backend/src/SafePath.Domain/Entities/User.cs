@@ -4,14 +4,15 @@ namespace SafePath.Domain.Entities;
 
 /// <summary>
 /// Plain POCO user entity — deliberately not derived from any ASP.NET Core Identity base
-/// class (locked decision D6). Only <see cref="PasswordHash"/> is ever persisted; the
-/// plaintext password never reaches this layer.
+/// class (locked decision D6). Rows are populated by a Postgres trigger mirroring
+/// Supabase Auth's <c>auth.users</c> on sign-up (see migration
+/// SyncSupabaseUsersAndDropLegacyAuthColumns); the app never inserts into this table
+/// directly, and no password material is stored here — Supabase Auth owns credentials.
 /// </summary>
 public class User
 {
     public Guid Id { get; set; }
     public string Email { get; set; } = default!;
-    public string PasswordHash { get; set; } = default!;
     public string FullName { get; set; } = default!;
     public Role Role { get; set; }
     public DateTime CreatedAt { get; set; }
