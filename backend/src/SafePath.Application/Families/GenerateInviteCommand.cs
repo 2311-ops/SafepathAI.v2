@@ -28,10 +28,27 @@ public class GenerateInviteCommandHandler : ICommandHandler<GenerateInviteComman
         _codeGenerator = codeGenerator;
     }
 
-    public Task<GenerateInviteResult> Handle(GenerateInviteCommand command, CancellationToken cancellationToken = default)
+    public async Task<GenerateInviteResult> Handle(GenerateInviteCommand command, CancellationToken cancellationToken = default)
     {
-        // RED: implementation intentionally not yet written — see 01-05 Task 2 TDD RED/GREEN cycle.
-        throw new NotImplementedException();
+        await _authorization.RequireRole(command.UserId, command.FamilyId, Role.Guardian, cancellationToken);
+
+        var code = await GenerateUniqueDisplayCode(cancellationToken);
+        var invitation = new FamilyInvitation
+        {
+            Id = Guid.NewGuid(),
+            FamilyId = command.FamilyId,
+            Code = code,
+            LinkToken = _codeGenerator.GenerateLinkToken(),
+            InviteeLabel = command.InviteeLabel,
+            CreatedByUserId = command.UserId,
+            ExpiresAt = DateTime.UtcNow.AddHours(24),
+            Status = InvitationStatus.Pending,
+        };
+
+        _db.FamilyInvitations.Add(invitation);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return new GenerateInviteResult(invitation.Id, invitation.Code, invitation.LinkToken, invitation.ExpiresAt);
     }
 
     private async Task<string> GenerateUniqueDisplayCode(CancellationToken cancellationToken)
