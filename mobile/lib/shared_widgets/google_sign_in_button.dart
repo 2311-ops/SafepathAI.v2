@@ -43,7 +43,6 @@ class GoogleSignInButton extends ConsumerWidget {
       excludeSemantics: true,
       child: SizedBox(
         width: double.infinity,
-        height: 48,
         child: OutlinedButton(
           onPressed: isLoading
               ? null

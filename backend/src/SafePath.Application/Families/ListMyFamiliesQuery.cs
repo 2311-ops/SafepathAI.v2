@@ -28,7 +28,11 @@ public class ListMyFamiliesQueryHandler : ICommandHandler<ListMyFamiliesQuery, I
         return await _db.FamilyMembers
             .Where(m => m.UserId == query.UserId && m.IsActive)
             .Join(_db.Families, m => m.FamilyId, f => f.Id, (m, f) => new { m.JoinedAt, Dto = new MyFamilyDto(f.Id, f.Name, m.Role, m.Permissions) })
-            .OrderBy(x => x.JoinedAt)
+            // Most-recent-first: the mobile client's bootstrap (01-10 D-10-1) takes the first
+            // entry as "my current circle" until a family-switcher UI exists. A stray older
+            // membership (e.g. an account that created its own circle before joining someone
+            // else's) must never shadow the membership the user is actually engaged with now.
+            .OrderByDescending(x => x.JoinedAt)
             .Select(x => x.Dto)
             .ToListAsync(cancellationToken);
     }
