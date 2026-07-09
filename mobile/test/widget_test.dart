@@ -4,8 +4,51 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 import 'package:mobile/app.dart';
+import 'package:mobile/features/auth/data/auth_api.dart';
+import 'package:mobile/features/auth/data/auth_models.dart';
+
+class _FakeAuthApi implements AuthApi {
+  @override
+  sb.Session? get currentSession => null;
+
+  @override
+  Stream<dynamic> get authStateChanges => const Stream<dynamic>.empty();
+
+  @override
+  Future<AuthSessionResult> register({
+    required String email,
+    required String password,
+    required String fullName,
+    required Role role,
+  }) async {
+    return const AuthSessionResult(signedIn: false, requiresEmailVerification: true);
+  }
+
+  @override
+  Future<AuthSessionResult> login({
+    required String email,
+    required String password,
+  }) async {
+    return const AuthSessionResult(signedIn: false);
+  }
+
+  @override
+  Future<void> logout() async {}
+
+  @override
+  Future<AuthSessionResult> refreshSession() async {
+    return const AuthSessionResult(signedIn: false);
+  }
+
+  @override
+  Future<void> sendPasswordResetEmail({required String email}) async {}
+
+  @override
+  Future<void> updatePassword({required String password}) async {}
+}
 
 void main() {
   setUpAll(() {
@@ -16,7 +59,12 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      const ProviderScope(child: SafePathApp()),
+      ProviderScope(
+        overrides: [
+          authApiProvider.overrideWithValue(_FakeAuthApi()),
+        ],
+        child: const SafePathApp(),
+      ),
     );
     await tester.pumpAndSettle();
 

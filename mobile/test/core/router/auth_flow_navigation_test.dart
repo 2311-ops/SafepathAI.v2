@@ -196,6 +196,33 @@ void main() {
 
       expect(find.text('Welcome back.'), findsOneWidget);
     });
+
+    testWidgets(
+      'Verify Email auto-redirects to Home once the auth stream reports a session '
+      '(email verification completing while the screen is open)',
+      (tester) async {
+        fakeApi.registerShouldRequireVerification = true;
+
+        await tester.pumpWidget(buildApp());
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Create your circle'));
+        await tester.pumpAndSettle();
+        await _fillRegisterForm(tester);
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Guardian / Parent'));
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Create your circle'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Check your email'), findsOneWidget);
+
+        fakeApi.emitSignedIn();
+        await tester.pumpAndSettle();
+
+        expect(find.text('Your circle'), findsOneWidget);
+        expect(find.text('Check your email'), findsNothing);
+      },
+    );
   });
 
   group('Login -> Home', () {

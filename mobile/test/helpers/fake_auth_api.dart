@@ -24,8 +24,13 @@ class FakeAuthApi implements AuthApi {
   bool loginShouldFail = false;
   AuthIssue loginFailureIssue = AuthIssue.invalidCredentials;
 
+  bool resetShouldFail = false;
+  bool updatePasswordShouldFail = false;
+
   int registerCallCount = 0;
   int loginCallCount = 0;
+  int resetCallCount = 0;
+  int updatePasswordCallCount = 0;
   bool logoutCalled = false;
 
   String? lastRegisterEmail;
@@ -33,6 +38,8 @@ class FakeAuthApi implements AuthApi {
   Role? lastRegisterRole;
   String? lastLoginEmail;
   String? lastLoginPassword;
+  String? lastResetEmail;
+  String? lastUpdatedPassword;
 
   /// Optional artificial delay so tests can observe the loading state before
   /// the future resolves (e.g. to assert a button is disabled mid-flight).
@@ -95,14 +102,78 @@ class FakeAuthApi implements AuthApi {
   }
 
   @override
-  Future<void> sendPasswordResetEmail({required String email}) async {}
+  Future<void> sendPasswordResetEmail({required String email}) async {
+    resetCallCount++;
+    lastResetEmail = email;
+
+    if (responseDelay > Duration.zero) await Future.delayed(responseDelay);
+
+    if (resetShouldFail) {
+      throw AuthApiException(AuthIssue.network, message: 'reset failed');
+    }
+  }
 
   @override
-  Future<void> updatePassword({required String password}) async {}
+  Future<void> updatePassword({required String password}) async {
+    updatePasswordCallCount++;
+    lastUpdatedPassword = password;
+
+    if (responseDelay > Duration.zero) await Future.delayed(responseDelay);
+
+    if (updatePasswordShouldFail) {
+      throw AuthApiException(AuthIssue.network, message: 'update password failed');
+    }
+  }
 
   @override
   Future<AuthSessionResult> refreshSession() async {
     return const AuthSessionResult(signedIn: true);
+  }
+
+  /// Pushes a PASSWORD_RECOVERY event onto [authStateChanges], the same event
+  /// Supabase emits when a user opens a password-reset deep link — drives
+  /// AuthController into AuthRecovery so reset_password_screen tests can
+  /// exercise the "recovery session active" path.
+  void emitPasswordRecovery() {
+    _controller.add(
+      sb.AuthState(
+        sb.AuthChangeEvent.passwordRecovery,
+        sb.Session(
+          accessToken: 'fake-recovery-token',
+          tokenType: 'bearer',
+          user: sb.User(
+            id: 'fake-user-id',
+            appMetadata: const {},
+            userMetadata: const {},
+            aud: 'authenticated',
+            createdAt: DateTime.now().toIso8601String(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Pushes a SIGNED_IN event with a session onto [authStateChanges] — the
+  /// event Supabase emits once a user completes email verification and the
+  /// client picks up the resulting session (e.g. via a deep link back into
+  /// the app), driving AuthController into AuthAuthenticated.
+  void emitSignedIn() {
+    _controller.add(
+      sb.AuthState(
+        sb.AuthChangeEvent.signedIn,
+        sb.Session(
+          accessToken: 'fake-verified-token',
+          tokenType: 'bearer',
+          user: sb.User(
+            id: 'fake-user-id',
+            appMetadata: const {},
+            userMetadata: const {},
+            aud: 'authenticated',
+            createdAt: DateTime.now().toIso8601String(),
+          ),
+        ),
+      ),
+    );
   }
 
   void dispose() {
