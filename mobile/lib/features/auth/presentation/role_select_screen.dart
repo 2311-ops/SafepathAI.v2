@@ -42,13 +42,16 @@ const _roleOptions = [
   ),
 ];
 
-/// Role selection — "Who are you in this circle?" (AUTH-05). Confirming
-/// calls [AuthController.register] with the [draft] carried from
-/// [RegisterScreen] plus the chosen role.
+/// Role selection - "Who are you in this circle?" (AUTH-05). Confirming
+/// calls [AuthController.register] with the draft read from
+/// [registerDraftProvider] plus the chosen role.
+///
+/// The draft is read from a provider (not a constructor argument fed by
+/// `GoRouterState.extra`) so it survives the router's `refreshListenable`
+/// re-evaluating this route while `register()` is in flight — see the note
+/// on [registerDraftProvider] in register_screen.dart.
 class RoleSelectScreen extends ConsumerStatefulWidget {
-  const RoleSelectScreen({super.key, required this.draft});
-
-  final RegisterDraft draft;
+  const RoleSelectScreen({super.key});
 
   @override
   ConsumerState<RoleSelectScreen> createState() => _RoleSelectScreenState();
@@ -58,26 +61,41 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
   Role _selected = Role.guardian;
 
   Future<void> _onConfirm() async {
-    await ref
-        .read(authControllerProvider.notifier)
-        .register(
-          email: widget.draft.email,
-          password: widget.draft.password,
-          fullName: widget.draft.fullName,
+    final draft = ref.read(registerDraftProvider);
+    if (draft == null) {
+      context.go('/register');
+      return;
+    }
+
+    await ref.read(authControllerProvider.notifier).register(
+          email: draft.email,
+          password: draft.password,
+          fullName: draft.fullName,
           role: _selected,
         );
 
     if (!mounted) return;
-    if (ref.read(authControllerProvider) is AuthAuthenticated) {
+    final authState = ref.read(authControllerProvider);
+    if (authState is AuthAuthenticated) {
       context.go('/home');
+    } else if (authState is AuthPendingVerification) {
+      context.go('/verify-email', extra: draft.email);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
+    final draft = ref.watch(registerDraftProvider);
     final isLoading = authState is AuthLoading;
-    final errorMessage = authState is AuthError ? authState.message : null;
+    final noticeMessage = authState is AuthError ? authState.message : null;
+
+    if (draft == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go('/register');
+      });
+      return const Scaffold(body: SizedBox.shrink());
+    }
 
     return Scaffold(
       appBar: AppBar(),
@@ -100,7 +118,7 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
               ],
-              if (errorMessage != null) ...[
+              if (noticeMessage != null) ...[
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
@@ -109,7 +127,7 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    errorMessage,
+                    noticeMessage,
                     style: const TextStyle(
                       color: AppColors.cautionText,
                       fontSize: 12,
@@ -120,7 +138,7 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
                 const SizedBox(height: AppSpacing.md),
               ],
               PrimaryButton(
-                label: isLoading ? 'Creating your circle…' : 'Create your circle',
+                label: isLoading ? 'Creating your circle...' : 'Create your circle',
                 onPressed: isLoading ? null : _onConfirm,
               ),
             ],
@@ -169,7 +187,9 @@ class _RoleCard extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+              selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
               color: selected ? AppColors.primaryTeal : AppColors.bodySecondary,
             ),
             const SizedBox(width: AppSpacing.xsMd),

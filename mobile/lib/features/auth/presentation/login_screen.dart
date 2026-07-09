@@ -5,13 +5,14 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared_widgets/primary_button.dart';
+import '../../../shared_widgets/safepath_logo.dart';
 import '../../../shared_widgets/safepath_text_field.dart';
 import '../application/auth_controller.dart';
 import '../application/auth_state.dart';
 
-/// Login — same shell as Register (`#ECF0EF` bg, back-arrow header). On a
-/// 401 shows the single enumeration-safe amber inline error under the
-/// password field — never reveals which field was wrong (T-03-01).
+/// Login - same shell as Register (`#ECF0EF` bg, back-arrow header). It now
+/// signs users in directly with Supabase Auth and keeps the existing
+/// enumeration-safe error surface.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -31,9 +32,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _onLogin() async {
-    await ref
-        .read(authControllerProvider.notifier)
-        .login(
+    await ref.read(authControllerProvider.notifier).login(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
@@ -61,6 +60,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SafePathLogo(size: 44),
+              const SizedBox(height: AppSpacing.md),
               Text('Welcome back.', style: AppTypography.heading),
               const SizedBox(height: AppSpacing.xs),
               Text('Good to see you again.', style: AppTypography.bodySecondary),
@@ -79,13 +80,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: AppSpacing.xl),
               PrimaryButton(
-                label: isLoading ? 'Logging in…' : 'Log in',
+                label: isLoading ? 'Logging in...' : 'Log in',
                 onPressed: isLoading ? null : _onLogin,
               ),
               const SizedBox(height: AppSpacing.md),
               Center(
                 child: TextButton(
-                  onPressed: () => context.push('/forgot'),
+                  onPressed: () => context.push('/forgot-password'),
                   child: Text(
                     'Forgot password?',
                     style: AppTypography.bodySecondary,

@@ -13,19 +13,31 @@ class AuthLoading extends AuthState {
   const AuthLoading();
 }
 
-/// A valid session exists — tokens are persisted in [TokenStorage].
+/// A valid session exists.
 class AuthAuthenticated extends AuthState {
   const AuthAuthenticated();
 }
 
-/// No valid session — user should see the Welcome/Login flow.
+/// A valid recovery session exists and the user should reset their password.
+class AuthRecovery extends AuthState {
+  const AuthRecovery();
+}
+
+/// No valid session - user should see the Welcome/Login flow.
 class AuthUnauthenticated extends AuthState {
   const AuthUnauthenticated();
 }
 
+/// Sign-up succeeded but Supabase still needs the user to verify their email.
+class AuthPendingVerification extends AuthState {
+  const AuthPendingVerification(this.message);
+
+  final String message;
+}
+
 /// The last register/login attempt failed. [message] is always an
 /// enumeration-safe, user-facing string from the UI-SPEC Copywriting
-/// Contract — never a raw server error.
+/// Contract - never a raw server error.
 class AuthError extends AuthState {
   const AuthError(this.message);
 

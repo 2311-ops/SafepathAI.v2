@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared_widgets/primary_button.dart';
+import '../../../shared_widgets/safepath_logo.dart';
 
 /// Welcome — the entry point into every Phase 1 flow (`01-UI-SPEC.md`). The
 /// one deliberate exception to the `#ECF0EF` app background: a full-bleed
@@ -34,11 +35,7 @@ class WelcomeScreen extends StatelessWidget {
             child: Column(
               children: [
                 const Spacer(flex: 3),
-                const Icon(
-                  Icons.shield_rounded,
-                  color: Colors.white,
-                  size: 56,
-                ),
+                const SafePathLogo(size: 96, tile: false),
                 const SizedBox(height: AppSpacing.lg),
                 Text(
                   'SafePath AI',

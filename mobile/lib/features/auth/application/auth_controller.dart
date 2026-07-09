@@ -1,18 +1,43 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
 
-import '../../../core/storage/token_storage.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
+
 import '../data/auth_api.dart';
 import '../data/auth_models.dart';
 import 'auth_state.dart';
 
-/// Riverpod controller driving register/login/logout against [AuthApi] +
-/// [TokenStorage] (D1: Riverpod, not Bloc).
-///
-/// Error messages are enumeration-safe, user-facing strings from the
-/// UI-SPEC Copywriting Contract — the raw server error is never surfaced.
+/// Riverpod controller driving register/login/logout against Supabase Auth.
+/// The Supabase client owns the session lifecycle; this controller turns those
+/// events into the UI states that the existing router and screens already use.
 class AuthController extends Notifier<AuthState> {
+  StreamSubscription<dynamic>? _subscription;
+
   @override
-  AuthState build() => const AuthUnknown();
+  AuthState build() {
+    final authApi = ref.read(authApiProvider);
+    _subscription = authApi.authStateChanges.listen((data) {
+      final event = data.event as sb.AuthChangeEvent?;
+      final session = data.session as sb.Session?;
+
+      if (event == sb.AuthChangeEvent.passwordRecovery) {
+        state = const AuthRecovery();
+        return;
+      }
+
+      if (session != null) {
+        state = const AuthAuthenticated();
+        return;
+      }
+
+      state = const AuthUnauthenticated();
+    });
+
+    ref.onDispose(() => _subscription?.cancel());
+    return authApi.currentSession == null
+        ? const AuthUnauthenticated()
+        : const AuthAuthenticated();
+  }
 
   Future<void> register({
     required String email,
@@ -23,59 +48,98 @@ class AuthController extends Notifier<AuthState> {
     state = const AuthLoading();
     try {
       final response = await ref.read(authApiProvider).register(
-        RegisterRequest(
-          email: email,
-          password: password,
-          fullName: fullName,
-          role: role,
-        ),
+        email: email,
+        password: password,
+        fullName: fullName,
+        role: role,
       );
-      await ref
-          .read(tokenStorageProvider)
-          .saveTokens(access: response.accessToken, refresh: response.refreshToken);
-      state = const AuthAuthenticated();
-    } on AuthApiException catch (e) {
-      state = AuthError(_registerErrorMessage(e));
+
+      state = response.requiresEmailVerification
+          ? const AuthPendingVerification(
+              'Check your inbox to verify your email before logging in.',
+            )
+          : const AuthAuthenticated();
+    } on AuthApiException catch (error) {
+      state = AuthError(_registerErrorMessage(error));
     }
   }
 
   Future<void> login({required String email, required String password}) async {
     state = const AuthLoading();
     try {
-      final response = await ref
-          .read(authApiProvider)
-          .login(LoginRequest(email: email, password: password));
-      await ref
-          .read(tokenStorageProvider)
-          .saveTokens(access: response.accessToken, refresh: response.refreshToken);
-      state = const AuthAuthenticated();
-    } on AuthApiException catch (_) {
-      // Enumeration-safe: same message for unknown-email and wrong-password
-      // (T-03-01) — matches the server's own AuthResult.Invalid() behavior.
+      final response = await ref.read(authApiProvider).login(
+        email: email,
+        password: password,
+      );
+
+      if (response.signedIn) {
+        state = const AuthAuthenticated();
+        return;
+      }
+
       state = const AuthError('Incorrect email or password. Try again.');
+    } on AuthApiException catch (error) {
+      state = AuthError(_loginErrorMessage(error));
+    }
+  }
+
+  Future<void> requestPasswordReset({required String email}) async {
+    await ref.read(authApiProvider).sendPasswordResetEmail(email: email);
+  }
+
+  Future<void> completePasswordReset({required String password}) async {
+    state = const AuthLoading();
+    try {
+      await ref.read(authApiProvider).updatePassword(password: password);
+      try {
+        await ref.read(authApiProvider).logout();
+      } catch (_) {
+        // Best-effort sign-out after a successful password update.
+      }
+      state = const AuthUnauthenticated();
+    } on AuthApiException catch (error) {
+      state = AuthError(_resetErrorMessage(error));
     }
   }
 
   Future<void> logout() async {
-    final tokenStorage = ref.read(tokenStorageProvider);
-    final refreshToken = await tokenStorage.readRefreshToken();
-    if (refreshToken != null) {
-      try {
-        await ref.read(authApiProvider).logout(refreshToken);
-      } on AuthApiException {
-        // Best-effort server-side revoke — always clear locally regardless
-        // so the user is never stuck "logged in" on this device.
-      }
+    try {
+      await ref.read(authApiProvider).logout();
+    } finally {
+      state = const AuthUnauthenticated();
     }
-    await tokenStorage.clear();
-    state = const AuthUnauthenticated();
   }
 
-  String _registerErrorMessage(AuthApiException e) {
-    if (e.statusCode == 409 || e.statusCode == 400) {
-      return 'An account with this email already exists. Try logging in instead.';
-    }
-    return "Couldn't connect. Check your connection and try again.";
+  String _registerErrorMessage(AuthApiException error) {
+    return switch (error.issue) {
+      AuthIssue.emailAlreadyRegistered =>
+        'An account with this email already exists. Try logging in instead.',
+      AuthIssue.weakPassword =>
+        'Use at least 8 characters, including a mix of letters and numbers.',
+      AuthIssue.network =>
+        "Couldn't connect. Check your connection and try again.",
+      _ => "We couldn't create the account. Please try again.",
+    };
+  }
+
+  String _loginErrorMessage(AuthApiException error) {
+    return switch (error.issue) {
+      AuthIssue.emailNotVerified =>
+        'Verify your email before logging in.',
+      AuthIssue.invalidCredentials =>
+        'Incorrect email or password. Try again.',
+      AuthIssue.network =>
+        "Couldn't connect. Check your connection and try again.",
+      _ => 'We could not log you in. Please try again.',
+    };
+  }
+
+  String _resetErrorMessage(AuthApiException error) {
+    return switch (error.issue) {
+      AuthIssue.network =>
+        "Couldn't connect. Check your connection and try again.",
+      _ => 'We could not update your password. Please try again.',
+    };
   }
 }
 
