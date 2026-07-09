@@ -48,7 +48,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Login, registration, and family-circle screens match the SafePath design system (colors, type, spacing, motion) via a shared Flutter `ThemeData`/`ColorScheme` (DESIGN-01)
   6. User can sign in with Google via Supabase's native OAuth from Welcome/Login/Register, alongside existing email/password auth (AUTH-06)
 
-**Plans**: 9/10 plans executed
+**Plans**: 9/14 plans executed (01-11..01-14 added from cross-AI review — 01-REVIEWS.md)
 
 - [x] 01-01-PLAN.md
 - [x] 01-02-PLAN.md
@@ -56,10 +56,14 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 01-04-PLAN.md (superseded — zero code needed, see SUMMARY)
 - [x] 01-05-PLAN.md
 - [x] 01-06-PLAN.md (superseded — satisfied via Supabase Auth, see SUMMARY)
-- [ ] 01-07-PLAN.md
+- [ ] 01-07-PLAN.md (executed + committed bd9288f/132dd85; SUMMARY backfill pending — see deferred-items.md)
 - [x] 01-08-PLAN.md (partially superseded by 01-09 — browser OAuth flow replaced by native picker)
 - [x] 01-09-PLAN.md
 - [x] 01-10-PLAN.md (gap closure — GET /families/mine, found during Phase 1 manual UAT)
+- [ ] 01-11-PLAN.md — review: Supabase-owned-auth ADR + secrets/.env bootstrap + /me role-from-DB
+- [ ] 01-12-PLAN.md — review: single-family invariant (409) + Guardian invite-revoke
+- [ ] 01-13-PLAN.md — review: transfer-ownership + delete-family + FK/cascade migration + RLS decision
+- [ ] 01-14-PLAN.md — review: QR/deep-link invite redemption + distinct decline + amber/expired reset UX
 
 **UI hint**: yes
 
@@ -168,7 +172,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Backend & Auth Foundation | 9/10 | In Progress|  |
+| 1. Backend & Auth Foundation | 9/14 | In Progress|  |
 | 2. Real-Time Location, History & Privacy | 0/TBD | Not started | - |
 | 3. SOS Fast Path (Core Value) | 0/TBD | Not started | - |
 | 4. Geofencing | 0/TBD | Not started | - |
