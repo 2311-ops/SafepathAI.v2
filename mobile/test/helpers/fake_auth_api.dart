@@ -30,11 +30,16 @@ class FakeAuthApi implements AuthApi {
   AuthIssue refreshFailureIssue = AuthIssue.network;
   String refreshFailureMessage = 'refresh failed';
 
+  bool googleSignInShouldLaunch = true;
+  bool googleSignInShouldFail = false;
+  AuthIssue googleSignInIssue = AuthIssue.network;
+
   int registerCallCount = 0;
   int loginCallCount = 0;
   int resetCallCount = 0;
   int updatePasswordCallCount = 0;
   int refreshCallCount = 0;
+  int googleSignInCallCount = 0;
   bool logoutCalled = false;
 
   String? lastRegisterEmail;
@@ -140,6 +145,19 @@ class FakeAuthApi implements AuthApi {
     }
 
     return const AuthSessionResult(signedIn: true);
+  }
+
+  @override
+  Future<bool> signInWithGoogle() async {
+    googleSignInCallCount++;
+
+    if (responseDelay > Duration.zero) await Future.delayed(responseDelay);
+
+    if (googleSignInShouldFail) {
+      throw AuthApiException(googleSignInIssue, message: 'google sign-in failed');
+    }
+
+    return googleSignInShouldLaunch;
   }
 
   /// Pushes a PASSWORD_RECOVERY event onto [authStateChanges], the same event

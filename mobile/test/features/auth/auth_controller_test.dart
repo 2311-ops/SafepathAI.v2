@@ -4,6 +4,15 @@
 // - login() on success transitions to Authenticated.
 // - login() on failure surfaces an enumeration-safe error state.
 // - logout() transitions to Unauthenticated.
+// - signInWithGoogle() launch success + a later authStateChanges session event
+//   transitions to Authenticated (01-08-PLAN.md D-08-1/D-08-2).
+// - signInWithGoogle() launch returning false (declined before the picker
+//   opened) transitions to Unauthenticated with no error banner.
+// - signInWithGoogle() throwing AuthApiException(network) surfaces AuthError.
+// - signInWithGoogle() re-entrancy: calling it twice while the first call's
+//   Future is still pending only invokes the fake once (D-08-6).
+// - The resume-recovery method resets a stuck AuthLoading state to
+//   Unauthenticated only when currentSession is still null (D-08-6).
 
 import 'dart:async';
 
@@ -30,10 +39,26 @@ class FakeAuthApi implements AuthApi {
   String? lastLoginEmail;
   String? lastLoginPassword;
 
+  /// Whether [signInWithGoogle] "launches" (returns `true`) or is declined
+  /// before the picker even opens (returns `false`).
+  bool googleSignInShouldLaunch = true;
+
+  /// When set, [signInWithGoogle] throws instead of returning.
+  bool googleSignInShouldFail = false;
+  AuthIssue googleSignInIssue = AuthIssue.network;
+
+  /// Number of times [signInWithGoogle] has actually been invoked — used to
+  /// assert the controller's re-entrancy guard only lets one call through.
+  int googleSignInCallCount = 0;
+
+  /// Settable so the resume-recovery test can simulate "a real session
+  /// arrived just before resume".
+  sb.Session? sessionOverride;
+
   final StreamController<dynamic> _controller = StreamController<dynamic>.broadcast();
 
   @override
-  sb.Session? get currentSession => null;
+  sb.Session? get currentSession => sessionOverride;
 
   @override
   Stream<dynamic> get authStateChanges => _controller.stream;
@@ -96,6 +121,40 @@ class FakeAuthApi implements AuthApi {
   @override
   Future<AuthSessionResult> refreshSession() async {
     return const AuthSessionResult(signedIn: true);
+  }
+
+  @override
+  Future<bool> signInWithGoogle() async {
+    googleSignInCallCount++;
+
+    if (googleSignInShouldFail) {
+      throw AuthApiException(googleSignInIssue, message: 'google sign-in failed');
+    }
+
+    return googleSignInShouldLaunch;
+  }
+
+  /// Pushes a SIGNED_IN event with [session] (defaulting to a fake session)
+  /// onto [authStateChanges] — simulates Supabase completing the OAuth
+  /// token exchange after the app is redirected back into via deep link.
+  void emitSession([sb.Session? session]) {
+    _controller.add(
+      sb.AuthState(
+        sb.AuthChangeEvent.signedIn,
+        session ??
+            sb.Session(
+              accessToken: 'fake-google-token',
+              tokenType: 'bearer',
+              user: sb.User(
+                id: 'fake-google-user-id',
+                appMetadata: const {},
+                userMetadata: const {},
+                aud: 'authenticated',
+                createdAt: DateTime.now().toIso8601String(),
+              ),
+            ),
+      ),
+    );
   }
 
   void dispose() {
@@ -210,4 +269,100 @@ void main() {
     expect(fakeApi.logoutCalled, isTrue);
     expect(container.read(authControllerProvider), isA<AuthUnauthenticated>());
   });
+
+  test(
+    'signInWithGoogle launch success + a later session event transitions to Authenticated',
+    () async {
+      await container.read(authControllerProvider.notifier).signInWithGoogle();
+
+      // Launch succeeded — state stays Loading until the real session event
+      // arrives via authStateChanges (D-08-1/D-08-2), never set directly.
+      expect(container.read(authControllerProvider), isA<AuthLoading>());
+
+      fakeApi.emitSession();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
+    },
+  );
+
+  test(
+    'signInWithGoogle launch returning false transitions to Unauthenticated with no error',
+    () async {
+      fakeApi.googleSignInShouldLaunch = false;
+
+      await container.read(authControllerProvider.notifier).signInWithGoogle();
+
+      expect(container.read(authControllerProvider), isA<AuthUnauthenticated>());
+    },
+  );
+
+  test(
+    'signInWithGoogle network failure surfaces the enumeration-safe network error',
+    () async {
+      fakeApi.googleSignInShouldFail = true;
+      fakeApi.googleSignInIssue = AuthIssue.network;
+
+      await container.read(authControllerProvider.notifier).signInWithGoogle();
+
+      final state = container.read(authControllerProvider);
+      expect(state, isA<AuthError>());
+      expect(
+        (state as AuthError).message,
+        "Couldn't connect. Check your connection and try again.",
+      );
+    },
+  );
+
+  test(
+    'signInWithGoogle re-entrancy guard only invokes the API once while a call is pending',
+    () async {
+      final notifier = container.read(authControllerProvider.notifier);
+
+      final first = notifier.signInWithGoogle();
+      final second = notifier.signInWithGoogle();
+
+      await first;
+      await second;
+
+      expect(fakeApi.googleSignInCallCount, 1);
+    },
+  );
+
+  test(
+    'resume-recovery resets a stuck AuthLoading to Unauthenticated only when currentSession is null',
+    () {
+      final notifier = container.read(authControllerProvider.notifier);
+
+      // Case 1: AuthLoading + no session -> resets to Unauthenticated.
+      notifier.state = const AuthLoading();
+      notifier.recoverFromStuckLoadingOnResume();
+      expect(container.read(authControllerProvider), isA<AuthUnauthenticated>());
+
+      // Case 2: AuthLoading + a session already arrived just before resume
+      // -> no-op, stays Loading (the real auth event is still in flight).
+      notifier.state = const AuthLoading();
+      fakeApi.sessionOverride = sb.Session(
+        accessToken: 'fake-token',
+        tokenType: 'bearer',
+        user: sb.User(
+          id: 'fake-user-id',
+          appMetadata: const {},
+          userMetadata: const {},
+          aud: 'authenticated',
+          createdAt: DateTime.now().toIso8601String(),
+        ),
+      );
+
+      notifier.recoverFromStuckLoadingOnResume();
+      expect(container.read(authControllerProvider), isA<AuthLoading>());
+
+      // Case 3: not AuthLoading -> no-op on an unrelated state.
+      fakeApi.sessionOverride = null;
+      notifier.state = const AuthPendingVerification('check your inbox');
+
+      notifier.recoverFromStuckLoadingOnResume();
+      expect(container.read(authControllerProvider), isA<AuthPendingVerification>());
+    },
+  );
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
@@ -10,8 +11,12 @@ import 'auth_state.dart';
 /// Riverpod controller driving register/login/logout against Supabase Auth.
 /// The Supabase client owns the session lifecycle; this controller turns those
 /// events into the UI states that the existing router and screens already use.
-class AuthController extends Notifier<AuthState> {
+class AuthController extends Notifier<AuthState> with WidgetsBindingObserver {
   StreamSubscription<dynamic>? _subscription;
+
+  /// Re-entrancy guard for [signInWithGoogle] — covers double-tap even
+  /// before the button-level guard in `GoogleSignInButton` (D-08-6).
+  bool _googleSignInInFlight = false;
 
   @override
   AuthState build() {
@@ -33,10 +38,61 @@ class AuthController extends Notifier<AuthState> {
       state = const AuthUnauthenticated();
     });
 
-    ref.onDispose(() => _subscription?.cancel());
+    _addLifecycleObserver();
+    ref.onDispose(() {
+      _subscription?.cancel();
+      _removeLifecycleObserver();
+    });
     return authApi.currentSession == null
         ? const AuthUnauthenticated()
         : const AuthAuthenticated();
+  }
+
+  /// Registering with [WidgetsBinding] requires a real Flutter binding to be
+  /// initialized, which is only true inside a running app or a `testWidgets`
+  /// context — a plain `test()` body driving [AuthController] via a bare
+  /// `ProviderContainer` (this feature's own established test convention,
+  /// see `auth_controller_test.dart`) has none. Swallow that case: the
+  /// resume-recovery heuristic simply won't auto-fire there, which is fine
+  /// since tests exercise [recoverFromStuckLoadingOnResume] directly.
+  void _addLifecycleObserver() {
+    try {
+      WidgetsBinding.instance.addObserver(this);
+    } catch (_) {
+      // No Flutter binding available in this context.
+    }
+  }
+
+  void _removeLifecycleObserver() {
+    try {
+      WidgetsBinding.instance.removeObserver(this);
+    } catch (_) {
+      // No Flutter binding available in this context.
+    }
+  }
+
+  /// `signInWithOAuth`'s returned `Future<bool>` resolves once the external
+  /// browser/Custom Tab is *launched*, not once the user finishes in it — a
+  /// user who opens the Google picker and then backs out produces no
+  /// exception and no auth event, leaving the controller stuck in
+  /// [AuthLoading] forever otherwise. When the app resumes from background,
+  /// reset a still-loading, still-unauthenticated state back to
+  /// [AuthUnauthenticated] (D-08-6).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState appState) {
+    if (appState == AppLifecycleState.resumed) {
+      recoverFromStuckLoadingOnResume();
+    }
+  }
+
+  /// Exposed for testing so the resume heuristic can be invoked directly
+  /// without driving a real [WidgetsBinding] lifecycle event.
+  @visibleForTesting
+  void recoverFromStuckLoadingOnResume() {
+    final authApi = ref.read(authApiProvider);
+    if (state is AuthLoading && authApi.currentSession == null) {
+      state = const AuthUnauthenticated();
+    }
   }
 
   Future<void> register({
@@ -110,6 +166,29 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  /// Launches Supabase's native Google OAuth flow. Reuses the existing
+  /// [AuthLoading]/[AuthAuthenticated]/[AuthError]/[AuthUnauthenticated]
+  /// states — no new [AuthState] subtype (D-08-1). On a successful launch,
+  /// state stays [AuthLoading] until the [authStateChanges] listener in
+  /// [build] observes the real session and flips to [AuthAuthenticated].
+  Future<void> signInWithGoogle() async {
+    if (_googleSignInInFlight) return;
+    _googleSignInInFlight = true;
+    state = const AuthLoading();
+    try {
+      final launched = await ref.read(authApiProvider).signInWithGoogle();
+      if (!launched) {
+        // Launch itself failed/declined before the picker even opened —
+        // nothing went wrong, nothing happened yet, so no error banner.
+        state = const AuthUnauthenticated();
+      }
+    } on AuthApiException catch (error) {
+      state = AuthError(_googleSignInErrorMessage(error));
+    } finally {
+      _googleSignInInFlight = false;
+    }
+  }
+
   String _registerErrorMessage(AuthApiException error) {
     return switch (error.issue) {
       AuthIssue.emailAlreadyRegistered =>
@@ -139,6 +218,14 @@ class AuthController extends Notifier<AuthState> {
       AuthIssue.network =>
         "Couldn't connect. Check your connection and try again.",
       _ => 'We could not update your password. Please try again.',
+    };
+  }
+
+  String _googleSignInErrorMessage(AuthApiException error) {
+    return switch (error.issue) {
+      AuthIssue.network =>
+        "Couldn't connect. Check your connection and try again.",
+      _ => 'Google sign-in failed. Please try again.',
     };
   }
 }

@@ -67,6 +67,9 @@ class _StreamFakeAuthApi implements AuthApi {
   Future<AuthSessionResult> refreshSession() async =>
       const AuthSessionResult(signedIn: false);
 
+  @override
+  Future<bool> signInWithGoogle() async => true;
+
   void dispose() => _controller.close();
 }
 

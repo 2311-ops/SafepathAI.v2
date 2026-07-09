@@ -68,6 +68,13 @@ abstract class AuthApi {
   });
 
   Future<AuthSessionResult> refreshSession();
+
+  /// Launches Supabase's native Google OAuth flow (external browser/Custom
+  /// Tab + PKCE + deep-link redirect back into the app). Returns whether the
+  /// flow was launched — NOT whether sign-in succeeded; the real result
+  /// arrives later via [authStateChanges] (see D-08-1/D-08-2 in
+  /// `01-08-PLAN.md`).
+  Future<bool> signInWithGoogle();
 }
 
 class SupabaseAuthApi implements AuthApi {
@@ -183,6 +190,21 @@ class SupabaseAuthApi implements AuthApi {
       // unexpected exception) is transient: the existing session may still
       // be valid, so it must not be treated the same as a dead session.
       throw AuthApiException(AuthIssue.sessionInvalid, message: error.message);
+    } catch (error) {
+      throw AuthApiException(AuthIssue.network, message: error.toString());
+    }
+  }
+
+  @override
+  Future<bool> signInWithGoogle() async {
+    try {
+      return await _client.auth.signInWithOAuth(
+        sb.OAuthProvider.google,
+        redirectTo: supabaseRedirectUrl,
+        authScreenLaunchMode: sb.LaunchMode.externalApplication,
+      );
+    } on sb.AuthException catch (error) {
+      throw AuthApiException(AuthIssue.unknown, message: error.message);
     } catch (error) {
       throw AuthApiException(AuthIssue.network, message: error.toString());
     }

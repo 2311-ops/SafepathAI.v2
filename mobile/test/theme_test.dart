@@ -60,6 +60,9 @@ class _FakeAuthApi implements AuthApi {
 
   @override
   Future<void> updatePassword({required String password}) async {}
+
+  @override
+  Future<bool> signInWithGoogle() async => true;
 }
 
 void main() {
