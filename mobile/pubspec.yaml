@@ -44,8 +44,8 @@ dependencies:
   # SafePath design-system fonts (Manrope + JetBrains Mono)
   google_fonts: ^8.1.0
 
-  # Secure token storage — never shared_preferences (Pitfall 7)
-  flutter_secure_storage: ^10.3.1
+  # Auth + backend client (Supabase manages session/token persistence internally)
+  supabase_flutter: ^2.16.0
 
   # HTTP client for backend API calls (auth interceptor + refresh retry)
   dio: ^5.9.0
@@ -64,6 +64,17 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+  # Generates platform launcher icons from assets/icon/*.png (SafePathLogo
+  # rendered to PNG) — run via `dart run flutter_launcher_icons`.
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#0C3A3F"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
