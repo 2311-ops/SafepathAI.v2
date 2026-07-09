@@ -57,6 +57,21 @@ builder.Services.AddRateLimiter(options =>
         limiterOptions.QueueLimit = 0;
         limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
     });
+
+    // T-05-02: rate-limit /invites/redeem per-IP to blunt invite-code brute-forcing
+    // (RESEARCH Pitfall 4). Partitioned by remote IP so one caller cannot exhaust the
+    // budget for every other caller, unlike the shared "login" limiter above.
+    options.AddPolicy("invite-redeem", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            }));
+
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 

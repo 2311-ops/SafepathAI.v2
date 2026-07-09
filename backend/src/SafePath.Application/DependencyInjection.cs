@@ -10,6 +10,8 @@ public static class DependencyInjection
     {
         services.AddScoped<ICommandHandler<CreateFamilyCommand, Guid>, CreateFamilyCommandHandler>();
         services.AddScoped<ICommandHandler<ListFamilyMembersQuery, IReadOnlyList<FamilyMemberDto>>, ListFamilyMembersQueryHandler>();
+        services.AddScoped<ICommandHandler<GenerateInviteCommand, GenerateInviteResult>, GenerateInviteCommandHandler>();
+        services.AddScoped<ICommandHandler<RedeemInviteCommand, RedeemInviteResult>, RedeemInviteCommandHandler>();
 
         return services;
     }

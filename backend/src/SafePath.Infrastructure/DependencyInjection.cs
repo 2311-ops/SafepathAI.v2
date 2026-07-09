@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IFamilyAuthorizationService, FamilyAuthorizationService>();
+        services.AddScoped<IInviteCodeGenerator, InviteCodeGenerator>();
 
         return services;
     }
