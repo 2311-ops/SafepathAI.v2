@@ -100,6 +100,9 @@ void main() {
     await tester.pumpWidget(buildTestApp());
     await tester.pumpAndSettle();
 
+    // The Google sign-in button (01-08-PLAN.md) pushes this below the fold
+    // on the default test viewport — scroll it into view before tapping.
+    await tester.ensureVisible(find.text("Don't have an account? Create one"));
     await tester.tap(find.text("Don't have an account? Create one"));
     await tester.pumpAndSettle();
 

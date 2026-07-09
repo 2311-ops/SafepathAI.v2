@@ -24,6 +24,17 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- safepathai:// deep link — handles both the password-reset
+                 email link and the Google OAuth redirect-back (01-08-PLAN.md
+                 D-08-3: this scheme was previously unregistered on Android,
+                 so neither flow could return into the app; this closes that
+                 gap for both). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="safepathai"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

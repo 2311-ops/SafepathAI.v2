@@ -4,6 +4,19 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- safepathai:// deep link — handles both the password-reset email link
+	     and the Google OAuth redirect-back (01-08-PLAN.md D-08-3: this scheme
+	     was previously unregistered on iOS, so neither flow could return into
+	     the app; this closes that gap for both). -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>safepathai</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

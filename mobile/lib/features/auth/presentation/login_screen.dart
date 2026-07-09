@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared_widgets/google_sign_in_button.dart';
 import '../../../shared_widgets/primary_button.dart';
 import '../../../shared_widgets/safepath_logo.dart';
 import '../../../shared_widgets/safepath_text_field.dart';
@@ -83,6 +84,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 label: isLoading ? 'Logging in...' : 'Log in',
                 onPressed: isLoading ? null : _onLogin,
               ),
+              const SizedBox(height: AppSpacing.md),
+              const GoogleSignInButton(),
               const SizedBox(height: AppSpacing.md),
               Center(
                 child: TextButton(

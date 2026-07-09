@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared_widgets/google_sign_in_button.dart';
 import '../../../shared_widgets/primary_button.dart';
 import '../../../shared_widgets/safepath_logo.dart';
 
@@ -48,6 +49,11 @@ class WelcomeScreen extends StatelessWidget {
                   backgroundColor: AppColors.accentMint,
                   foregroundColor: AppColors.deepTeal,
                   onPressed: () => context.push('/register'),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                const GoogleSignInButton(
+                  foregroundColor: Colors.white,
+                  borderColor: Colors.white,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 TextButton(
