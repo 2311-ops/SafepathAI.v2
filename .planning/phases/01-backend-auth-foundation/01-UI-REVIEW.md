@@ -1,78 +1,176 @@
-# Phase 1 UI Review
+# Phase 1 UI/UX Production Readiness Review
 
-## Scope
-This review evaluates the current Phase 1 UI direction using the design contract in [.planning/phases/01-backend-auth-foundation/01-UI-SPEC.md](.planning/phases/01-backend-auth-foundation/01-UI-SPEC.md), the visual mockup in [safepath_logo (1).dart](safepath_logo%20(1).dart), and the supporting system brief in [SYSTEM_DESIGN (1).md](SYSTEM_DESIGN%20(1).md).
+**Review date:** 2026-07-10
+**Scope:** Implemented Flutter Phase 1 screens: Welcome, Login, Register, Role Selection, Email Verification, Forgot Password, Reset Password, Guardian/Member landing, Create Family Circle, Join Family Circle, Invite QR/Code, Accept/Decline Invite, Manage Permissions, loading, empty, error, and success states.
 
-> Note: this phase is currently a design/spec foundation rather than a fully implemented Flutter UI, so the audit focuses on visual coherence, system fidelity, and implementation readiness.
+Profile, Settings, Splash, live map, SOS shell, and full dashboard navigation are not implemented in Phase 1 and remain Phase 2+ scope.
 
-## Overall Assessment
-The Phase 1 UI direction is strong and highly aligned with the requested SafePath visual language. The strongest areas are the consistency of the design tokens, the restrained use of accent color, and the clear hierarchy across the onboarding and family-setup flow. The main risks are implementation drift and a few areas where the spec should be tightened before building screens in code.
+## Overall Verdict
 
-Overall score: 3.5/4
+Phase 1 is UI-ready for closeout after the production polish pass. The implemented screens now follow SafePath AI tokens, have consistent form ergonomics, preserve Material 3 behavior, and avoid known text-overlap risks in compact invite/permission surfaces.
 
-## 6-Pillar Audit
+**Overall score:** 22/24
 
-### 1. Copywriting — 3/4
-Strengths
-- Copy is clear, calm, and consistent with the product voice.
-- The onboarding flow has strong directionality and good differentiation between primary, secondary, and destructive actions.
-- The explicit error-state language is helpful and fits the brand tone.
+| Pillar | Score |
+|--------|-------|
+| Copywriting | 4/4 |
+| Visual Design | 4/4 |
+| Color | 4/4 |
+| Typography | 3/4 |
+| Spacing/Layout | 4/4 |
+| Experience Design | 3/4 |
 
-Needs improvement
-- A few placeholder-style flows still depend on the spec being followed precisely during implementation.
-- The “landing stub” and auth error states should be implemented exactly as specified to avoid tone drift.
+## UI Review Report
 
-### 2. Visuals — 3/4
-Strengths
-- The screens feel cohesive and intentionally designed rather than generic.
-- The rounded cards, soft surfaces, and centered composition are visually appropriate for the product.
-- The welcome experience has a strong sense of character and contrast.
+### Visual Design
 
-Needs improvement
-- The spec is strong but some UI details are still implied rather than fully locked down for implementation.
-- The flow would benefit from a single reference for the authenticated landing stub so it does not get styled too heavily or too loosely.
+- SafePath branding is consistent across auth, family setup, QR invite, and landing states.
+- Welcome preserves the dark-teal gradient and mint CTA exception.
+- Production polish replaced the old placeholder-style authenticated landing with SafePath cards, teal icon tiles, hierarchy, and amber error treatment.
+- Buttons, inputs, cards, chips, and QR/code surfaces use the shared design system.
 
-### 3. Color — 4/4
-Strengths
-- The palette is disciplined and consistent.
-- The accent teal is used purposefully and the welcome screen’s mint accent is clearly scoped.
-- The color guidance for non-SOS warning states is especially strong and prevents accidental misuse of red.
+### Typography
 
-Needs improvement
-- The destructive “Remove from circle” exception is well explained, but it should remain tightly constrained to avoid expansion into other flows.
+- Manrope and JetBrains Mono are used consistently.
+- Display and heading negative letter spacing was removed to prevent small-device rendering and overlap issues.
+- Invite codes are wrapped in a `FittedBox` so long/generated codes cannot overflow their card.
 
-### 4. Typography — 4/4
-Strengths
-- Manrope and JetBrains Mono are used with clear intent and good hierarchy.
-- The mix of display, heading, body, caption, and code treatment is appropriate for the onboarding and invite experience.
-- The spec distinguishes primary CTA styling very clearly.
+### Color
 
-Needs improvement
-- The mono code display is slightly under-documented relative to the mockup, so the implementation should preserve the heavier weight and letter spacing precisely.
+- Teal remains the primary action/accent color.
+- Amber is used for validation and recoverable failures.
+- SOS red remains reserved, with only the documented destructive "Remove from circle" exception.
 
-### 5. Spacing — 4/4
-Strengths
-- The 4px base system is well chosen and clearly mapped to real UI use cases.
-- The spacing guidance for gutters, cards, and tap targets is practical and implementation-friendly.
-- The screen padding and component spacing feel appropriate for mobile.
+### Material 3 Compliance
 
-Needs improvement
-- A few screens rely on visual balance that may be hard to reproduce if implementation becomes too literal rather than system-driven.
+- Screens use `ThemeData(useMaterial3: true)`, Material buttons, AppBars, Chips, dialogs, and SegmentedButton.
+- The permission segmented control is horizontally scrollable on narrow screens to avoid overflow.
+- Dialogs preserve platform Material behavior and confirmation semantics.
 
-### 6. Registry Safety — 4/4
-Strengths
-- There is no unnecessary dependency churn or UI framework drift in the current direction.
-- The spec correctly avoids introducing a generic component registry or shadcn-style pattern for this Flutter project.
-- The review is low-risk from a dependency and design-system governance perspective.
+## UX Review Report
 
-Needs improvement
-- No major issues; this pillar is currently healthy.
+### Guardian Journey
 
-## Recommended Next Steps
-1. Lock the authenticated landing stub as a deliberate placeholder screen rather than letting it become a half-styled home screen.
-2. Preserve the current token system exactly during implementation to avoid visual drift.
-3. Keep the destructive red exception narrowly scoped to the one remove-from-circle action.
-4. Validate the implemented screens against the spec once the Flutter UI is built, especially for spacing, CTA treatment, and the invite-code display.
+Welcome -> Register -> Verify Email -> Login -> Create Family -> Invite QR/Code -> Family Dashboard is coherent and recoverable.
 
-## Verdict
-The Phase 1 UI foundation is visually strong and ready for implementation with a clear design system. The main need now is disciplined execution rather than redesign.
+Improvements applied:
+- Guardian empty state now directs to "Create a circle".
+- Invite screen has clear loading, no-family, retry, QR/code, pending, and copy/share states.
+- Dashboard now visually confirms circle name/member count and member roles.
+
+### Member Journey
+
+Welcome -> Register -> Verify Email -> Login -> Join by QR or Invite Code -> Family Dashboard is coherent.
+
+Improvements applied:
+- Member empty state now directs to "Enter invite code".
+- Empty invite-code submissions show inline validation before any backend call.
+- Invalid, expired, and duplicate invite errors remain on the join form.
+
+### Forms
+
+Reviewed forms: Login, Register, Forgot Password, Reset Password, Create Circle, Join Invite.
+
+Improvements applied:
+- Added validation to Login.
+- Added AutofillGroup/autofill hints for login and registration.
+- Added keyboard submit actions for login, register, forgot/reset password, create circle, and invite code entry.
+- Forgot Password copy now matches the UI spec: "Reset your password." and neutral success messaging.
+
+## Accessibility Report
+
+- Primary CTAs remain full-width with accessible tap targets.
+- Icon-only AppBar actions include tooltips.
+- QR code includes a semantics label.
+- Color contrast is acceptable for primary, secondary, amber, and destructive states.
+- Form labels are visible, not placeholder-only.
+- Remaining Phase 2 accessibility work: full screen-reader traversal pass on real device with TalkBack/VoiceOver and dynamic text at high scale.
+
+## Navigation Review
+
+- Auth guards protect authenticated routes.
+- Logged-out invite deep links are retained and restored after login.
+- Reset-password recovery routing remains isolated.
+- Decline invite no longer silently looks like a successful join.
+- Logout confirmation routes back to Welcome.
+
+No active navigation loops or dead ends were found in Phase 1 scope.
+
+## Workflow Review
+
+### Family Circle
+
+Guardian:
+- Create circle
+- Generate invite
+- Copy/share QR/link/code
+- Manage permissions
+- Remove member with confirmation
+
+Member:
+- Join by invite link/token
+- Join by manual code
+- Validation for empty/invalid/expired/duplicate invite cases
+
+Not implemented in Phase 1 by roadmap: Profile, Settings, leave circle UI, scan-camera QR flow, full live map dashboard.
+
+## Design System Compliance
+
+Compliant:
+- Colors
+- Typography families
+- Button hierarchy
+- Input styling
+- Card styling
+- Amber validation surfaces
+- Destructive red exception containment
+
+Improved during this review:
+- Authenticated landing no longer uses raw default Material visuals.
+- Login/Register/Forgot/Reset forms use platform autofill and keyboard actions.
+- Compact family rows avoid text overflow.
+
+## Performance Observations
+
+- Riverpod provider usage is scoped and deterministic.
+- Family dashboard uses simple `ListView` rows and lightweight cards.
+- QR rendering is limited to the invite screen.
+- No expensive image loading or animation loops are present.
+- Future optimization: as member lists grow, add stable keys and pagination/virtualization if needed.
+
+## Modified Files
+
+- `mobile/lib/shared_widgets/safepath_text_field.dart`
+- `mobile/lib/core/theme/app_typography.dart`
+- `mobile/lib/features/auth/presentation/login_screen.dart`
+- `mobile/lib/features/auth/presentation/register_screen.dart`
+- `mobile/lib/features/auth/presentation/forgot_password_screen.dart`
+- `mobile/lib/features/auth/presentation/reset_password_screen.dart`
+- `mobile/lib/features/family/presentation/create_circle_screen.dart`
+- `mobile/lib/features/family/presentation/accept_invite_screen.dart`
+- `mobile/lib/features/family/presentation/invite_member_screen.dart`
+- `mobile/lib/features/family/presentation/manage_permissions_screen.dart`
+- `mobile/lib/features/home/presentation/landing_stub_screen.dart`
+- `mobile/test/features/auth/forgot_password_screen_test.dart`
+
+## Before / After Summary
+
+Before:
+- Authenticated landing felt like a placeholder.
+- Login lacked client-side validation and platform autofill hints.
+- Some compact family controls could overflow on small devices.
+- Forgot Password copy drifted from the UI spec.
+
+After:
+- Guardian/Member landing states are branded, role-specific, and production-presentable.
+- Forms have validation, autofill, keyboard submit, loading, and error states.
+- Invite code and permission controls are safer on small screens.
+- Phase 1 copy and amber error treatment are synchronized with the UI spec.
+
+## Remaining UI Improvements for Phase 2
+
+- Add real Profile and Settings screens when the roadmap introduces them.
+- Add live map shell/bottom navigation only when Phase 2/3 require it.
+- Add camera QR scanning if Phase 2/3 promotes it beyond QR display/link handling.
+- Run a real-device TalkBack/VoiceOver pass with large text.
+- Resolve existing mojibake dash characters in older planning copy and some user-facing strings as a dedicated cleanup.

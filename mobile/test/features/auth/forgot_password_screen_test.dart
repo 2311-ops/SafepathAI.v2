@@ -53,7 +53,7 @@ void main() {
     await tester.pumpWidget(buildTestApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Reset password'), findsOneWidget);
+    expect(find.text('Reset your password.'), findsOneWidget);
     expect(find.byType(TextFormField), findsOneWidget);
     expect(
       find.widgetWithText(ElevatedButton, 'Send reset link'),
@@ -99,7 +99,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('If that email exists, Supabase sent a password reset link.'),
+      find.text(
+        "If an account exists for that address, we've sent a link to reset your password. It expires in 24 hours.",
+      ),
       findsOneWidget,
     );
     expect(fakeApi.lastResetEmail, 'ada@family.com');

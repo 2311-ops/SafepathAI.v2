@@ -39,7 +39,9 @@ class _CreateCircleScreenState extends ConsumerState<CreateCircleScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() => _isSubmitting = true);
-    await ref.read(familyControllerProvider.notifier).createCircle(_nameController.text.trim());
+    await ref
+        .read(familyControllerProvider.notifier)
+        .createCircle(_nameController.text.trim());
     if (!mounted) return;
     setState(() => _isSubmitting = false);
 
@@ -75,16 +77,28 @@ class _CreateCircleScreenState extends ConsumerState<CreateCircleScreen> {
                     color: AppColors.primaryTeal,
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: const Icon(Icons.diversity_3, color: Colors.white, size: 32),
+                  child: const Icon(
+                    Icons.diversity_3,
+                    color: Colors.white,
+                    size: 32,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text('Name your circle', style: AppTypography.heading),
                 const SizedBox(height: AppSpacing.sm),
-                Text('Your circle starts with you.', style: AppTypography.bodySecondary),
+                Text(
+                  'Your circle starts with you.',
+                  style: AppTypography.bodySecondary,
+                ),
                 const SizedBox(height: AppSpacing.xl),
                 SafePathTextField(
                   label: 'Circle name',
                   controller: _nameController,
+                  autofillHints: const [AutofillHints.familyName],
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) {
+                    if (!_isSubmitting) _onCreate();
+                  },
                   validator: _validateName,
                 ),
                 if (error != null) ...[

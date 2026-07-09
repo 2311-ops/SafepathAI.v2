@@ -23,7 +23,7 @@ dependency is satisfied with seeded/synthetic data.
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Backend & Auth Foundation** - Auth, roles, and family circles on a Clean Architecture backend + Supabase, with the app's design system wired into Flutter.
+- [x] **Phase 1: Backend & Auth Foundation** - Auth, roles, and family circles on a Clean Architecture backend + Supabase, with the app's design system wired into Flutter.
 - [ ] **Phase 2: Real-Time Location, History & Privacy** - Family members see live and historical location on a shared map, with full privacy controls over what's shared.
 - [ ] **Phase 3: SOS Fast Path (Core Value)** - One tap (or covert trigger) reliably alerts guardians with live location within seconds, bypassing every routine and AI pipeline.
 - [ ] **Phase 4: Geofencing** - Safe zones trigger reliable enter/exit alerts without GPS-drift false positives.
@@ -48,7 +48,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Login, registration, and family-circle screens match the SafePath design system (colors, type, spacing, motion) via a shared Flutter `ThemeData`/`ColorScheme` (DESIGN-01)
   6. User can sign in with Google via Supabase's native OAuth from Welcome/Login/Register, alongside existing email/password auth (AUTH-06)
 
-**Plans**: 14/14 plans executed (01-11..01-14 added from cross-AI review - 01-REVIEWS.md)
+**Plans**: 14/14 plans executed and reviewed (01-11..01-14 added from cross-AI review - 01-REVIEWS.md)
 
 - [x] 01-01-PLAN.md
 - [x] 01-02-PLAN.md
@@ -56,7 +56,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 01-04-PLAN.md (superseded — zero code needed, see SUMMARY)
 - [x] 01-05-PLAN.md
 - [x] 01-06-PLAN.md (superseded — satisfied via Supabase Auth, see SUMMARY)
-- [ ] 01-07-PLAN.md (executed + committed bd9288f/132dd85; SUMMARY backfill pending — see deferred-items.md)
+- [x] 01-07-PLAN.md
 - [x] 01-08-PLAN.md (partially superseded by 01-09 — browser OAuth flow replaced by native picker)
 - [x] 01-09-PLAN.md
 - [x] 01-10-PLAN.md (gap closure — GET /families/mine, found during Phase 1 manual UAT)
@@ -172,7 +172,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Backend & Auth Foundation | 14/14 | Review Fixes Complete |  |
+| 1. Backend & Auth Foundation | 14/14 | Complete | 2026-07-10 |
 | 2. Real-Time Location, History & Privacy | 0/TBD | Not started | - |
 | 3. SOS Fast Path (Core Value) | 0/TBD | Not started | - |
 | 4. Geofencing | 0/TBD | Not started | - |

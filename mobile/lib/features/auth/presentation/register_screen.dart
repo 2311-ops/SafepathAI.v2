@@ -38,8 +38,8 @@ class RegisterDraftNotifier extends Notifier<RegisterDraft?> {
 
 final registerDraftProvider =
     NotifierProvider<RegisterDraftNotifier, RegisterDraft?>(
-  RegisterDraftNotifier.new,
-);
+      RegisterDraftNotifier.new,
+    );
 
 /// Register — `#ECF0EF` bg, back-arrow header, FULL NAME/EMAIL/PASSWORD
 /// fields, teal "Continue" CTA (per `01-UI-SPEC.md`).
@@ -85,13 +85,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   void _onContinue() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    ref.read(registerDraftProvider.notifier).set(
-      RegisterDraft(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        fullName: _fullNameController.text.trim(),
-      ),
-    );
+    ref
+        .read(registerDraftProvider.notifier)
+        .set(
+          RegisterDraft(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            fullName: _fullNameController.text.trim(),
+          ),
+        );
     context.push('/register/role');
   }
 
@@ -105,38 +107,47 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             horizontal: AppSpacing.lg,
             vertical: AppSpacing.lg,
           ),
-          child: Form(
-            key: _formKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SafePathLogo(size: 44),
-                const SizedBox(height: AppSpacing.md),
-                Text('Create account', style: AppTypography.heading),
-                const SizedBox(height: AppSpacing.xl),
-                SafePathTextField(
-                  label: 'Full name',
-                  controller: _fullNameController,
-                  validator: _validateFullName,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                SafePathTextField(
-                  label: 'Email',
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: _validateEmail,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                SafePathTextField(
-                  label: 'Password',
-                  controller: _passwordController,
-                  obscureText: true,
-                  validator: _validatePassword,
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                PrimaryButton(label: 'Continue', onPressed: _onContinue),
-              ],
+          child: AutofillGroup(
+            child: Form(
+              key: _formKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SafePathLogo(size: 44),
+                  const SizedBox(height: AppSpacing.md),
+                  Text('Create account', style: AppTypography.heading),
+                  const SizedBox(height: AppSpacing.xl),
+                  SafePathTextField(
+                    label: 'Full name',
+                    controller: _fullNameController,
+                    autofillHints: const [AutofillHints.name],
+                    textInputAction: TextInputAction.next,
+                    validator: _validateFullName,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  SafePathTextField(
+                    label: 'Email',
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    autofillHints: const [AutofillHints.email],
+                    textInputAction: TextInputAction.next,
+                    validator: _validateEmail,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  SafePathTextField(
+                    label: 'Password',
+                    controller: _passwordController,
+                    obscureText: true,
+                    autofillHints: const [AutofillHints.newPassword],
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _onContinue(),
+                    validator: _validatePassword,
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  PrimaryButton(label: 'Continue', onPressed: _onContinue),
+                ],
+              ),
             ),
           ),
         ),

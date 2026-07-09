@@ -57,7 +57,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       if (!mounted) return;
       setState(() {
         _statusMessage =
-            'If that email exists, Supabase sent a password reset link.';
+            "If an account exists for that address, we've sent a link to reset your password. It expires in 24 hours.";
       });
     } on AuthApiException {
       if (!mounted) return;
@@ -91,10 +91,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Reset password', style: AppTypography.heading),
+                Text('Reset your password.', style: AppTypography.heading),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Enter the email address on your SafePath account. We will send a reset link using Supabase Auth.',
+                  "We'll email you a link to get back in.",
                   style: AppTypography.bodySecondary,
                 ),
                 const SizedBox(height: AppSpacing.xl),
@@ -102,6 +102,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   label: 'Email',
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email],
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _sendResetEmail(),
                   validator: _validateEmail,
                 ),
                 const SizedBox(height: AppSpacing.lg),

@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../shared_widgets/primary_button.dart';
+import '../../../shared_widgets/safepath_card.dart';
+import '../../../shared_widgets/secondary_button.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/data/auth_api.dart';
 import '../../auth/data/auth_models.dart';
@@ -9,20 +15,9 @@ import '../../family/application/family_controller.dart';
 import '../../family/data/family_models.dart';
 import '../../profile/application/profile_controller.dart';
 
-/// Deliberately-plain, default Material 3 authenticated landing stub
-/// (UI-SPEC Scope Resolution #2). Intentionally NOT styled with the
-/// SafePath design tokens (`AppColors`/`AppTypography`/etc.) and has NO
-/// bottom navigation — this keeps it visually obviously-a-placeholder so
-/// nobody mistakes it for the real Home/Live Map screen Phase 3 builds.
-///
-/// Upgraded in plan 01-07 to show the real family-circle member list (via
-/// [familyControllerProvider]) and, for Guardians, entry points into the
-/// Invite and Manage Permissions screens. Plan 01-10 added a bootstrap fetch
-/// (`GET /families/mine`) so the circle survives logout/login and cold app
-/// starts, not just the session that created/joined it — this screen shows
-/// a loading spinner while that fetch is in flight (see
-/// [FamilyState.isLoading]) rather than flashing the "create a circle"
-/// empty state first.
+/// Phase 1 authenticated landing for family-circle setup. It intentionally
+/// avoids the later map/bottom-nav shell, while still using the SafePath
+/// tokens so Guardian/Member setup is visually production-ready.
 class LandingStubScreen extends ConsumerWidget {
   const LandingStubScreen({super.key});
 
@@ -97,6 +92,7 @@ class LandingStubScreen extends ConsumerWidget {
               onPressed: () => context.push('/circle/permissions'),
             ),
           PopupMenuButton<String>(
+            tooltip: 'Account menu',
             onSelected: (value) {
               if (value == 'logout') {
                 _confirmLogout(context, ref);
@@ -120,44 +116,92 @@ class LandingStubScreen extends ConsumerWidget {
             )
           : !hasFamily
           ? _RoleEmptyState(role: effectiveRole)
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                if (familyState?.error != null) ...[
-                  _InlineError(message: familyState!.error!),
-                  const SizedBox(height: 12),
-                ],
-                if (members.isEmpty) ...[
-                  const SizedBox(height: 48),
-                  const Icon(Icons.group_off, size: 48),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No members loaded yet',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Refresh your circle to load the roster.',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () =>
-                        ref.read(familyControllerProvider.notifier).refresh(),
-                    child: const Text('Refresh'),
-                  ),
-                ],
-                for (final member in members)
-                  ListTile(
-                    leading: const Icon(Icons.person),
-                    title: Text(
-                      member.userId == effectiveUserId ? 'You' : member.userId,
-                    ),
-                    trailing: Chip(label: Text(member.role.wireValue)),
-                  ),
-              ],
+          : _FamilyDashboard(
+              familyState: familyState,
+              members: members,
+              effectiveUserId: effectiveUserId,
+              onRefresh: () =>
+                  ref.read(familyControllerProvider.notifier).refresh(),
             ),
+    );
+  }
+}
+
+class _FamilyDashboard extends StatelessWidget {
+  const _FamilyDashboard({
+    required this.familyState,
+    required this.members,
+    required this.effectiveUserId,
+    required this.onRefresh,
+  });
+
+  final FamilyState? familyState;
+  final List<FamilyMemberView> members;
+  final String? effectiveUserId;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        if (familyState?.error != null) ...[
+          _InlineError(message: familyState!.error!),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        if (members.isEmpty)
+          _DashboardEmptyState(onRefresh: onRefresh)
+        else ...[
+          Text(
+            familyState?.family?.name ?? 'Family circle',
+            style: AppTypography.heading,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            '${members.length} active member${members.length == 1 ? '' : 's'}',
+            style: AppTypography.bodySecondary,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          for (final member in members)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: SafePathCard(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryTeal.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        color: AppColors.primaryTeal,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Text(
+                        member.userId == effectiveUserId
+                            ? 'You'
+                            : member.userId,
+                        style: AppTypography.title,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Chip(
+                      label: Text(member.role.wireValue),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ],
     );
   }
 }
@@ -223,24 +267,43 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
-        const SizedBox(height: 48),
-        Icon(icon, size: 48),
-        const SizedBox(height: 16),
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        const SizedBox(height: AppSpacing.xl),
+        SafePathCard(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryTeal,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(icon, size: 32, color: Colors.white),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: AppTypography.title,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: AppTypography.bodySecondary,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              PrimaryButton(label: primaryLabel, onPressed: onPrimary),
+              if (secondaryLabel != null && onSecondary != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                SecondaryButton(label: secondaryLabel!, onPressed: onSecondary),
+              ],
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
-        Text(message, textAlign: TextAlign.center),
-        const SizedBox(height: 24),
-        ElevatedButton(onPressed: onPrimary, child: Text(primaryLabel)),
-        if (secondaryLabel != null && onSecondary != null) ...[
-          const SizedBox(height: 8),
-          OutlinedButton(onPressed: onSecondary, child: Text(secondaryLabel!)),
-        ],
       ],
     );
   }
@@ -255,21 +318,68 @@ class _ConnectionFailure extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
-        const SizedBox(height: 48),
-        const Icon(Icons.cloud_off, size: 48),
-        const SizedBox(height: 16),
-        const Text(
-          "Couldn't load your circle",
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        const SizedBox(height: AppSpacing.xl),
+        SafePathCard(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            children: [
+              const Icon(
+                Icons.cloud_off,
+                size: 48,
+                color: AppColors.bodySecondary,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                "Couldn't load your circle",
+                textAlign: TextAlign.center,
+                style: AppTypography.title,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: AppTypography.bodySecondary,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              PrimaryButton(label: 'Try again', onPressed: onRetry),
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
-        Text(message, textAlign: TextAlign.center),
-        const SizedBox(height: 24),
-        ElevatedButton(onPressed: onRetry, child: const Text('Try again')),
       ],
+    );
+  }
+}
+
+class _DashboardEmptyState extends StatelessWidget {
+  const _DashboardEmptyState({required this.onRefresh});
+
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafePathCard(
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        children: [
+          const Icon(Icons.group_off, size: 48, color: AppColors.bodySecondary),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'No members loaded yet',
+            textAlign: TextAlign.center,
+            style: AppTypography.title,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Refresh your circle to load the roster.',
+            textAlign: TextAlign.center,
+            style: AppTypography.bodySecondary,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          PrimaryButton(label: 'Refresh', onPressed: onRefresh),
+        ],
+      ),
     );
   }
 }
@@ -282,15 +392,13 @@ class _InlineError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Theme.of(context).colorScheme.errorContainer,
+      color: AppColors.cautionBg,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Text(
           message,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onErrorContainer,
-          ),
+          style: const TextStyle(color: AppColors.cautionText),
         ),
       ),
     );

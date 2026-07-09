@@ -40,7 +40,10 @@ class ManagePermissionsScreen extends ConsumerWidget {
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text(
               'Remove',
-              style: TextStyle(color: AppColors.sosRedDeep, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: AppColors.sosRedDeep,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -48,7 +51,9 @@ class ManagePermissionsScreen extends ConsumerWidget {
     );
 
     if (confirmed != true) return;
-    await ref.read(familyControllerProvider.notifier).removeMember(familyId, member.memberId);
+    await ref
+        .read(familyControllerProvider.notifier)
+        .removeMember(familyId, member.memberId);
   }
 
   @override
@@ -57,8 +62,9 @@ class ManagePermissionsScreen extends ConsumerWidget {
     final currentUserId = ref.watch(authApiProvider).currentSession?.user.id;
     final familyId = familyState?.family?.id;
     final circleName = familyState?.family?.name ?? 'your circle';
-    final otherMembers =
-        (familyState?.members ?? const []).where((m) => m.userId != currentUserId).toList();
+    final otherMembers = (familyState?.members ?? const [])
+        .where((m) => m.userId != currentUserId)
+        .toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Permissions')),
@@ -66,93 +72,102 @@ class ManagePermissionsScreen extends ConsumerWidget {
         child: familyId == null
             ? const Center(child: Text('No circle yet.'))
             : otherMembers.isEmpty
-                ? Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Center(
-                      child: Text(
-                        'Just you so far',
-                        style: AppTypography.title,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  )
-                : ListView(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    children: [
-                      for (final member in otherMembers)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                          child: SafePathCard(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+            ? Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Center(
+                  child: Text(
+                    'Just you so far',
+                    style: AppTypography.title,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              )
+            : ListView(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                children: [
+                  for (final member in otherMembers)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: SafePathCard(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(member.role.wireValue, style: AppTypography.title),
-                                    ),
-                                    InkWell(
-                                      onTap: () => _confirmRemove(
-                                        context,
-                                        ref,
-                                        familyId,
-                                        member,
-                                        circleName,
-                                      ),
-                                      child: const Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.person_remove,
-                                            color: AppColors.sosRedDeep,
-                                            size: 18,
-                                          ),
-                                          SizedBox(width: AppSpacing.xs),
-                                          Text(
-                                            'Remove from circle',
-                                            style: TextStyle(
-                                              color: AppColors.sosRedDeep,
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
+                                Expanded(
+                                  child: Text(
+                                    member.role.wireValue,
+                                    style: AppTypography.title,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                const SizedBox(height: AppSpacing.xsMd),
-                                SegmentedButton<PermissionLevel>(
-                                  segments: const [
-                                    ButtonSegment(
-                                      value: PermissionLevel.viewOnly,
-                                      label: Text('View only'),
-                                    ),
-                                    ButtonSegment(
-                                      value: PermissionLevel.fullLocation,
-                                      label: Text('Full location'),
-                                    ),
-                                    ButtonSegment(
-                                      value: PermissionLevel.notificationOnly,
-                                      label: Text('Notifications'),
-                                    ),
-                                  ],
-                                  selected: {member.permission},
-                                  onSelectionChanged: (selection) {
-                                    ref.read(familyControllerProvider.notifier).updatePermission(
-                                          familyId,
-                                          member.memberId,
-                                          selection.first,
-                                        );
-                                  },
+                                InkWell(
+                                  onTap: () => _confirmRemove(
+                                    context,
+                                    ref,
+                                    familyId,
+                                    member,
+                                    circleName,
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.person_remove,
+                                        color: AppColors.sosRedDeep,
+                                        size: 18,
+                                      ),
+                                      SizedBox(width: AppSpacing.xs),
+                                      Text(
+                                        'Remove from circle',
+                                        style: TextStyle(
+                                          color: AppColors.sosRedDeep,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
+                            const SizedBox(height: AppSpacing.xsMd),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: SegmentedButton<PermissionLevel>(
+                                segments: const [
+                                  ButtonSegment(
+                                    value: PermissionLevel.viewOnly,
+                                    label: Text('View only'),
+                                  ),
+                                  ButtonSegment(
+                                    value: PermissionLevel.fullLocation,
+                                    label: Text('Full location'),
+                                  ),
+                                  ButtonSegment(
+                                    value: PermissionLevel.notificationOnly,
+                                    label: Text('Notifications'),
+                                  ),
+                                ],
+                                selected: {member.permission},
+                                onSelectionChanged: (selection) {
+                                  ref
+                                      .read(familyControllerProvider.notifier)
+                                      .updatePermission(
+                                        familyId,
+                                        member.memberId,
+                                        selection.first,
+                                      );
+                                },
+                              ),
+                            ),
+                          ],
                         ),
-                    ],
-                  ),
+                      ),
+                    ),
+                ],
+              ),
       ),
     );
   }

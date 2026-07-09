@@ -22,6 +22,9 @@ class SafePathTextField extends StatelessWidget {
     this.errorText,
     this.onChanged,
     this.validator,
+    this.autofillHints,
+    this.textInputAction,
+    this.onFieldSubmitted,
   });
 
   final String label;
@@ -30,6 +33,9 @@ class SafePathTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final String? errorText;
   final ValueChanged<String>? onChanged;
+  final Iterable<String>? autofillHints;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onFieldSubmitted;
 
   /// Optional form-field validator (used when this field is wrapped in a
   /// [Form] — e.g. Register's client-side email/password checks).
@@ -47,6 +53,9 @@ class SafePathTextField extends StatelessWidget {
           obscureText: obscureText,
           keyboardType: keyboardType,
           onChanged: onChanged,
+          autofillHints: autofillHints,
+          textInputAction: textInputAction,
+          onFieldSubmitted: onFieldSubmitted,
           validator: validator,
           style: AppTypography.body,
           decoration: InputDecoration(

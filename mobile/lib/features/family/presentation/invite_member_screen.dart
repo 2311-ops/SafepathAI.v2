@@ -166,7 +166,10 @@ class _InviteMemberScreenState extends ConsumerState<InviteMemberScreen> {
                       semanticsLabel: 'Invite QR code',
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    Text(invite.code, style: AppTypography.code),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(invite.code, style: AppTypography.code),
+                    ),
                     const SizedBox(height: AppSpacing.xs),
                     Text('Expires in 24h', style: AppTypography.caption),
                     const SizedBox(height: AppSpacing.lg),
@@ -218,6 +221,7 @@ class _InviteMemberScreenState extends ConsumerState<InviteMemberScreen> {
                         Text(
                           _relativeInviteTime(pendingInvite),
                           style: AppTypography.bodySecondary,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),

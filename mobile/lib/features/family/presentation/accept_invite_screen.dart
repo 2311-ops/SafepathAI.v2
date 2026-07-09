@@ -119,6 +119,10 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
                 SafePathTextField(
                   label: 'Invite code',
                   controller: _codeController,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) {
+                    if (!_isSubmitting) _redeem(accept: true);
+                  },
                 ),
               if (error != null) ...[
                 const SizedBox(height: AppSpacing.md),

@@ -89,6 +89,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   label: 'New password',
                   controller: _passwordController,
                   obscureText: true,
+                  autofillHints: const [AutofillHints.newPassword],
+                  textInputAction: TextInputAction.next,
                   validator: _validatePassword,
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -96,6 +98,11 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   label: 'Confirm password',
                   controller: _confirmController,
                   obscureText: true,
+                  autofillHints: const [AutofillHints.newPassword],
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) {
+                    if (isRecovery && !isLoading) _onSubmit();
+                  },
                   validator: _validateConfirm,
                 ),
                 const SizedBox(height: AppSpacing.lg),
