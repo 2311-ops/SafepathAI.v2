@@ -26,11 +26,15 @@ class FakeAuthApi implements AuthApi {
 
   bool resetShouldFail = false;
   bool updatePasswordShouldFail = false;
+  bool refreshShouldFail = false;
+  AuthIssue refreshFailureIssue = AuthIssue.network;
+  String refreshFailureMessage = 'refresh failed';
 
   int registerCallCount = 0;
   int loginCallCount = 0;
   int resetCallCount = 0;
   int updatePasswordCallCount = 0;
+  int refreshCallCount = 0;
   bool logoutCalled = false;
 
   String? lastRegisterEmail;
@@ -127,6 +131,14 @@ class FakeAuthApi implements AuthApi {
 
   @override
   Future<AuthSessionResult> refreshSession() async {
+    refreshCallCount++;
+
+    if (responseDelay > Duration.zero) await Future.delayed(responseDelay);
+
+    if (refreshShouldFail) {
+      throw AuthApiException(refreshFailureIssue, message: refreshFailureMessage);
+    }
+
     return const AuthSessionResult(signedIn: true);
   }
 

@@ -1,25 +1,16 @@
 import 'package:dio/dio.dart';
 
-import '../storage/token_storage.dart';
+import '../../features/auth/data/auth_api.dart';
 
-/// Attaches the bearer access token to every outgoing request and performs
-/// at most one refresh-retry on a 401 response.
-///
-/// - onRequest: attaches `Authorization: Bearer <access>` from [TokenStorage]
-///   when a token is present.
-/// - onError (401 only): calls `POST /auth/refresh` with the stored refresh
-///   token via a plain [Dio] instance (no interceptors — avoids recursing
-///   back into this interceptor), saves the rotated token pair on success,
-///   and retries the original request exactly once. On refresh failure,
-///   clears [TokenStorage] and lets the 401 propagate so the app can route
-///   to login.
+/// Attaches the current Supabase access token to outgoing requests and
+/// performs one refresh/retry on a 401 response.
 class AuthInterceptor extends Interceptor {
-  AuthInterceptor({required this.tokenStorage, required this.refreshDio});
+  AuthInterceptor({required this.authApi, required this.refreshDio});
 
-  final TokenStorage tokenStorage;
+  final AuthApi authApi;
 
-  /// A plain [Dio] instance (no interceptors attached) used only for the
-  /// `/auth/refresh` call, so this interceptor never recurses into itself.
+  /// A plain [Dio] instance (no interceptors attached) used for the retry
+  /// request so the interceptor never recurses into itself.
   final Dio refreshDio;
 
   @override
@@ -27,7 +18,7 @@ class AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    final accessToken = await tokenStorage.readAccessToken();
+    final accessToken = authApi.currentSession?.accessToken;
     if (accessToken != null) {
       options.headers['Authorization'] = 'Bearer $accessToken';
     }
@@ -47,39 +38,35 @@ class AuthInterceptor extends Interceptor {
       return;
     }
 
-    final refreshToken = await tokenStorage.readRefreshToken();
-    if (refreshToken == null) {
-      await tokenStorage.clear();
-      handler.next(err);
-      return;
-    }
-
     try {
-      final response = await refreshDio.post<Map<String, dynamic>>(
-        '/auth/refresh',
-        data: {'refreshToken': refreshToken},
-      );
+      final refreshResult = await authApi.refreshSession();
+      final newAccessToken = authApi.currentSession?.accessToken;
 
-      final data = response.data;
-      final newAccess = data?['accessToken'] as String?;
-      final newRefresh = data?['refreshToken'] as String?;
-
-      if (newAccess == null || newRefresh == null) {
-        await tokenStorage.clear();
+      if (!refreshResult.signedIn || newAccessToken == null) {
+        await authApi.logout();
         handler.next(err);
         return;
       }
 
-      await tokenStorage.saveTokens(access: newAccess, refresh: newRefresh);
-
       final retryOptions = err.requestOptions
-        ..headers['Authorization'] = 'Bearer $newAccess'
+        ..headers['Authorization'] = 'Bearer $newAccessToken'
         ..extra['sp_retried'] = true;
 
       final retryResponse = await refreshDio.fetch<dynamic>(retryOptions);
       handler.resolve(retryResponse);
+    } on AuthApiException catch (error) {
+      // Only a genuinely dead session (invalid/expired/revoked refresh
+      // token) should force a sign-out. A transient failure while
+      // refreshing (network timeout, Supabase temporarily unreachable, or
+      // any other unexpected error) leaves the existing session intact —
+      // the original request simply fails this time, and a later retry
+      // (once connectivity returns) can still succeed against the same
+      // still-valid session.
+      if (error.issue != AuthIssue.network) {
+        await authApi.logout();
+      }
+      handler.next(err);
     } on DioException {
-      await tokenStorage.clear();
       handler.next(err);
     }
   }
