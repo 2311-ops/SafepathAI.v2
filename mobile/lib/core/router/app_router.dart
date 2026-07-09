@@ -11,6 +11,10 @@ import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/reset_password_screen.dart';
 import '../../features/auth/presentation/role_select_screen.dart';
 import '../../features/auth/presentation/welcome_screen.dart';
+import '../../features/family/presentation/accept_invite_screen.dart';
+import '../../features/family/presentation/create_circle_screen.dart';
+import '../../features/family/presentation/invite_member_screen.dart';
+import '../../features/family/presentation/manage_permissions_screen.dart';
 import '../../features/home/presentation/landing_stub_screen.dart';
 
 /// Routes that belong to the pre-auth onboarding flow. An authenticated user
@@ -22,6 +26,19 @@ const _unauthenticatedOnlyRoutes = {
   '/login',
   '/forgot-password',
   '/verify-email',
+};
+
+/// Authenticated-only routes: an unauthenticated user hitting any of these
+/// (e.g. a stale deep link) is redirected to Welcome instead of being shown
+/// the screen. Family-circle routes call authenticated-only backend
+/// endpoints (T-07-01 — the server is the authoritative check; this guard is
+/// convenience/defense-in-depth, not the security boundary).
+const _authenticatedOnlyRoutes = {
+  '/home',
+  '/circle/create',
+  '/circle/invite',
+  '/circle/permissions',
+  '/invite/accept',
 };
 
 /// Bridges [authControllerProvider] changes to go_router's
@@ -48,13 +65,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authControllerProvider);
       final isAuthenticated = authState is AuthAuthenticated;
       final isRecovery = authState is AuthRecovery;
-      final goingHome = state.matchedLocation == '/home';
+      final goingToAuthenticatedRoute =
+          _authenticatedOnlyRoutes.contains(state.matchedLocation);
       final onResetPassword = state.matchedLocation == '/reset-password';
 
       if (isRecovery && !onResetPassword) {
         return '/reset-password';
       }
-      if (!isAuthenticated && goingHome) {
+      if (!isAuthenticated && goingToAuthenticatedRoute) {
         return '/';
       }
       if (isAuthenticated &&
@@ -105,6 +123,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/home',
         name: 'home',
         builder: (context, state) => const LandingStubScreen(),
+      ),
+      GoRoute(
+        path: '/circle/create',
+        name: 'circle-create',
+        builder: (context, state) => const CreateCircleScreen(),
+      ),
+      GoRoute(
+        path: '/circle/invite',
+        name: 'circle-invite',
+        builder: (context, state) => const InviteMemberScreen(),
+      ),
+      GoRoute(
+        path: '/invite/accept',
+        name: 'invite-accept',
+        builder: (context, state) =>
+            AcceptInviteScreen(initialCode: state.uri.queryParameters['code']),
+      ),
+      GoRoute(
+        path: '/circle/permissions',
+        name: 'circle-permissions',
+        builder: (context, state) => const ManagePermissionsScreen(),
       ),
     ],
   );
