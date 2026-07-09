@@ -44,7 +44,10 @@ void main() {
     );
     return ProviderScope(
       overrides: [authApiProvider.overrideWithValue(fakeApi)],
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        routerConfig: router,
+      ),
     );
   }
 

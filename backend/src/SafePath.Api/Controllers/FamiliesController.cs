@@ -12,6 +12,8 @@ public record CreateFamilyResponse(Guid FamilyId);
 
 public record UpdateMemberPermissionsRequest(PermissionLevel Permissions);
 
+public record TransferOwnershipRequest(Guid NewGuardianMemberId);
+
 [ApiController]
 [Authorize]
 public class FamiliesController : ControllerBase
@@ -21,6 +23,8 @@ public class FamiliesController : ControllerBase
     private readonly ICommandHandler<ListMyFamiliesQuery, IReadOnlyList<MyFamilyDto>> _listMyFamilies;
     private readonly ICommandHandler<UpdateMemberPermissionsCommand, UpdateMemberPermissionsResult> _updatePermissions;
     private readonly ICommandHandler<RemoveMemberCommand, RemoveMemberResult> _removeMember;
+    private readonly ICommandHandler<TransferOwnershipCommand, TransferOwnershipResult> _transferOwnership;
+    private readonly ICommandHandler<DeleteFamilyCommand, DeleteFamilyResult> _deleteFamily;
     private readonly ICurrentUserService _currentUser;
 
     public FamiliesController(
@@ -29,6 +33,8 @@ public class FamiliesController : ControllerBase
         ICommandHandler<ListMyFamiliesQuery, IReadOnlyList<MyFamilyDto>> listMyFamilies,
         ICommandHandler<UpdateMemberPermissionsCommand, UpdateMemberPermissionsResult> updatePermissions,
         ICommandHandler<RemoveMemberCommand, RemoveMemberResult> removeMember,
+        ICommandHandler<TransferOwnershipCommand, TransferOwnershipResult> transferOwnership,
+        ICommandHandler<DeleteFamilyCommand, DeleteFamilyResult> deleteFamily,
         ICurrentUserService currentUser)
     {
         _createFamily = createFamily;
@@ -36,6 +42,8 @@ public class FamiliesController : ControllerBase
         _listMyFamilies = listMyFamilies;
         _updatePermissions = updatePermissions;
         _removeMember = removeMember;
+        _transferOwnership = transferOwnership;
+        _deleteFamily = deleteFamily;
         _currentUser = currentUser;
     }
 
@@ -56,6 +64,10 @@ public class FamiliesController : ControllerBase
         catch (ArgumentException ex)
         {
             return BadRequest(new { error = ex.Message });
+        }
+        catch (AlreadyInAnotherFamilyException ex)
+        {
+            return Conflict(new { error = ex.Message });
         }
     }
 
@@ -135,6 +147,53 @@ public class FamiliesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>Guardian-only: transfer ownership to another active member (FAM-04/FAM-05).</summary>
+    [HttpPost("families/{familyId:guid}/transfer-ownership")]
+    public async Task<ActionResult<TransferOwnershipResult>> TransferOwnership(
+        Guid familyId, [FromBody] TransferOwnershipRequest request, CancellationToken cancellationToken)
+    {
+        if (_currentUser.UserId is not { } userId)
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var result = await _transferOwnership.Handle(
+                new TransferOwnershipCommand(userId, familyId, request.NewGuardianMemberId),
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (FamilyAuthorizationDeniedException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>Guardian-only: delete a family and its member/invitation rows (FAM-01).</summary>
+    [HttpDelete("families/{familyId:guid}")]
+    public async Task<ActionResult> DeleteFamily(Guid familyId, CancellationToken cancellationToken)
+    {
+        if (_currentUser.UserId is not { } userId)
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            await _deleteFamily.Handle(new DeleteFamilyCommand(userId, familyId), cancellationToken);
+            return NoContent();
+        }
+        catch (FamilyAuthorizationDeniedException)
+        {
+            return Forbid();
         }
     }
 }

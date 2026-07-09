@@ -21,5 +21,10 @@ public class FamilyInvitationConfiguration : IEntityTypeConfiguration<FamilyInvi
         builder.Property(i => i.InviteeEmail).HasMaxLength(320);
         builder.Property(i => i.Status).HasConversion<string>().IsRequired();
         builder.Property(i => i.ExpiresAt).IsRequired();
+
+        builder.HasOne<Family>()
+            .WithMany()
+            .HasForeignKey(i => i.FamilyId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

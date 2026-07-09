@@ -16,15 +16,18 @@ public class InvitesController : ControllerBase
 {
     private readonly ICommandHandler<GenerateInviteCommand, GenerateInviteResult> _generateInvite;
     private readonly ICommandHandler<RedeemInviteCommand, RedeemInviteResult> _redeemInvite;
+    private readonly ICommandHandler<RevokeInviteCommand, RevokeInviteResult> _revokeInvite;
     private readonly ICurrentUserService _currentUser;
 
     public InvitesController(
         ICommandHandler<GenerateInviteCommand, GenerateInviteResult> generateInvite,
         ICommandHandler<RedeemInviteCommand, RedeemInviteResult> redeemInvite,
+        ICommandHandler<RevokeInviteCommand, RevokeInviteResult> revokeInvite,
         ICurrentUserService currentUser)
     {
         _generateInvite = generateInvite;
         _redeemInvite = redeemInvite;
+        _revokeInvite = revokeInvite;
         _currentUser = currentUser;
     }
 
@@ -71,6 +74,39 @@ public class InvitesController : ControllerBase
         catch (ArgumentException ex)
         {
             return BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (AlreadyInAnotherFamilyException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>Guardian-only: revoke a Pending invite so it can no longer be redeemed.</summary>
+    [HttpPost("families/{familyId:guid}/invites/{invitationId:guid}/revoke")]
+    public async Task<ActionResult<RevokeInviteResult>> Revoke(
+        Guid familyId,
+        Guid invitationId,
+        CancellationToken cancellationToken)
+    {
+        if (_currentUser.UserId is not { } userId)
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var result = await _revokeInvite.Handle(
+                new RevokeInviteCommand(userId, familyId, invitationId),
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (FamilyAuthorizationDeniedException)
+        {
+            return Forbid();
         }
         catch (InvalidOperationException ex)
         {

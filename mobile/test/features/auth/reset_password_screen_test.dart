@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:mobile/core/theme/app_colors.dart';
 import 'package:mobile/features/auth/data/auth_api.dart';
 import 'package:mobile/features/auth/presentation/reset_password_screen.dart';
 
@@ -36,22 +37,30 @@ void main() {
         ),
         GoRoute(
           path: '/login',
-          builder: (context, state) => const Scaffold(body: Text('login-reached')),
+          builder: (context, state) =>
+              const Scaffold(body: Text('login-reached')),
         ),
       ],
     );
     return ProviderScope(
       overrides: [authApiProvider.overrideWithValue(fakeApi)],
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        routerConfig: router,
+      ),
     );
   }
 
-  testWidgets('without an active recovery session, submit is disabled', (tester) async {
+  testWidgets('without an active recovery session, submit is disabled', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp());
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Open the reset link from your email on this device to unlock this screen.'),
+      find.text(
+        'Open the reset link from your email on this device to unlock this screen.',
+      ),
       findsOneWidget,
     );
     final button = tester.widget<ElevatedButton>(
@@ -75,7 +84,9 @@ void main() {
     expect(fakeApi.updatePasswordCallCount, 0);
   });
 
-  testWidgets('mismatched confirm password is blocked client-side', (tester) async {
+  testWidgets('mismatched confirm password is blocked client-side', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp());
     fakeApi.emitPasswordRecovery();
     await tester.pumpAndSettle();
@@ -106,7 +117,9 @@ void main() {
     expect(fakeApi.lastUpdatedPassword, 'correct-horse-1');
   });
 
-  testWidgets('failure shows an inline error and does not navigate', (tester) async {
+  testWidgets('failure shows an inline error and does not navigate', (
+    tester,
+  ) async {
     fakeApi.updatePasswordShouldFail = true;
     await tester.pumpWidget(buildTestApp());
     fakeApi.emitPasswordRecovery();
@@ -122,6 +135,10 @@ void main() {
       find.text("Couldn't connect. Check your connection and try again."),
       findsOneWidget,
     );
+    final errorText = tester.widget<Text>(
+      find.text("Couldn't connect. Check your connection and try again."),
+    );
+    expect(errorText.style?.color, AppColors.cautionText);
     expect(find.text('login-reached'), findsNothing);
   });
 

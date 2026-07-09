@@ -1,6 +1,7 @@
 using SafePath.Application.Common.Interfaces;
 using SafePath.Domain.Entities;
 using SafePath.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace SafePath.Application.Families;
 
@@ -21,6 +22,14 @@ public class CreateFamilyCommandHandler : ICommandHandler<CreateFamilyCommand, G
         if (string.IsNullOrWhiteSpace(command.Name))
         {
             throw new ArgumentException("Family name is required.", nameof(command));
+        }
+
+        var alreadyInFamily = await _db.FamilyMembers.AnyAsync(
+            m => m.UserId == command.UserId && m.IsActive,
+            cancellationToken);
+        if (alreadyInFamily)
+        {
+            throw new AlreadyInAnotherFamilyException();
         }
 
         var family = new Family

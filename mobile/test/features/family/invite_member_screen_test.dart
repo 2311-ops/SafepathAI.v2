@@ -88,7 +88,10 @@ void main() {
         familyApiProvider.overrideWithValue(_FakeFamilyApi()),
         familyControllerProvider.overrideWith(_SeededFamilyController.new),
       ],
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        routerConfig: router,
+      ),
     );
   }
 

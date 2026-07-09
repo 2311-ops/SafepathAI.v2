@@ -1,6 +1,7 @@
 using SafePath.Application.Common.Interfaces;
 using SafePath.Application.Families;
 using SafePath.Application.Tests.Common;
+using SafePath.Domain.Entities;
 using SafePath.Domain.Enums;
 using SafePath.Infrastructure.Identity;
 using Xunit;
@@ -54,6 +55,7 @@ public class FamilyAuthorizationServiceTests : IDisposable
         await using var db = _factory.CreateContext();
         var familyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
+        db.Families.Add(new Family { Id = familyId, Name = "Seed Family", CreatedByUserId = userId, CreatedAt = DateTime.UtcNow });
         db.FamilyMembers.Add(new()
         {
             Id = Guid.NewGuid(),
@@ -88,6 +90,7 @@ public class FamilyAuthorizationServiceTests : IDisposable
         await using var db = _factory.CreateContext();
         var familyId = Guid.NewGuid();
         var userId = Guid.NewGuid();
+        db.Families.Add(new Family { Id = familyId, Name = "Seed Family", CreatedByUserId = userId, CreatedAt = DateTime.UtcNow });
         db.FamilyMembers.Add(new()
         {
             Id = Guid.NewGuid(),

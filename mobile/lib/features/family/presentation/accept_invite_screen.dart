@@ -14,13 +14,18 @@ import '../application/family_controller.dart';
 /// so this screen cannot show the mockup's personalized "{Guardian} invited
 /// you to {circle}" copy without a real round trip first — see
 /// 01-07-SUMMARY.md deviations. The invitee enters (or arrives with, via
-/// [initialCode]) the short share code, then Accept & join or Decline.
+/// [initialCode]/[initialLinkToken]) the invite, then Accept & join or Decline.
 class AcceptInviteScreen extends ConsumerStatefulWidget {
-  const AcceptInviteScreen({super.key, this.initialCode});
+  const AcceptInviteScreen({
+    super.key,
+    this.initialCode,
+    this.initialLinkToken,
+  });
 
   /// Pre-fills the code field when reached with `?code=...` (e.g. a future
   /// deep-link handler for the QR's `safepathai://invite` payload).
   final String? initialCode;
+  final String? initialLinkToken;
 
   @override
   ConsumerState<AcceptInviteScreen> createState() => _AcceptInviteScreenState();
@@ -44,16 +49,35 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
 
   Future<void> _redeem({required bool accept}) async {
     final code = _codeController.text.trim();
-    if (code.isEmpty) return;
+    final linkToken = widget.initialLinkToken?.trim();
+    final hasLinkToken = linkToken != null && linkToken.isNotEmpty;
+    if (!hasLinkToken && code.isEmpty) return;
 
     setState(() => _isSubmitting = true);
-    await ref.read(familyControllerProvider.notifier).redeemInvite(code: code, accept: accept);
+    await ref
+        .read(familyControllerProvider.notifier)
+        .redeemInvite(
+          code: hasLinkToken ? null : code,
+          linkToken: hasLinkToken ? linkToken : null,
+          accept: accept,
+        );
     if (!mounted) return;
     setState(() => _isSubmitting = false);
 
     final familyState = ref.read(familyControllerProvider).value;
     if (familyState?.error == null) {
-      context.go('/home');
+      if (accept) {
+        context.go('/home');
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Invitation declined')));
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/home');
+        }
+      }
     }
   }
 
@@ -76,11 +100,19 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
               Text("You've been invited", style: AppTypography.heading),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                'Enter the invite code you were sent to join a SafePath family circle.',
+                widget.initialLinkToken?.isNotEmpty ?? false
+                    ? 'Review the invitation before joining this SafePath family circle.'
+                    : 'Enter the invite code you were sent to join a SafePath family circle.',
                 style: AppTypography.bodySecondary,
               ),
               const SizedBox(height: AppSpacing.xl),
-              SafePathTextField(label: 'Invite code', controller: _codeController),
+              if (widget.initialLinkToken?.isNotEmpty ?? false)
+                const _LinkInviteNotice()
+              else
+                SafePathTextField(
+                  label: 'Invite code',
+                  controller: _codeController,
+                ),
               if (error != null) ...[
                 const SizedBox(height: AppSpacing.md),
                 _ErrorBanner(message: error),
@@ -93,7 +125,9 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
               const SizedBox(height: AppSpacing.md),
               Center(
                 child: TextButton(
-                  onPressed: _isSubmitting ? null : () => _redeem(accept: false),
+                  onPressed: _isSubmitting
+                      ? null
+                      : () => _redeem(accept: false),
                   child: Text('Decline', style: AppTypography.bodySecondary),
                 ),
               ),
@@ -122,6 +156,31 @@ class _ErrorBanner extends StatelessWidget {
       child: Text(
         message,
         style: const TextStyle(
+          color: AppColors.cautionText,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+}
+
+class _LinkInviteNotice extends StatelessWidget {
+  const _LinkInviteNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.cautionBg,
+        border: Border.all(color: AppColors.cautionBorder),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Text(
+        'Invite link ready. Tap Accept & join to continue.',
+        style: TextStyle(
           color: AppColors.cautionText,
           fontSize: 12,
           fontWeight: FontWeight.w500,

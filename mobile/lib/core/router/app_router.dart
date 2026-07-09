@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../deep_link/deep_link_service.dart';
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/application/auth_state.dart';
 import '../../features/auth/presentation/check_email_screen.dart';
@@ -65,12 +66,30 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authControllerProvider);
       final isAuthenticated = authState is AuthAuthenticated;
       final isRecovery = authState is AuthRecovery;
-      final goingToAuthenticatedRoute =
-          _authenticatedOnlyRoutes.contains(state.matchedLocation);
+      final goingToAuthenticatedRoute = _authenticatedOnlyRoutes.contains(
+        state.matchedLocation,
+      );
       final onResetPassword = state.matchedLocation == '/reset-password';
 
       if (isRecovery && !onResetPassword) {
         return '/reset-password';
+      }
+      if (!isAuthenticated && state.matchedLocation == '/invite/accept') {
+        final token = state.uri.queryParameters['token'];
+        final code = state.uri.queryParameters['code'];
+        if ((token?.isNotEmpty ?? false) || (code?.isNotEmpty ?? false)) {
+          ref
+              .read(pendingInviteProvider.notifier)
+              .set(PendingInviteLink(token: token, code: code));
+        }
+        return '/';
+      }
+      if (isAuthenticated && state.matchedLocation != '/invite/accept') {
+        final pendingInvite = ref.read(pendingInviteProvider);
+        if (pendingInvite != null) {
+          ref.read(pendingInviteProvider.notifier).set(null);
+          return pendingInvite.location;
+        }
       }
       if (!isAuthenticated && goingToAuthenticatedRoute) {
         return '/';
@@ -137,8 +156,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/invite/accept',
         name: 'invite-accept',
-        builder: (context, state) =>
-            AcceptInviteScreen(initialCode: state.uri.queryParameters['code']),
+        builder: (context, state) => AcceptInviteScreen(
+          initialCode: state.uri.queryParameters['code'],
+          initialLinkToken: state.uri.queryParameters['token'],
+        ),
       ),
       GoRoute(
         path: '/circle/permissions',

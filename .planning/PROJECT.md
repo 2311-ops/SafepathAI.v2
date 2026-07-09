@@ -97,6 +97,9 @@ guarantee; none of it may ever slow it down.
 | Phases sliced by architectural layer, not strict feature priority | User chose to build core and signature features in parallel where they share infrastructure, rather than a strict core→AI→signature sequence | — Pending |
 | Fresh dedicated git repo at `safepathai_V2` → `github.com/2311-ops/SafepathAI.v2` | Prior repo root was accidentally the entire home directory, tracking an unrelated remote | ✓ Good |
 | No infra pre-provisioned; roadmap includes Supabase/Azure/Firebase setup from scratch | Confirmed nothing exists yet | — Pending |
+| Supabase owns authentication; backend owns app authorization/profile state | Comprehensive Phase 1 review found architecture drift risk around custom JWT remnants and `/me` role sourcing | Backend validates Supabase JWTs, `/me` reads app role/profile from `Users`, custom `AuthResult` removed |
+| Phase 1 supports one active family per user | Mobile Phase 1 has no family switcher, so multiple active memberships created ambiguous restore/navigation behavior | Enforced in command handlers and with a filtered unique index on active `FamilyMembers.UserId` |
+| Family tables are backend API owned for Phase 1 | RLS is defense in depth, but EF/backend handlers are the source of authorization for family workflows | Migration enables RLS and revokes Data API grants for family tables; backend handlers keep Guardian/member checks |
 
 ## Evolution
 
@@ -116,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-06 after initialization*
+*Last updated: 2026-07-10 after Phase 1 comprehensive-review fixes*

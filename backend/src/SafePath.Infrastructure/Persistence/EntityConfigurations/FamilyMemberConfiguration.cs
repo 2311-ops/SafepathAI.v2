@@ -16,8 +16,16 @@ public class FamilyMemberConfiguration : IEntityTypeConfiguration<FamilyMember>
         builder.Property(m => m.JoinedAt).IsRequired();
         builder.Property(m => m.IsActive).IsRequired();
 
+        builder.HasOne<Family>()
+            .WithMany()
+            .HasForeignKey(m => m.FamilyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // A user has at most one membership row per family; used by
         // FamilyAuthorizationService's membership lookup.
         builder.HasIndex(m => new { m.FamilyId, m.UserId }).IsUnique();
+        builder.HasIndex(m => m.UserId)
+            .IsUnique()
+            .HasFilter("\"IsActive\" = TRUE");
     }
 }

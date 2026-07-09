@@ -178,7 +178,7 @@ class DioFamilyApi implements FamilyApi {
     if (status == 404) {
       return FamilyApiException(FamilyApiIssue.notFound, message: 'Not found.');
     }
-    if (status == 400) {
+    if (status == 400 || status == 409) {
       final data = error.response?.data;
       final serverMessage = data is Map ? data['error'] as String? : null;
       return FamilyApiException(

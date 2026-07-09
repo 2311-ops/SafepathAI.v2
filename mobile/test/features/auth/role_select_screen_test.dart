@@ -57,7 +57,10 @@ void main() {
         if (draft != null)
           registerDraftProvider.overrideWith(() => _PresetDraftNotifier(draft)),
       ],
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        routerConfig: router,
+      ),
     );
   }
 

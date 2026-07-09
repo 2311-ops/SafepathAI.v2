@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared_widgets/primary_button.dart';
@@ -44,9 +45,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   Future<void> _onSubmit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    await ref.read(authControllerProvider.notifier).completePasswordReset(
-          password: _passwordController.text,
-        );
+    await ref
+        .read(authControllerProvider.notifier)
+        .completePasswordReset(password: _passwordController.text);
 
     if (!mounted) return;
     final authState = ref.read(authControllerProvider);
@@ -99,14 +100,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 if (errorMessage != null) ...[
-                  Text(
-                    errorMessage,
-                    style: const TextStyle(
-                      color: Colors.red,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  _AmberMessageBanner(message: errorMessage),
                   const SizedBox(height: AppSpacing.md),
                 ],
                 PrimaryButton(
@@ -116,6 +110,32 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AmberMessageBanner extends StatelessWidget {
+  const _AmberMessageBanner({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.cautionBg,
+        border: Border.all(color: AppColors.cautionBorder),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(
+          color: AppColors.cautionText,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

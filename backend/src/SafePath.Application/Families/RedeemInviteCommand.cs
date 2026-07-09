@@ -53,19 +53,42 @@ public class RedeemInviteCommandHandler : ICommandHandler<RedeemInviteCommand, R
 
         if (command.Accept)
         {
+            var alreadyInFamily = await _db.FamilyMembers.AnyAsync(
+                m => m.UserId == command.UserId && m.IsActive,
+                cancellationToken);
+            if (alreadyInFamily)
+            {
+                throw new AlreadyInAnotherFamilyException();
+            }
+
             invitation.Status = InvitationStatus.Accepted;
             invitation.AcceptedByUserId = command.UserId;
 
-            _db.FamilyMembers.Add(new FamilyMember
+            var existingMembership = await _db.FamilyMembers.SingleOrDefaultAsync(
+                m => m.FamilyId == invitation.FamilyId && m.UserId == command.UserId,
+                cancellationToken);
+
+            if (existingMembership is not null)
             {
-                Id = Guid.NewGuid(),
-                FamilyId = invitation.FamilyId,
-                UserId = command.UserId,
-                Role = Role.Member,
-                Permissions = PermissionLevel.ViewOnly,
-                JoinedAt = DateTime.UtcNow,
-                IsActive = true,
-            });
+                existingMembership.Role = Role.Member;
+                existingMembership.Permissions = PermissionLevel.ViewOnly;
+                existingMembership.JoinedAt = DateTime.UtcNow;
+                existingMembership.IsActive = true;
+                existingMembership.RemovedAt = null;
+            }
+            else
+            {
+                _db.FamilyMembers.Add(new FamilyMember
+                {
+                    Id = Guid.NewGuid(),
+                    FamilyId = invitation.FamilyId,
+                    UserId = command.UserId,
+                    Role = Role.Member,
+                    Permissions = PermissionLevel.ViewOnly,
+                    JoinedAt = DateTime.UtcNow,
+                    IsActive = true,
+                });
+            }
         }
         else
         {

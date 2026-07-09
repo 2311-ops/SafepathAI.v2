@@ -20,6 +20,7 @@ ThemeData buildSafePathTheme() {
     useMaterial3: true,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: AppColors.appBg,
+    splashFactory: InkRipple.splashFactory,
     textTheme: AppTypography.textTheme,
     fontFamily: AppTypography.body.fontFamily,
     appBarTheme: AppBarTheme(

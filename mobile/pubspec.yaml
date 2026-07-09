@@ -46,6 +46,7 @@ dependencies:
 
   # Auth + backend client (Supabase manages session/token persistence internally)
   supabase_flutter: ^2.16.0
+  app_links: ^7.2.0
 
   # HTTP client for backend API calls (auth interceptor + refresh retry)
   dio: ^5.9.0

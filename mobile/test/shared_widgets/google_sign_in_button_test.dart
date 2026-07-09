@@ -42,8 +42,9 @@ void main() {
       overrides: [
         authControllerProvider.overrideWith(() => controller),
       ],
-      child: const MaterialApp(
-        home: Scaffold(body: GoogleSignInButton()),
+      child: MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: const Scaffold(body: GoogleSignInButton()),
       ),
     );
   }

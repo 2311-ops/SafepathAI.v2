@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/deep_link/deep_link_service.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared_widgets/primary_button.dart';
@@ -46,11 +48,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       _errorMessage = null;
       _statusMessage = null;
     });
+    ref.read(resetLinkExpiredProvider.notifier).set(false);
 
     try {
-      await ref.read(authControllerProvider.notifier).requestPasswordReset(
-            email: _emailController.text.trim(),
-          );
+      await ref
+          .read(authControllerProvider.notifier)
+          .requestPasswordReset(email: _emailController.text.trim());
       if (!mounted) return;
       setState(() {
         _statusMessage =
@@ -73,6 +76,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final resetLinkExpired = ref.watch(resetLinkExpiredProvider);
+
     return Scaffold(
       appBar: AppBar(),
       body: SafeArea(
@@ -100,19 +105,18 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   validator: _validateEmail,
                 ),
                 const SizedBox(height: AppSpacing.lg),
+                if (resetLinkExpired) ...[
+                  const _AmberMessageBanner(
+                    message: 'This link has expired — request a new one.',
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 if (_statusMessage != null) ...[
                   Text(_statusMessage!, style: AppTypography.bodySecondary),
                   const SizedBox(height: AppSpacing.md),
                 ],
                 if (_errorMessage != null) ...[
-                  Text(
-                    _errorMessage!,
-                    style: const TextStyle(
-                      color: Colors.red,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  _AmberMessageBanner(message: _errorMessage!),
                   const SizedBox(height: AppSpacing.md),
                 ],
                 PrimaryButton(
@@ -122,6 +126,32 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AmberMessageBanner extends StatelessWidget {
+  const _AmberMessageBanner({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.cautionBg,
+        border: Border.all(color: AppColors.cautionBorder),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(
+          color: AppColors.cautionText,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

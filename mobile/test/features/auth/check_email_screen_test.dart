@@ -33,7 +33,10 @@ void main() {
 
   testWidgets('shows the email address when provided', (tester) async {
     await tester.pumpWidget(
-      MaterialApp.router(routerConfig: buildRouter(email: 'ada@family.com')),
+      MaterialApp.router(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        routerConfig: buildRouter(email: 'ada@family.com'),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -41,7 +44,12 @@ void main() {
   });
 
   testWidgets('falls back to a generic message with no email', (tester) async {
-    await tester.pumpWidget(MaterialApp.router(routerConfig: buildRouter()));
+    await tester.pumpWidget(
+      MaterialApp.router(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        routerConfig: buildRouter(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Check your email'), findsOneWidget);
@@ -50,7 +58,10 @@ void main() {
 
   testWidgets('Back to login navigates to /login', (tester) async {
     await tester.pumpWidget(
-      MaterialApp.router(routerConfig: buildRouter(email: 'ada@family.com')),
+      MaterialApp.router(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        routerConfig: buildRouter(email: 'ada@family.com'),
+      ),
     );
     await tester.pumpAndSettle();
 

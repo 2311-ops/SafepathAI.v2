@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 01
 current_phase_name: backend-auth-foundation
-status: executing
-stopped_at: Completed 01-10-PLAN.md (GET /families/mine gap closure) — backend restart required to pick up the new endpoint before re-running logout/login UAT
-last_updated: "2026-07-09T14:34:45.636Z"
-last_activity: 2026-07-09
-last_activity_desc: Completed 01-09-PLAN.md
+status: ready_for_phase_closeout
+stopped_at: Implemented and verified accepted findings from latest comprehensive review for Phase 01 plans 01-11..01-14
+last_updated: "2026-07-10T00:00:00.000Z"
+last_activity: 2026-07-10
+last_activity_desc: Implemented review-accepted Phase 01 alignment fixes
 progress:
   total_phases: 7
   completed_phases: 0
-  total_plans: 10
-  completed_plans: 9
+  total_plans: 14
+  completed_plans: 14
   percent: 0
 ---
 
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 
 ## Current Position
 
-Phase: 01 (backend-auth-foundation) — ALL PLANS COMPLETE
-Plan: 8 of 8 (01-09, native Google Sign-In, just completed and supersedes 01-08's browser flow; 01-04/01-06 satisfied without new code)
-Status: Phase 01 plans complete — ready for phase transition/next phase planning
-Last activity: 2026-07-09 — Completed 01-09-PLAN.md
+Phase: 01 (backend-auth-foundation) - REVIEW FIXES IMPLEMENTED
+Plan: 14 of 14 (01-11..01-14 review-accepted fixes implemented after the comprehensive review)
+Status: Phase 01 review-fix implementation verified; ready for phase closeout/next phase planning
+Last activity: 2026-07-10 - Implemented review-accepted Phase 01 alignment fixes
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -59,6 +59,10 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P08 | 40min | 3 tasks | 13 files |
 | Phase 01-backend-auth-foundation P09 | 25min | 2 tasks | 6 files |
 | Phase 01-backend-auth-foundation P10 | 11min | 2 tasks | 10 files |
+| Phase 01-backend-auth-foundation P11 | review-fix | 3 tasks | auth/env/docs |
+| Phase 01-backend-auth-foundation P12 | review-fix | 2 tasks | family invariants/invites |
+| Phase 01-backend-auth-foundation P13 | review-fix | 3 tasks | ownership/delete/db |
+| Phase 01-backend-auth-foundation P14 | review-fix | 3 tasks | deep links/reset UX/tests |
 
 ## Accumulated Context
 
@@ -80,10 +84,14 @@ Recent decisions affecting current work:
 - [Phase 01-08]: `AuthController.build()` guards `WidgetsBinding.instance.addObserver`/`removeObserver` with try/catch — this feature's own established test convention drives `AuthController` via a bare `ProviderContainer` in plain `test()` bodies with no Flutter binding initialized, which would otherwise crash every such test the moment a `WidgetsBindingObserver` is registered.
 - [Phase 01-09]: Reversed 01-08's browser-based signInWithOAuth Google flow to google_sign_in's native GoogleSignIn.instance.authenticate() + Supabase signInWithIdToken() at the user's explicit request (no Supabase/Google URL ever shown); verified the actually-resolved google_sign_in 7.2.0 API from package source rather than assuming it, and removed AuthController's WidgetsBindingObserver-based lifecycle-resume recovery (01-08 D-08-6) as dead code since the native picker is synchronously awaitable end-to-end.
 - [Phase 01-backend-auth-foundation]: [Phase 01-10] Closed a Phase-1 UAT gap: added GET /families/mine (server never caps to one family, D-10-1) and a mobile FamilyController bootstrap fetch (build()-time check + ref.listen auth transition, D-10-3) so a Guardian/Member's circle survives logout/login and cold app restarts instead of living only in session Riverpod state.
+- [Phase 01-11]: Locked the architecture around Supabase-owned authentication: backend validates Supabase JWTs and reads role/profile from the `Users` table for `/me`, secrets load from local `.env` files during development, and `AuthResult` custom-JWT dead code was removed.
+- [Phase 01-12]: Enforced the Phase 1 single-active-family invariant in backend command handlers and the database, returning 409 conflicts for duplicate create/join attempts and adding Guardian invite revocation.
+- [Phase 01-13]: Added Guardian ownership transfer and delete-family workflows, plus FK/cascade migration and an explicit RLS/Data API deny posture for family tables.
+- [Phase 01-14]: Added invite deep-link handling with pending-invite restoration after auth, distinct decline behavior, and amber expired-reset-link messaging while preserving SOS red exclusively for emergency surfaces.
 
 ### Pending Todos
 
-None yet.
+None for Phase 01 review-fix implementation.
 
 ### Blockers/Concerns
 
@@ -104,6 +112,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T14:34:45.602Z
-Stopped at: Completed 01-10-PLAN.md (GET /families/mine gap closure) — backend restart required to pick up the new endpoint before re-running logout/login UAT
+Last session: 2026-07-10T00:00:00.000Z
+Stopped at: Implemented and verified accepted comprehensive-review fixes for Phase 01 plans 01-11..01-14
 Resume file: None

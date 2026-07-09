@@ -1,9 +1,23 @@
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using SafePath.Application;
 using SafePath.Infrastructure;
+
+var envPath = new[]
+{
+    ".env",
+    Path.Combine("backend", ".env"),
+    Path.Combine("..", ".env"),
+    Path.Combine("..", "..", ".env"),
+}.FirstOrDefault(File.Exists);
+
+if (envPath is not null)
+{
+    Env.Load(envPath);
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,20 +61,11 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-// T-01-01: rate-limit the backend surface used for authenticated sign-in checks.
 builder.Services.AddRateLimiter(options =>
 {
-    options.AddFixedWindowLimiter("login", limiterOptions =>
-    {
-        limiterOptions.PermitLimit = 10;
-        limiterOptions.Window = TimeSpan.FromMinutes(1);
-        limiterOptions.QueueLimit = 0;
-        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-    });
-
     // T-05-02: rate-limit /invites/redeem per-IP to blunt invite-code brute-forcing
     // (RESEARCH Pitfall 4). Partitioned by remote IP so one caller cannot exhaust the
-    // budget for every other caller, unlike the shared "login" limiter above.
+    // budget for every other caller.
     options.AddPolicy("invite-redeem", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",

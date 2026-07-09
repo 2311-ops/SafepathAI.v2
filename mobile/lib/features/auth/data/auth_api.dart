@@ -60,13 +60,9 @@ abstract class AuthApi {
 
   Future<void> logout();
 
-  Future<void> sendPasswordResetEmail({
-    required String email,
-  });
+  Future<void> sendPasswordResetEmail({required String email});
 
-  Future<void> updatePassword({
-    required String password,
-  });
+  Future<void> updatePassword({required String password});
 
   Future<AuthSessionResult> refreshSession();
 
@@ -109,10 +105,7 @@ class SupabaseAuthApi implements AuthApi {
       final response = await _client.auth.signUp(
         email: email,
         password: password,
-        data: {
-          'full_name': fullName,
-          'role': role.wireValue,
-        },
+        data: {'full_name': fullName, 'role': role.wireValue},
         emailRedirectTo: supabaseRedirectUrl,
       );
 
@@ -123,7 +116,10 @@ class SupabaseAuthApi implements AuthApi {
     } on sb.AuthWeakPasswordException catch (error) {
       throw AuthApiException(AuthIssue.weakPassword, message: error.message);
     } on sb.AuthException catch (error) {
-      throw AuthApiException(_issueFromMessage(error.message), message: error.message);
+      throw AuthApiException(
+        _issueFromMessage(error.message),
+        message: error.message,
+      );
     } catch (error) {
       throw AuthApiException(AuthIssue.network, message: error.toString());
     }
@@ -142,7 +138,10 @@ class SupabaseAuthApi implements AuthApi {
 
       return AuthSessionResult(signedIn: response.session != null);
     } on sb.AuthException catch (error) {
-      throw AuthApiException(_issueFromMessage(error.message), message: error.message);
+      throw AuthApiException(
+        _issueFromMessage(error.message),
+        message: error.message,
+      );
     } catch (error) {
       throw AuthApiException(AuthIssue.network, message: error.toString());
     }
@@ -158,31 +157,31 @@ class SupabaseAuthApi implements AuthApi {
   }
 
   @override
-  Future<void> sendPasswordResetEmail({
-    required String email,
-  }) async {
+  Future<void> sendPasswordResetEmail({required String email}) async {
     try {
       await _client.auth.resetPasswordForEmail(
         email,
         redirectTo: supabaseRedirectUrl,
       );
     } on sb.AuthException catch (error) {
-      throw AuthApiException(_issueFromMessage(error.message), message: error.message);
+      throw AuthApiException(
+        _issueFromMessage(error.message),
+        message: error.message,
+      );
     } catch (error) {
       throw AuthApiException(AuthIssue.network, message: error.toString());
     }
   }
 
   @override
-  Future<void> updatePassword({
-    required String password,
-  }) async {
+  Future<void> updatePassword({required String password}) async {
     try {
-      await _client.auth.updateUser(
-        sb.UserAttributes(password: password),
-      );
+      await _client.auth.updateUser(sb.UserAttributes(password: password));
     } on sb.AuthException catch (error) {
-      throw AuthApiException(_issueFromMessage(error.message), message: error.message);
+      throw AuthApiException(
+        _issueFromMessage(error.message),
+        message: error.message,
+      );
     } catch (error) {
       throw AuthApiException(AuthIssue.network, message: error.toString());
     }
@@ -207,16 +206,17 @@ class SupabaseAuthApi implements AuthApi {
 
   @override
   Future<bool> signInWithGoogle() async {
-    if (googleServerClientId.isEmpty) {
-      // Fail loudly rather than silently: a missing GOOGLE_SERVER_CLIENT_ID
-      // dart-define means Google would never issue a verifiable ID token.
-      throw StateError(
-        'Missing GOOGLE_SERVER_CLIENT_ID. Add it to mobile/env.json and pass '
-        'it via --dart-define-from-file.',
-      );
-    }
-
     try {
+      if (googleServerClientId.isEmpty) {
+        // Fail loudly but through the AuthApiException path so AuthController
+        // can surface the configuration issue as UI state instead of crashing.
+        throw AuthApiException(
+          AuthIssue.unknown,
+          message:
+              'Missing GOOGLE_SERVER_CLIENT_ID. Add it to mobile/env.json and pass it via --dart-define-from-file.',
+        );
+      }
+
       await _ensureGoogleSignInInitialized();
       final account = await gsi.GoogleSignIn.instance.authenticate();
       final idToken = account.authentication.idToken;
@@ -239,7 +239,12 @@ class SupabaseAuthApi implements AuthApi {
         // flow's "launch declined" case (D-09-4).
         return false;
       }
-      throw AuthApiException(AuthIssue.unknown, message: error.description ?? error.toString());
+      throw AuthApiException(
+        AuthIssue.unknown,
+        message: error.description ?? error.toString(),
+      );
+    } on AuthApiException {
+      rethrow;
     } on sb.AuthException catch (error) {
       throw AuthApiException(AuthIssue.unknown, message: error.message);
     } catch (error) {

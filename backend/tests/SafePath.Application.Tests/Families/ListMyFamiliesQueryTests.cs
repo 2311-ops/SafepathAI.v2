@@ -81,7 +81,7 @@ public class ListMyFamiliesQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_UserWithTwoActiveMemberships_ReturnsBoth()
+    public async Task Handle_UserWithActiveAndHistoricalMembership_ReturnsOnlyActive()
     {
         await using var db = _factory.CreateContext();
         var userId = Guid.NewGuid();
@@ -108,7 +108,8 @@ public class ListMyFamiliesQueryTests : IDisposable
             Role = Role.Member,
             Permissions = PermissionLevel.ViewOnly,
             JoinedAt = DateTime.UtcNow,
-            IsActive = true,
+            IsActive = false,
+            RemovedAt = DateTime.UtcNow,
         });
         await db.SaveChangesAsync();
 
@@ -116,9 +117,9 @@ public class ListMyFamiliesQueryTests : IDisposable
 
         var result = await handler.Handle(new ListMyFamiliesQuery(userId));
 
-        Assert.Equal(2, result.Count);
-        Assert.Contains(result, f => f.FamilyId == familyOneId && f.Role == Role.Guardian);
-        Assert.Contains(result, f => f.FamilyId == familyTwoId && f.Role == Role.Member);
+        var family = Assert.Single(result);
+        Assert.Equal(familyOneId, family.FamilyId);
+        Assert.Equal(Role.Guardian, family.Role);
     }
 
     public void Dispose() => _factory.Dispose();
