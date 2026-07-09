@@ -15,11 +15,11 @@
 
 ### Family Groups (FAM)
 
-- [ ] **FAM-01**: User can create a family circle
-- [ ] **FAM-02**: User can invite a family member by email
-- [ ] **FAM-03**: Invited user can accept or reject an invitation
-- [ ] **FAM-04**: Guardian can manage per-member permissions (view-only, full-location, notification-only)
-- [ ] **FAM-05**: Guardian can remove a member from the circle
+- [x] **FAM-01**: User can create a family circle
+- [x] **FAM-02**: User can invite a family member by email
+- [x] **FAM-03**: Invited user can accept or reject an invitation
+- [x] **FAM-04**: Guardian can manage per-member permissions (view-only, full-location, notification-only)
+- [x] **FAM-05**: Guardian can remove a member from the circle
 
 ### Real-Time Location Tracking (LOC)
 
@@ -159,11 +159,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-03 | Phase 1 | Pending |
 | AUTH-04 | Phase 1 | Pending |
 | AUTH-05 | Phase 1 | Pending |
-| FAM-01 | Phase 1 | Pending |
-| FAM-02 | Phase 1 | Pending |
-| FAM-03 | Phase 1 | Pending |
-| FAM-04 | Phase 1 | Pending |
-| FAM-05 | Phase 1 | Pending |
+| FAM-01 | Phase 1 | Complete |
+| FAM-02 | Phase 1 | Complete |
+| FAM-03 | Phase 1 | Complete |
+| FAM-04 | Phase 1 | Complete |
+| FAM-05 | Phase 1 | Complete |
 | DESIGN-01 | Phase 1 | Pending |
 | LOC-01 | Phase 2 | Pending |
 | LOC-02 | Phase 2 | Pending |
@@ -220,6 +220,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HEALTH-03 | Phase 7 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 64 total
 - Mapped to phases: 64 (100%)
 - Unmapped: 0 ✓

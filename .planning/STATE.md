@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: backend-auth-foundation
 status: executing
-stopped_at: Plans 01-04/01-06 marked superseded-but-satisfied (Supabase Auth's native password reset); ready to plan/execute 01-05 (family-circle backend)
-last_updated: "2026-07-09T08:08:05.876Z"
+stopped_at: Completed 01-05-PLAN.md (family-circle backend); ready to plan/execute 01-07 (family-circle mobile UI)
+last_updated: "2026-07-09T08:41:14.718Z"
 last_activity: 2026-07-09
 last_activity_desc: Phase 01 execution resumed (wave continue)
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 7
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 ## Current Position
 
 Phase: 01 (backend-auth-foundation) — EXECUTING
-Plan: 5 of 7 (01-05, family-circle backend, is the next real work; 01-04/01-06 satisfied without new code)
-Status: Executing Phase 01
+Plan: 6 of 7 (01-05, family-circle backend, is the next real work; 01-04/01-06 satisfied without new code)
+Status: Ready to execute
 Last activity: 2026-07-09 — Phase 01 execution resumed (wave continue)
 
 Progress: [░░░░░░░░░░] 0%
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: N/A
 
 *Updated after each plan completion*
+| Phase 01-backend-auth-foundation P05 | 27min | 3 tasks | 29 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,9 @@ Recent decisions affecting current work:
 - Plans 01-04/01-06 (2026-07-09): Marked complete-via-supersession, not executed as written. AUTH-04 (password reset) is satisfied entirely by Supabase Auth's native `resetPasswordForEmail`/`updateUser` flow — no `PasswordResetToken` entity, `IEmailSender`/Resend integration, or custom `/auth/forgot-password|reset-password` endpoints exist or are needed. The mobile screens (`forgot_password_screen.dart`, `reset_password_screen.dart`) were already built and tested against Supabase Auth directly. See `01-04-SUMMARY.md`/`01-06-SUMMARY.md` for detail. Remaining real Phase 1 work is family-circle only: `01-05` (backend) and `01-07` (mobile).
 - Backend `Users` table sync (2026-07-08/09): Added a Postgres trigger (`handle_new_auth_user`) mirroring every Supabase `auth.users` signup into `public."Users"` (full name + role from `raw_user_meta_data`), since nothing previously wrote to that table under the Supabase Auth flow. Dropped the now-dead `PasswordHash` column and `RefreshTokens` table.
 - Mobile test suite (2026-07-09): 60 tests now cover registration/login/logout, password reset, session persistence, Supabase auth-state-stream reactions, and router navigation — all against a hand-written `FakeAuthApi`, no real Supabase/network calls. Found and fixed a real defect: `AuthInterceptor` was forcing sign-out on any token-refresh failure (including transient network errors) instead of only on a genuinely dead session — see `mobile/lib/core/network/auth_interceptor.dart` and `AuthIssue.sessionInvalid`.
+- [Phase 01-05]: Family-circle backend (01-05) built against the post-migration Supabase Auth current-user mechanism (JWT sub claim via ICurrentUserService) instead of the original custom-JWT assumption; IFamilyAuthorizationService.RequireMembership/RequireRole is the sole server-side authorization mechanism (D5) for every family-scoped handler operating on an existing family
+- [Phase 01-05]: Added IInviteCodeGenerator as an Application-layer interface (not explicitly in the plan file list) so GenerateInviteCommand never references the concrete Infrastructure InviteCodeGenerator class, preserving the Clean Architecture boundary
+- [Phase 01-05]: RemoveMemberCommand guards against removing the last active Guardian of a family; FamilyCircle EF migration applied to the live Supabase database via dotnet ef database update
 
 ### Pending Todos
 
@@ -93,6 +97,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-07T09:19:11.213Z
-Stopped at: Roadmap drafted and written to disk; awaiting user approval before planning Phase 1
+Last session: 2026-07-09T08:41:14.705Z
+Stopped at: Completed 01-05-PLAN.md (family-circle backend); ready to plan/execute 01-07 (family-circle mobile UI)
 Resume file: None

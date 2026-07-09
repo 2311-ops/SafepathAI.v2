@@ -47,13 +47,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Guardian can create a family circle, invite a member by email, have them accept/reject, manage per-member permissions, and remove a member (FAM-01, FAM-02, FAM-03, FAM-04, FAM-05)
   5. Login, registration, and family-circle screens match the SafePath design system (colors, type, spacing, motion) via a shared Flutter `ThemeData`/`ColorScheme` (DESIGN-01)
 
-**Plans**: 5/7 plans executed — remaining real work is family-circle (01-05 backend, 01-07 mobile); 01-04/01-06 are marked complete as superseded-but-satisfied (see their SUMMARY.md files) — Supabase Auth's native password-reset flow satisfies AUTH-04 with no custom backend, and the mobile screens were already built against it.
+**Plans**: 6/7 plans executed
 
 - [x] 01-01-PLAN.md
 - [x] 01-02-PLAN.md
 - [x] 01-03-PLAN.md
 - [x] 01-04-PLAN.md (superseded — zero code needed, see SUMMARY)
-- [ ] 01-05-PLAN.md
+- [x] 01-05-PLAN.md
 - [x] 01-06-PLAN.md (superseded — satisfied via Supabase Auth, see SUMMARY)
 - [ ] 01-07-PLAN.md
 
@@ -164,7 +164,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Backend & Auth Foundation | 5/7 | In Progress — auth done (Supabase-migrated); family-circle backend (05) + mobile (07) remain |  |
+| 1. Backend & Auth Foundation | 6/7 | In Progress|  |
 | 2. Real-Time Location, History & Privacy | 0/TBD | Not started | - |
 | 3. SOS Fast Path (Core Value) | 0/TBD | Not started | - |
 | 4. Geofencing | 0/TBD | Not started | - |
