@@ -12,6 +12,8 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<ListFamilyMembersQuery, IReadOnlyList<FamilyMemberDto>>, ListFamilyMembersQueryHandler>();
         services.AddScoped<ICommandHandler<GenerateInviteCommand, GenerateInviteResult>, GenerateInviteCommandHandler>();
         services.AddScoped<ICommandHandler<RedeemInviteCommand, RedeemInviteResult>, RedeemInviteCommandHandler>();
+        services.AddScoped<ICommandHandler<UpdateMemberPermissionsCommand, UpdateMemberPermissionsResult>, UpdateMemberPermissionsCommandHandler>();
+        services.AddScoped<ICommandHandler<RemoveMemberCommand, RemoveMemberResult>, RemoveMemberCommandHandler>();
 
         return services;
     }
