@@ -18,29 +18,53 @@ samples, guidance on mobile development, and a full API reference.
 
 ## Google Sign-In
 
-"Continue with Google" (Welcome + Login screens) uses Supabase's own native OAuth
-flow (`signInWithOAuth(OAuthProvider.google)`) — an external browser/Custom Tab +
-PKCE + deep-link redirect back into the app, not the `google_sign_in` native
-package.
+"Continue with Google" (Welcome + Login screens) uses the `google_sign_in`
+package's **native** on-device account picker
+(`GoogleSignIn.instance.authenticate()`) plus Supabase's
+`signInWithIdToken(provider: OAuthProvider.google, idToken: ...)` — not the
+browser/Custom Tab `signInWithOAuth` flow. This is a deliberate 01-09 reversal
+of 01-08's original browser-based implementation, made so no Supabase/Google
+URL is ever shown to the user during sign-in.
 
-- **Nothing to configure per-developer.** The Google provider is already
-  configured on the Supabase dashboard side (Authentication -> Providers ->
-  Google). Beyond the app's existing `SUPABASE_URL`/`SUPABASE_ANON_KEY`
-  `--dart-define`s (see earlier Phase 1 setup notes), there is no additional
-  client-side Google/OAuth configuration.
-- **Redirect URL is reused, not new.** The OAuth `redirectTo` reuses the existing
-  `safepathai://reset-password` constant (`lib/core/config/supabase_config.dart`)
-  instead of registering a second URL in Supabase's dashboard — Supabase matches
-  the redirect URL string itself, not the flow it's used for, and this URL is
-  already allow-listed for password reset. This keeps the change to zero
-  Supabase dashboard edits.
-- **Platform deep-link registration.** Both `android/app/src/main/AndroidManifest.xml`
-  (a `safepathai://` browsable `intent-filter` on `MainActivity`) and
-  `ios/Runner/Info.plist` (a matching `CFBundleURLTypes` entry) now register the
-  `safepathai://` scheme — previously missing on both platforms, which meant even
-  the password-reset email link could not open the app. This registration serves
-  both flows.
+- **Required client-side config: `GOOGLE_SERVER_CLIENT_ID`.** Add this key to
+  `mobile/env.json` (gitignored) and pass it via `--dart-define-from-file`,
+  same pattern as `SUPABASE_URL`/`SUPABASE_ANON_KEY`. Its value is the
+  **Web** OAuth client's `client_id` (the one already configured as
+  Supabase's Google provider on the dashboard) — **not** the Android
+  client's ID. It's a public identifier, safe to commit to client code (like
+  the Supabase anon key), but is read from `env.json` here to match the
+  project's existing config pattern. `signInWithGoogle()` throws a
+  `StateError` loudly if this is missing, rather than failing silently.
+- **Required Google Cloud Console prerequisite: an Android OAuth client.**
+  Google's native sign-in flow validates the calling app against an
+  **Android**-type OAuth client registered in Google Cloud Console with this
+  app's package name (`com.safepath.mobile`) and the signing certificate's
+  SHA-1 fingerprint. Every developer machine's debug keystore has a
+  different SHA-1, so each developer needs their own debug SHA-1 registered
+  (or a shared debug keystore checked into the team's secrets). Get your
+  debug SHA-1 with:
+  ```
+  keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+  ```
+  A release build's SHA-1 (from the release signing key) must be registered
+  separately before Google Sign-In will work in a release build — this is
+  not automatic. If sign-in fails with a `PlatformException`/
+  `ApiException: 10` (`DEVELOPER_ERROR`), a missing/mismatched SHA-1
+  registration is the most likely cause.
+- **Redirect URL / deep-link registration is unrelated to this flow now.**
+  The `safepathai://` scheme registered on Android
+  (`android/app/src/main/AndroidManifest.xml`) and iOS
+  (`ios/Runner/Info.plist`) is still required for the password-reset deep
+  link, but Google Sign-In itself no longer opens a browser or needs a
+  redirect URL — the native picker returns directly to the app.
+- **Cancellation has no lifecycle-recovery hack.** Unlike the superseded
+  browser flow (which could leave the UI stuck in a loading state if a user
+  backed out of the browser and returned to the app), `google_sign_in`'s
+  `authenticate()` call is synchronously awaitable end-to-end — cancellation
+  (`GoogleSignInExceptionCode.canceled`) resolves the same `await` directly,
+  with no separate app-resume recovery step needed.
 - **Testing.** Google Sign-In is unit/widget-tested with a mocked `AuthApi` /
-  `AuthController` — it never drives a real Google OAuth flow in CI or automated
-  tests. Manual verification requires a real device or emulator with Google Play
-  Services and a real Google account.
+  `AuthController` — it never drives a real Google sign-in flow in CI or
+  automated tests. Manual verification requires a real device or emulator
+  with Google Play Services, a real Google account, and the Android OAuth
+  client prerequisite above correctly registered.
