@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/application/auth_state.dart';
@@ -41,6 +40,7 @@ class GoogleSignInButton extends ConsumerWidget {
     return Semantics(
       label: 'Continue with Google',
       button: true,
+      excludeSemantics: true,
       child: SizedBox(
         width: double.infinity,
         height: 48,
@@ -83,24 +83,109 @@ class GoogleSignInButton extends ConsumerWidget {
   }
 }
 
-/// Minimal, image-asset-free "G" glyph per Google's minimal branding
-/// guidance — a small circle with a bold "G", not an official logo asset.
+/// The official Google "G" logomark, hand-drawn via [CustomPainter] from
+/// Google's published multi-color path data — no image asset dependency
+/// (per D-08-2's original constraint), but the real four-color mark instead
+/// of a plain text "G" (which read as a generic/broken icon, not Google's).
 class _GoogleGlyph extends StatelessWidget {
   const _GoogleGlyph();
 
+  static const double _size = 18;
+
   @override
   Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: 9,
-      backgroundColor: AppColors.appBg,
-      child: Text(
-        'G',
-        style: AppTypography.caption.copyWith(
-          color: AppColors.ink,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0,
-        ),
-      ),
+    return SizedBox(
+      width: _size,
+      height: _size,
+      child: CustomPaint(painter: _GoogleGlyphPainter()),
     );
   }
+}
+
+/// Paints Google's "G" logomark at a 48x48 reference size, scaled to fit
+/// the widget's bounds. Path/colors match Google's published brand asset
+/// (blue #4285F4, green #34A853, yellow #FBBC05, red #EA4335).
+class _GoogleGlyphPainter extends CustomPainter {
+  static const _blue = Color(0xFF4285F4);
+  static const _green = Color(0xFF34A853);
+  static const _yellow = Color(0xFFFBBC05);
+  static const _red = Color(0xFFEA4335);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.width / 48;
+    canvas.save();
+    canvas.scale(scale);
+
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    // Blue: right-side arc + horizontal bar.
+    paint.color = _blue;
+    canvas.drawPath(
+      Path()
+        ..moveTo(46.98, 24.55)
+        ..cubicTo(46.98, 22.98, 46.83, 21.46, 46.56, 20.0)
+        ..lineTo(24.0, 20.0)
+        ..lineTo(24.0, 28.62)
+        ..lineTo(36.94, 28.62)
+        ..cubicTo(36.36, 31.63, 34.61, 34.19, 32.0, 35.9)
+        ..lineTo(32.0, 41.66)
+        ..lineTo(39.75, 41.66)
+        ..cubicTo(44.26, 37.53, 46.98, 31.59, 46.98, 24.55)
+        ..close(),
+      paint,
+    );
+
+    // Green: bottom-left arc.
+    paint.color = _green;
+    canvas.drawPath(
+      Path()
+        ..moveTo(24.0, 48.0)
+        ..cubicTo(30.48, 48.0, 35.93, 45.87, 39.75, 41.66)
+        ..lineTo(32.0, 35.9)
+        ..cubicTo(29.94, 37.27, 27.24, 38.07, 24.0, 38.07)
+        ..cubicTo(17.74, 38.07, 12.44, 33.9, 10.53, 28.29)
+        ..lineTo(2.51, 28.29)
+        ..lineTo(2.51, 34.24)
+        ..cubicTo(6.32, 42.05, 14.53, 48.0, 24.0, 48.0)
+        ..close(),
+      paint,
+    );
+
+    // Yellow: bottom-left short arc.
+    paint.color = _yellow;
+    canvas.drawPath(
+      Path()
+        ..moveTo(10.53, 28.29)
+        ..cubicTo(10.0, 26.92, 9.71, 25.49, 9.71, 24.0)
+        ..cubicTo(9.71, 22.51, 10.0, 21.08, 10.53, 19.71)
+        ..lineTo(10.53, 13.76)
+        ..lineTo(2.51, 13.76)
+        ..cubicTo(0.9, 16.99, 0.0, 20.39, 0.0, 24.0)
+        ..cubicTo(0.0, 27.61, 0.9, 31.01, 2.51, 34.24)
+        ..lineTo(10.53, 28.29)
+        ..close(),
+      paint,
+    );
+
+    // Red: top-left arc.
+    paint.color = _red;
+    canvas.drawPath(
+      Path()
+        ..moveTo(24.0, 9.93)
+        ..cubicTo(27.55, 9.93, 30.74, 11.16, 33.26, 13.56)
+        ..lineTo(39.92, 6.9)
+        ..cubicTo(35.9, 3.17, 30.48, 0.0, 24.0, 0.0)
+        ..cubicTo(14.53, 0.0, 6.32, 5.95, 2.51, 13.76)
+        ..lineTo(10.53, 19.71)
+        ..cubicTo(12.44, 14.1, 17.74, 9.93, 24.0, 9.93)
+        ..close(),
+      paint,
+    );
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
