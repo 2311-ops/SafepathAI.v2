@@ -12,6 +12,7 @@
 - [ ] **AUTH-03**: User can log out
 - [ ] **AUTH-04**: User can reset their password via a one-time, expiring emailed link
 - [ ] **AUTH-05**: User is assigned a role (Guardian, Member, Caregiver, or org-level e.g. School Admin) during setup
+- [ ] **AUTH-06**: User can sign in with Google (Supabase-native OAuth) alongside email/password, from Welcome/Login/Register
 
 ### Family Groups (FAM)
 
@@ -159,6 +160,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-03 | Phase 1 | Pending |
 | AUTH-04 | Phase 1 | Pending |
 | AUTH-05 | Phase 1 | Pending |
+| AUTH-06 | Phase 1 | Pending |
 | FAM-01 | Phase 1 | Complete |
 | FAM-02 | Phase 1 | Complete |
 | FAM-03 | Phase 1 | Complete |

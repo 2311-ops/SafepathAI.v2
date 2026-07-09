@@ -38,7 +38,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal**: Users can securely create an account and set up their family circle with defined roles, on infrastructure that everything else builds on.
 **Mode:** mvp
 **Depends on**: Nothing (first phase)
-**Requirements**: AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, FAM-01, FAM-02, FAM-03, FAM-04, FAM-05, DESIGN-01
+**Requirements**: AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, AUTH-06, FAM-01, FAM-02, FAM-03, FAM-04, FAM-05, DESIGN-01
 **Success Criteria** (what must be TRUE):
 
   1. User can register with email/password, log in via JWT (access + refresh), and stay logged in across sessions (AUTH-01, AUTH-02)
@@ -46,8 +46,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User is assigned a role (Guardian, Member, Caregiver, or org-level e.g. School Admin) during setup (AUTH-05)
   4. Guardian can create a family circle, invite a member by email, have them accept/reject, manage per-member permissions, and remove a member (FAM-01, FAM-02, FAM-03, FAM-04, FAM-05)
   5. Login, registration, and family-circle screens match the SafePath design system (colors, type, spacing, motion) via a shared Flutter `ThemeData`/`ColorScheme` (DESIGN-01)
+  6. User can sign in with Google via Supabase's native OAuth from Welcome/Login/Register, alongside existing email/password auth (AUTH-06)
 
-**Plans**: 6/7 plans executed
+**Plans**: 6/8 plans executed
 
 - [x] 01-01-PLAN.md
 - [x] 01-02-PLAN.md
@@ -56,6 +57,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 01-05-PLAN.md
 - [x] 01-06-PLAN.md (superseded — satisfied via Supabase Auth, see SUMMARY)
 - [ ] 01-07-PLAN.md
+- [ ] 01-08-PLAN.md
 
 **UI hint**: yes
 
