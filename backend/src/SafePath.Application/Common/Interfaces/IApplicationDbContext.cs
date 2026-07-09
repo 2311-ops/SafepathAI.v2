@@ -10,6 +10,9 @@ namespace SafePath.Application.Common.Interfaces;
 public interface IApplicationDbContext
 {
     DbSet<User> Users { get; }
+    DbSet<Family> Families { get; }
+    DbSet<FamilyMember> FamilyMembers { get; }
+    DbSet<FamilyInvitation> FamilyInvitations { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
