@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: backend-auth-foundation
 status: executing
-stopped_at: Completed 01-08-PLAN.md (Google Sign-In via Supabase native OAuth); Phase 01 (backend-auth-foundation) plans all complete
-last_updated: "2026-07-09T11:20:31.924Z"
+stopped_at: Completed 01-09-PLAN.md (native Google Sign-In, supersedes 01-08's browser flow); Phase 01 (backend-auth-foundation) plans all complete
+last_updated: "2026-07-09T11:52:10.962Z"
 last_activity: 2026-07-09
-last_activity_desc: Phase 01 execution resumed (wave continue)
+last_activity_desc: Completed 01-09-PLAN.md
 progress:
   total_phases: 7
   completed_phases: 0
-  total_plans: 8
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
   percent: 0
 ---
 
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 ## Current Position
 
 Phase: 01 (backend-auth-foundation) — ALL PLANS COMPLETE
-Plan: 7 of 7 (01-08, Google Sign-In via Supabase native OAuth, just completed; 01-04/01-06 satisfied without new code)
+Plan: 8 of 8 (01-09, native Google Sign-In, just completed and supersedes 01-08's browser flow; 01-04/01-06 satisfied without new code)
 Status: Phase 01 plans complete — ready for phase transition/next phase planning
-Last activity: 2026-07-09 — Completed 01-08-PLAN.md
+Last activity: 2026-07-09 — Completed 01-09-PLAN.md
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 01-backend-auth-foundation P05 | 27min | 3 tasks | 29 files |
 | Phase 01 P08 | 40min | 3 tasks | 13 files |
+| Phase 01-backend-auth-foundation P09 | 25min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,7 @@ Recent decisions affecting current work:
 - [Phase 01-05]: RemoveMemberCommand guards against removing the last active Guardian of a family; FamilyCircle EF migration applied to the live Supabase database via dotnet ef database update
 - [Phase 01-08]: Reused the existing safepathai://reset-password redirect URL for Google OAuth (D-08-2) — zero new Supabase dashboard config; safepathai:// deep-link scheme (previously unregistered on Android/iOS) added as a prerequisite fix that also unblocks the pre-existing password-reset deep link. Google sign-in must reuse Supabase's Web OAuth client and avoid touching provider config the user set up separately.
 - [Phase 01-08]: `AuthController.build()` guards `WidgetsBinding.instance.addObserver`/`removeObserver` with try/catch — this feature's own established test convention drives `AuthController` via a bare `ProviderContainer` in plain `test()` bodies with no Flutter binding initialized, which would otherwise crash every such test the moment a `WidgetsBindingObserver` is registered.
+- [Phase 01-09]: Reversed 01-08's browser-based signInWithOAuth Google flow to google_sign_in's native GoogleSignIn.instance.authenticate() + Supabase signInWithIdToken() at the user's explicit request (no Supabase/Google URL ever shown); verified the actually-resolved google_sign_in 7.2.0 API from package source rather than assuming it, and removed AuthController's WidgetsBindingObserver-based lifecycle-resume recovery (01-08 D-08-6) as dead code since the native picker is synchronously awaitable end-to-end.
 
 ### Pending Todos
 
@@ -100,6 +102,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T11:20:14.970Z
-Stopped at: Completed 01-08-PLAN.md (Google Sign-In via Supabase native OAuth); Phase 01 (backend-auth-foundation) plans all complete
+Last session: 2026-07-09T11:52:10.953Z
+Stopped at: Completed 01-09-PLAN.md (native Google Sign-In, supersedes 01-08's browser flow); Phase 01 (backend-auth-foundation) plans all complete
 Resume file: None
