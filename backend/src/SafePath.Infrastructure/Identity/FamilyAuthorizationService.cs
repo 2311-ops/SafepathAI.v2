@@ -20,15 +20,30 @@ public class FamilyAuthorizationService : IFamilyAuthorizationService
         _db = db;
     }
 
-    public Task<FamilyMember> RequireMembership(Guid userId, Guid familyId, CancellationToken cancellationToken = default)
+    public async Task<FamilyMember> RequireMembership(Guid userId, Guid familyId, CancellationToken cancellationToken = default)
     {
-        // RED: implementation intentionally not yet written — see 01-05 TDD RED/GREEN cycle.
-        throw new NotImplementedException();
+        var member = await _db.FamilyMembers
+            .SingleOrDefaultAsync(m => m.FamilyId == familyId && m.UserId == userId && m.IsActive, cancellationToken);
+
+        if (member is null)
+        {
+            throw new FamilyAuthorizationDeniedException(
+                $"User {userId} is not an active member of family {familyId}.");
+        }
+
+        return member;
     }
 
-    public Task<FamilyMember> RequireRole(Guid userId, Guid familyId, Role role, CancellationToken cancellationToken = default)
+    public async Task<FamilyMember> RequireRole(Guid userId, Guid familyId, Role role, CancellationToken cancellationToken = default)
     {
-        // RED: implementation intentionally not yet written — see 01-05 TDD RED/GREEN cycle.
-        throw new NotImplementedException();
+        var member = await RequireMembership(userId, familyId, cancellationToken);
+
+        if (member.Role != role)
+        {
+            throw new FamilyAuthorizationDeniedException(
+                $"User {userId} has role {member.Role} in family {familyId}, but {role} is required.");
+        }
+
+        return member;
     }
 }
