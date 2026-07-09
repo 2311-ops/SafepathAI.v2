@@ -18,6 +18,7 @@ public class FamiliesController : ControllerBase
 {
     private readonly ICommandHandler<CreateFamilyCommand, Guid> _createFamily;
     private readonly ICommandHandler<ListFamilyMembersQuery, IReadOnlyList<FamilyMemberDto>> _listMembers;
+    private readonly ICommandHandler<ListMyFamiliesQuery, IReadOnlyList<MyFamilyDto>> _listMyFamilies;
     private readonly ICommandHandler<UpdateMemberPermissionsCommand, UpdateMemberPermissionsResult> _updatePermissions;
     private readonly ICommandHandler<RemoveMemberCommand, RemoveMemberResult> _removeMember;
     private readonly ICurrentUserService _currentUser;
@@ -25,12 +26,14 @@ public class FamiliesController : ControllerBase
     public FamiliesController(
         ICommandHandler<CreateFamilyCommand, Guid> createFamily,
         ICommandHandler<ListFamilyMembersQuery, IReadOnlyList<FamilyMemberDto>> listMembers,
+        ICommandHandler<ListMyFamiliesQuery, IReadOnlyList<MyFamilyDto>> listMyFamilies,
         ICommandHandler<UpdateMemberPermissionsCommand, UpdateMemberPermissionsResult> updatePermissions,
         ICommandHandler<RemoveMemberCommand, RemoveMemberResult> removeMember,
         ICurrentUserService currentUser)
     {
         _createFamily = createFamily;
         _listMembers = listMembers;
+        _listMyFamilies = listMyFamilies;
         _updatePermissions = updatePermissions;
         _removeMember = removeMember;
         _currentUser = currentUser;
@@ -54,6 +57,19 @@ public class FamiliesController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
+    }
+
+    /// <summary>Lists the caller's own active family memberships (id, name, role, permissions).</summary>
+    [HttpGet("families/mine")]
+    public async Task<ActionResult<IReadOnlyList<MyFamilyDto>>> GetMine(CancellationToken cancellationToken)
+    {
+        if (_currentUser.UserId is not { } userId)
+        {
+            return Unauthorized();
+        }
+
+        var families = await _listMyFamilies.Handle(new ListMyFamiliesQuery(userId), cancellationToken);
+        return Ok(families);
     }
 
     /// <summary>Lists the active members of a family; membership-gated (IDOR prevention).</summary>
