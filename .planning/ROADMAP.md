@@ -48,7 +48,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Login, registration, and family-circle screens match the SafePath design system (colors, type, spacing, motion) via a shared Flutter `ThemeData`/`ColorScheme` (DESIGN-01)
   6. User can sign in with Google via Supabase's native OAuth from Welcome/Login/Register, alongside existing email/password auth (AUTH-06)
 
-**Plans**: 7/8 plans executed
+**Plans**: 7/9 plans executed
 
 - [x] 01-01-PLAN.md
 - [x] 01-02-PLAN.md
@@ -57,7 +57,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 01-05-PLAN.md
 - [x] 01-06-PLAN.md (superseded — satisfied via Supabase Auth, see SUMMARY)
 - [ ] 01-07-PLAN.md
-- [x] 01-08-PLAN.md
+- [x] 01-08-PLAN.md (partially superseded by 01-09 — browser OAuth flow replaced by native picker)
+- [ ] 01-09-PLAN.md
 
 **UI hint**: yes
 
