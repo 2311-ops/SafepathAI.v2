@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart' as gsi;
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 import '../../../core/config/supabase_client_provider.dart';
@@ -69,11 +70,14 @@ abstract class AuthApi {
 
   Future<AuthSessionResult> refreshSession();
 
-  /// Launches Supabase's native Google OAuth flow (external browser/Custom
-  /// Tab + PKCE + deep-link redirect back into the app). Returns whether the
-  /// flow was launched — NOT whether sign-in succeeded; the real result
-  /// arrives later via [authStateChanges] (see D-08-1/D-08-2 in
-  /// `01-08-PLAN.md`).
+  /// Triggers the native on-device Google account picker (via `google_sign_in`)
+  /// and, on a successful pick, signs into Supabase with the resulting ID
+  /// token (`signInWithIdToken`). Returns `true` once Supabase sign-in has
+  /// completed, or `false` if the user cancelled the picker before completing
+  /// it — same `Future<bool>` contract as the superseded browser flow, so the
+  /// real [AuthAuthenticated] transition still arrives via
+  /// [authStateChanges] (see D-09-1/D-09-3/D-09-4 in `01-09-PLAN.md`, which
+  /// supersedes 01-08's `signInWithOAuth`-based implementation).
   Future<bool> signInWithGoogle();
 }
 
@@ -81,6 +85,12 @@ class SupabaseAuthApi implements AuthApi {
   SupabaseAuthApi(this._client);
 
   final sb.SupabaseClient _client;
+
+  /// `google_sign_in`'s `GoogleSignIn.instance.initialize()` must be called
+  /// exactly once and awaited before any other method on the instance is
+  /// used — cache the in-flight/completed initialization so concurrent or
+  /// repeated [signInWithGoogle] calls never call `initialize()` twice.
+  Future<void>? _googleSignInInitialization;
 
   @override
   sb.Session? get currentSession => _client.auth.currentSession;
@@ -197,17 +207,50 @@ class SupabaseAuthApi implements AuthApi {
 
   @override
   Future<bool> signInWithGoogle() async {
-    try {
-      return await _client.auth.signInWithOAuth(
-        sb.OAuthProvider.google,
-        redirectTo: supabaseRedirectUrl,
-        authScreenLaunchMode: sb.LaunchMode.externalApplication,
+    if (googleServerClientId.isEmpty) {
+      // Fail loudly rather than silently: a missing GOOGLE_SERVER_CLIENT_ID
+      // dart-define means Google would never issue a verifiable ID token.
+      throw StateError(
+        'Missing GOOGLE_SERVER_CLIENT_ID. Add it to mobile/env.json and pass '
+        'it via --dart-define-from-file.',
       );
+    }
+
+    try {
+      await _ensureGoogleSignInInitialized();
+      final account = await gsi.GoogleSignIn.instance.authenticate();
+      final idToken = account.authentication.idToken;
+      if (idToken == null) {
+        throw AuthApiException(
+          AuthIssue.unknown,
+          message: 'Google did not return an ID token.',
+        );
+      }
+
+      await _client.auth.signInWithIdToken(
+        provider: sb.OAuthProvider.google,
+        idToken: idToken,
+      );
+      return true;
+    } on gsi.GoogleSignInException catch (error) {
+      if (error.code == gsi.GoogleSignInExceptionCode.canceled) {
+        // User backed out of the native picker before completing it — not
+        // an error, same observable contract as the superseded browser
+        // flow's "launch declined" case (D-09-4).
+        return false;
+      }
+      throw AuthApiException(AuthIssue.unknown, message: error.description ?? error.toString());
     } on sb.AuthException catch (error) {
       throw AuthApiException(AuthIssue.unknown, message: error.message);
     } catch (error) {
       throw AuthApiException(AuthIssue.network, message: error.toString());
     }
+  }
+
+  Future<void> _ensureGoogleSignInInitialized() {
+    return _googleSignInInitialization ??= gsi.GoogleSignIn.instance.initialize(
+      serverClientId: googleServerClientId,
+    );
   }
 
   AuthIssue _issueFromMessage(String message) {
