@@ -69,6 +69,8 @@ class FamilyController extends AsyncNotifier<FamilyState> {
       final wasAuthenticated = previous is AuthAuthenticated;
       if (next is AuthAuthenticated && !wasAuthenticated) {
         _bootstrap();
+      } else if (next is AuthUnauthenticated) {
+        state = const AsyncData(FamilyState());
       }
     });
 
@@ -96,21 +98,27 @@ class FamilyController extends AsyncNotifier<FamilyState> {
     try {
       final families = await api.getMyFamilies();
       if (families.isEmpty) {
-        state = AsyncData(_current.copyWith(isLoading: false));
+        state = const AsyncData(FamilyState());
         return;
       }
 
       final mine = families.first;
       final members = await api.listMembers(mine.familyId);
-      state = AsyncData(FamilyState(
-        family: Family(id: mine.familyId, name: mine.familyName),
-        members: members,
-        isLoading: false,
-      ));
+      state = AsyncData(
+        FamilyState(
+          family: Family(id: mine.familyId, name: mine.familyName),
+          members: members,
+          isLoading: false,
+        ),
+      );
     } on FamilyApiException catch (error) {
-      state = AsyncData(_current.copyWith(isLoading: false, error: error.message));
+      state = AsyncData(
+        _current.copyWith(isLoading: false, error: error.message),
+      );
     }
   }
+
+  Future<void> refresh() => _bootstrap();
 
   /// Creates a circle and loads the caller's own Guardian membership row
   /// (FAM-01).
@@ -145,12 +153,17 @@ class FamilyController extends AsyncNotifier<FamilyState> {
     final api = ref.read(familyApiProvider);
     final current = _current;
     try {
-      final invite = await api.generateInvite(familyId, inviteeLabel: inviteeLabel);
-      state = AsyncData(current.copyWith(
-        latestInvite: invite,
-        pendingInvites: [...current.pendingInvites, invite],
-        clearError: true,
-      ));
+      final invite = await api.generateInvite(
+        familyId,
+        inviteeLabel: inviteeLabel,
+      );
+      state = AsyncData(
+        current.copyWith(
+          latestInvite: invite,
+          pendingInvites: [...current.pendingInvites, invite],
+          clearError: true,
+        ),
+      );
     } on FamilyApiException catch (error) {
       state = AsyncData(current.copyWith(error: error.message));
     }
@@ -167,18 +180,36 @@ class FamilyController extends AsyncNotifier<FamilyState> {
     final api = ref.read(familyApiProvider);
     final current = _current;
     try {
-      final result = await api.redeemInvite(code: code, linkToken: linkToken, accept: accept);
+      final result = await api.redeemInvite(
+        code: code,
+        linkToken: linkToken,
+        accept: accept,
+      );
       if (!result.accepted) {
         state = AsyncData(current.copyWith(clearError: true));
         return;
       }
 
+      final families = await api.getMyFamilies();
+      MyFamily? joinedFamily;
+      for (final family in families) {
+        if (family.familyId == result.familyId) {
+          joinedFamily = family;
+          break;
+        }
+      }
+
       final members = await api.listMembers(result.familyId);
-      state = AsyncData(current.copyWith(
-        family: Family(id: result.familyId, name: current.family?.name),
-        members: members,
-        clearError: true,
-      ));
+      state = AsyncData(
+        current.copyWith(
+          family: Family(
+            id: result.familyId,
+            name: joinedFamily?.familyName ?? current.family?.name,
+          ),
+          members: members,
+          clearError: true,
+        ),
+      );
     } on FamilyApiException catch (error) {
       state = AsyncData(current.copyWith(error: error.message));
     }
@@ -196,7 +227,10 @@ class FamilyController extends AsyncNotifier<FamilyState> {
       final updated = await api.updatePermission(familyId, memberId, level);
       final members = [
         for (final member in current.members)
-          if (member.memberId == memberId) member.copyWith(permission: updated) else member,
+          if (member.memberId == memberId)
+            member.copyWith(permission: updated)
+          else
+            member,
       ];
       state = AsyncData(current.copyWith(members: members, clearError: true));
     } on FamilyApiException catch (error) {
@@ -210,7 +244,9 @@ class FamilyController extends AsyncNotifier<FamilyState> {
     final current = _current;
     try {
       await api.removeMember(familyId, memberId);
-      final members = current.members.where((member) => member.memberId != memberId).toList();
+      final members = current.members
+          .where((member) => member.memberId != memberId)
+          .toList();
       state = AsyncData(current.copyWith(members: members, clearError: true));
     } on FamilyApiException catch (error) {
       state = AsyncData(current.copyWith(error: error.message));
@@ -218,6 +254,5 @@ class FamilyController extends AsyncNotifier<FamilyState> {
   }
 }
 
-final familyControllerProvider = AsyncNotifierProvider<FamilyController, FamilyState>(
-  FamilyController.new,
-);
+final familyControllerProvider =
+    AsyncNotifierProvider<FamilyController, FamilyState>(FamilyController.new);

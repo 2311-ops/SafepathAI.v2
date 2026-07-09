@@ -105,6 +105,26 @@ void main() {
     expect(fakeApi.listMembersCallCount, 0);
   });
 
+  testWidgets('accepting a manual invite code redeems by code', (tester) async {
+    fakeApi.redeemResultToReturn = const RedeemResult(
+      familyId: 'fam-1',
+      status: 'Accepted',
+      accepted: true,
+    );
+    fakeApi.membersByFamilyId['fam-1'] = const [];
+
+    await tester.pumpWidget(buildTestApp());
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField), 'SP-4K9X');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Accept & join'));
+    await tester.pumpAndSettle();
+
+    expect(fakeApi.lastRedeemCode, 'SP-4K9X');
+    expect(fakeApi.lastRedeemLinkToken, isNull);
+    expect(find.text('home-reached'), findsOneWidget);
+  });
+
   testWidgets('empty manual code without token does not redeem', (
     tester,
   ) async {
@@ -121,6 +141,32 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fakeApi.redeemCallCount, 0);
+    expect(find.text('Enter an invite code.'), findsOneWidget);
+  });
+
+  testWidgets('invalid, expired, and duplicate invite failures stay on form', (
+    tester,
+  ) async {
+    for (final message in const [
+      'Invite not found.',
+      'Invite has expired.',
+      'Invite is already Accepted.',
+    ]) {
+      fakeApi = _FakeFamilyApi()
+        ..redeemError = FamilyApiException(
+          FamilyApiIssue.validation,
+          message: message,
+        );
+
+      await tester.pumpWidget(buildTestApp());
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField), 'SP-4K9X');
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Accept & join'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(message), findsOneWidget);
+      expect(find.text("You've been invited"), findsOneWidget);
+    }
   });
 }
 
@@ -132,6 +178,7 @@ class _FakeFamilyApi implements FamilyApi {
   String? lastRedeemCode;
   String? lastRedeemLinkToken;
   bool? lastRedeemAccept;
+  FamilyApiException? redeemError;
 
   @override
   Future<List<MyFamily>> getMyFamilies() async => const [];
@@ -162,6 +209,8 @@ class _FakeFamilyApi implements FamilyApi {
     lastRedeemCode = code;
     lastRedeemLinkToken = linkToken;
     lastRedeemAccept = accept;
+    final error = redeemError;
+    if (error != null) throw error;
     return redeemResultToReturn!;
   }
 

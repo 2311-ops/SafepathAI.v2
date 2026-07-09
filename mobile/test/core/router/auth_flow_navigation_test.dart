@@ -20,8 +20,12 @@ import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 import 'package:mobile/app.dart';
 import 'package:mobile/features/auth/data/auth_api.dart';
+import 'package:mobile/features/family/data/family_api.dart';
+import 'package:mobile/features/profile/data/profile_api.dart';
 
 import '../../helpers/fake_auth_api.dart';
+import '../../helpers/fake_family_api.dart';
+import '../../helpers/fake_profile_api.dart';
 
 Future<void> _fillRegisterForm(WidgetTester tester) async {
   final fields = find.byType(TextFormField);
@@ -36,9 +40,13 @@ void main() {
   });
 
   late FakeAuthApi fakeApi;
+  late FakeFamilyApi fakeFamilyApi;
+  late FakeProfileApi fakeProfileApi;
 
   setUp(() {
     fakeApi = FakeAuthApi();
+    fakeFamilyApi = FakeFamilyApi();
+    fakeProfileApi = FakeProfileApi();
   });
 
   tearDown(() {
@@ -47,7 +55,11 @@ void main() {
 
   Widget buildApp() {
     return ProviderScope(
-      overrides: [authApiProvider.overrideWithValue(fakeApi)],
+      overrides: [
+        authApiProvider.overrideWithValue(fakeApi),
+        familyApiProvider.overrideWithValue(fakeFamilyApi),
+        profileApiProvider.overrideWithValue(fakeProfileApi),
+      ],
       child: const SafePathApp(),
     );
   }
@@ -95,7 +107,9 @@ void main() {
         expect(find.text('Create account'), findsNothing);
 
         await tester.tap(find.text('Guardian / Parent'));
-        await tester.tap(find.widgetWithText(ElevatedButton, 'Create your circle'));
+        await tester.tap(
+          find.widgetWithText(ElevatedButton, 'Create your circle'),
+        );
         await tester.pumpAndSettle();
 
         // register() received the data entered on the Register screen.
@@ -131,53 +145,64 @@ void main() {
       },
     );
 
-    testWidgets('registration failure shows an inline error and keeps role select up',
-        (tester) async {
-      fakeApi.registerShouldFail = true;
+    testWidgets(
+      'registration failure shows an inline error and keeps role select up',
+      (tester) async {
+        fakeApi.registerShouldFail = true;
 
-      await tester.pumpWidget(buildApp());
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Create your circle'));
-      await tester.pumpAndSettle();
-      await _fillRegisterForm(tester);
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(buildApp());
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Create your circle'));
+        await tester.pumpAndSettle();
+        await _fillRegisterForm(tester);
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Create your circle'));
-      await tester.pumpAndSettle();
+        await tester.tap(
+          find.widgetWithText(ElevatedButton, 'Create your circle'),
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.text('Who are you in this circle?'), findsOneWidget);
-      expect(find.textContaining('already exists'), findsOneWidget);
-    });
+        expect(find.text('Who are you in this circle?'), findsOneWidget);
+        expect(find.textContaining('already exists'), findsOneWidget);
+      },
+    );
 
-    testWidgets('no duplicate submissions: button disables while a request is in flight',
-        (tester) async {
-      fakeApi.registerShouldRequireVerification = true;
-      fakeApi.responseDelay = const Duration(milliseconds: 200);
+    testWidgets(
+      'no duplicate submissions: button disables while a request is in flight',
+      (tester) async {
+        fakeApi.registerShouldRequireVerification = true;
+        fakeApi.responseDelay = const Duration(milliseconds: 200);
 
-      await tester.pumpWidget(buildApp());
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Create your circle'));
-      await tester.pumpAndSettle();
-      await _fillRegisterForm(tester);
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(buildApp());
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Create your circle'));
+        await tester.pumpAndSettle();
+        await _fillRegisterForm(tester);
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
+        await tester.pumpAndSettle();
 
-      final confirmButton = find.widgetWithText(ElevatedButton, 'Create your circle');
-      await tester.tap(confirmButton);
-      await tester.pump(); // start the request, do not let it resolve yet
+        final confirmButton = find.widgetWithText(
+          ElevatedButton,
+          'Create your circle',
+        );
+        await tester.tap(confirmButton);
+        await tester.pump(); // start the request, do not let it resolve yet
 
-      expect(find.text('Creating your circle...'), findsOneWidget);
-      final button = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, 'Creating your circle...'),
-      );
-      expect(button.onPressed, isNull);
+        expect(find.text('Creating your circle...'), findsOneWidget);
+        final button = tester.widget<ElevatedButton>(
+          find.widgetWithText(ElevatedButton, 'Creating your circle...'),
+        );
+        expect(button.onPressed, isNull);
 
-      await tester.pumpAndSettle();
-      expect(fakeApi.registerCallCount, 1);
-    });
+        await tester.pumpAndSettle();
+        expect(fakeApi.registerCallCount, 1);
+      },
+    );
 
-    testWidgets('Check Email screen Back to login returns to Login', (tester) async {
+    testWidgets('Check Email screen Back to login returns to Login', (
+      tester,
+    ) async {
       fakeApi.registerShouldRequireVerification = true;
 
       await tester.pumpWidget(buildApp());
@@ -188,7 +213,9 @@ void main() {
       await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Guardian / Parent'));
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Create your circle'));
+      await tester.tap(
+        find.widgetWithText(ElevatedButton, 'Create your circle'),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.widgetWithText(ElevatedButton, 'Back to login'));
@@ -211,7 +238,9 @@ void main() {
         await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Guardian / Parent'));
-        await tester.tap(find.widgetWithText(ElevatedButton, 'Create your circle'));
+        await tester.tap(
+          find.widgetWithText(ElevatedButton, 'Create your circle'),
+        );
         await tester.pumpAndSettle();
 
         expect(find.text('Check your email'), findsOneWidget);
@@ -226,24 +255,29 @@ void main() {
   });
 
   group('Login -> Home', () {
-    testWidgets('successful login navigates to the authenticated landing stub',
-        (tester) async {
-      await tester.pumpWidget(buildApp());
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('I already have an account'));
-      await tester.pumpAndSettle();
+    testWidgets(
+      'successful login navigates to the authenticated landing stub',
+      (tester) async {
+        await tester.pumpWidget(buildApp());
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('I already have an account'));
+        await tester.pumpAndSettle();
 
-      final fields = find.byType(TextFormField);
-      await tester.enterText(fields.at(0), 'ada@family.com');
-      await tester.enterText(fields.at(1), 'correct-horse-1');
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Log in'));
-      await tester.pumpAndSettle();
+        final fields = find.byType(TextFormField);
+        await tester.enterText(fields.at(0), 'ada@family.com');
+        await tester.enterText(fields.at(1), 'correct-horse-1');
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Log in'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Your circle'), findsOneWidget);
-      expect(fakeApi.lastLoginEmail, 'ada@family.com');
-    });
+        expect(find.text('Your circle'), findsOneWidget);
+        expect(find.text('Create your family circle'), findsOneWidget);
+        expect(fakeApi.lastLoginEmail, 'ada@family.com');
+      },
+    );
 
-    testWidgets('login failure shows an inline error and stays on Login', (tester) async {
+    testWidgets('login failure shows an inline error and stays on Login', (
+      tester,
+    ) async {
       fakeApi.loginShouldFail = true;
 
       await tester.pumpWidget(buildApp());
@@ -258,13 +292,17 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Welcome back.'), findsOneWidget);
-      expect(find.text('Incorrect email or password. Try again.'), findsOneWidget);
+      expect(
+        find.text('Incorrect email or password. Try again.'),
+        findsOneWidget,
+      );
     });
   });
 
   group('Session persistence and redirect guards', () {
-    testWidgets('a restored session lands directly on Home, skipping Welcome',
-        (tester) async {
+    testWidgets('a restored session lands directly on Home, skipping Welcome', (
+      tester,
+    ) async {
       fakeApi.initialSession = _fakeSession();
 
       await tester.pumpWidget(buildApp());
@@ -274,24 +312,26 @@ void main() {
       expect(find.text('SafePath AI'), findsNothing);
     });
 
-    testWidgets('logout returns an authenticated user to Welcome (no loop back to Home)',
-        (tester) async {
-      fakeApi.initialSession = _fakeSession();
+    testWidgets(
+      'logout returns an authenticated user to Welcome (no loop back to Home)',
+      (tester) async {
+        fakeApi.initialSession = _fakeSession();
 
-      await tester.pumpWidget(buildApp());
-      await tester.pumpAndSettle();
-      expect(find.text('Your circle'), findsOneWidget);
+        await tester.pumpWidget(buildApp());
+        await tester.pumpAndSettle();
+        expect(find.text('Your circle'), findsOneWidget);
 
-      await tester.tap(find.byType(PopupMenuButton<String>));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Logout'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Log out'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byType(PopupMenuButton<String>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Logout'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Log out'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('SafePath AI'), findsOneWidget);
-      expect(fakeApi.logoutCalled, isTrue);
-    });
+        expect(find.text('SafePath AI'), findsOneWidget);
+        expect(fakeApi.logoutCalled, isTrue);
+      },
+    );
   });
 }
 
@@ -300,13 +340,13 @@ void main() {
 // using the real type keeps this test honest against the actual AuthApi
 // contract instead of a loosely-typed stand-in.
 sb.Session _fakeSession() => sb.Session(
-      accessToken: 'fake-access-token',
-      tokenType: 'bearer',
-      user: sb.User(
-        id: 'fake-user-id',
-        appMetadata: const {},
-        userMetadata: const {},
-        aud: 'authenticated',
-        createdAt: DateTime.now().toIso8601String(),
-      ),
-    );
+  accessToken: 'fake-access-token',
+  tokenType: 'bearer',
+  user: sb.User(
+    id: 'fake-user-id',
+    appMetadata: const {},
+    userMetadata: const {},
+    aud: 'authenticated',
+    createdAt: DateTime.now().toIso8601String(),
+  ),
+);

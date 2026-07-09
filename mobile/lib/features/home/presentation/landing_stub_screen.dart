@@ -6,6 +6,8 @@ import '../../auth/application/auth_controller.dart';
 import '../../auth/data/auth_api.dart';
 import '../../auth/data/auth_models.dart';
 import '../../family/application/family_controller.dart';
+import '../../family/data/family_models.dart';
+import '../../profile/application/profile_controller.dart';
 
 /// Deliberately-plain, default Material 3 authenticated landing stub
 /// (UI-SPEC Scope Resolution #2). Intentionally NOT styled with the
@@ -53,14 +55,30 @@ class LandingStubScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final familyState = ref.watch(familyControllerProvider).value;
+    final familyAsync = ref.watch(familyControllerProvider);
+    final profileAsync = ref.watch(profileControllerProvider);
+    final familyState = familyAsync.value;
+    final profileState = profileAsync.value;
     final currentUserId = ref.watch(authApiProvider).currentSession?.user.id;
-    final isBootstrapping = familyState?.isLoading ?? false;
+    final profileUserId = profileState?.profile?.userId;
+    final effectiveUserId = currentUserId ?? profileUserId;
+    final isBootstrapping =
+        (familyState?.isLoading ?? familyAsync.isLoading) ||
+        (profileState?.isLoading ?? profileAsync.isLoading);
     final hasFamily = familyState?.family != null;
     final members = familyState?.members ?? const [];
-    final isGuardian = members.any(
-      (member) => member.userId == currentUserId && member.role == Role.guardian,
-    );
+    FamilyMemberView? currentMember;
+    for (final member in members) {
+      if (member.userId == effectiveUserId) {
+        currentMember = member;
+        break;
+      }
+    }
+    final effectiveRole = currentMember?.role ?? profileState?.profile?.role;
+    final isGuardian = effectiveRole == Role.guardian;
+    final blockingError = !isBootstrapping && !hasFamily
+        ? (profileState?.error ?? familyState?.error)
+        : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -92,46 +110,189 @@ class LandingStubScreen extends ConsumerWidget {
       ),
       body: isBootstrapping
           ? const Center(child: CircularProgressIndicator())
-          : !hasFamily
-          ? ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                const SizedBox(height: 48),
-                const Icon(Icons.group, size: 48),
-                const SizedBox(height: 16),
-                const Text(
-                  'Just you so far',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Invite a family member to start sharing safety with them.',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () => context.push('/circle/create'),
-                  child: const Text('Create a circle'),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton(
-                  onPressed: () => context.push('/invite/accept'),
-                  child: const Text('I have an invite code'),
-                ),
-              ],
+          : blockingError != null
+          ? _ConnectionFailure(
+              message: blockingError,
+              onRetry: () {
+                ref.read(profileControllerProvider.notifier).refresh();
+                ref.read(familyControllerProvider.notifier).refresh();
+              },
             )
+          : !hasFamily
+          ? _RoleEmptyState(role: effectiveRole)
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                if (familyState?.error != null) ...[
+                  _InlineError(message: familyState!.error!),
+                  const SizedBox(height: 12),
+                ],
+                if (members.isEmpty) ...[
+                  const SizedBox(height: 48),
+                  const Icon(Icons.group_off, size: 48),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No members loaded yet',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Refresh your circle to load the roster.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () =>
+                        ref.read(familyControllerProvider.notifier).refresh(),
+                    child: const Text('Refresh'),
+                  ),
+                ],
                 for (final member in members)
                   ListTile(
                     leading: const Icon(Icons.person),
-                    title: Text(member.userId == currentUserId ? 'You' : member.userId),
+                    title: Text(
+                      member.userId == effectiveUserId ? 'You' : member.userId,
+                    ),
                     trailing: Chip(label: Text(member.role.wireValue)),
                   ),
               ],
             ),
+    );
+  }
+}
+
+class _RoleEmptyState extends StatelessWidget {
+  const _RoleEmptyState({required this.role});
+
+  final Role? role;
+
+  @override
+  Widget build(BuildContext context) {
+    if (role == Role.member) {
+      return _EmptyState(
+        icon: Icons.qr_code_scanner,
+        title: 'Join a family circle',
+        message: 'Enter the invite code your Guardian shared with you.',
+        primaryLabel: 'Enter invite code',
+        onPrimary: () => context.push('/invite/accept'),
+      );
+    }
+
+    if (role == Role.guardian) {
+      return _EmptyState(
+        icon: Icons.diversity_3,
+        title: 'Create your family circle',
+        message: 'Start a circle, then generate an invite code or QR.',
+        primaryLabel: 'Create a circle',
+        onPrimary: () => context.push('/circle/create'),
+      );
+    }
+
+    return _EmptyState(
+      icon: Icons.group,
+      title: 'Set up your circle',
+      message: 'Create a circle or join one with an invite code.',
+      primaryLabel: 'Create a circle',
+      onPrimary: () => context.push('/circle/create'),
+      secondaryLabel: 'I have an invite code',
+      onSecondary: () => context.push('/invite/accept'),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.primaryLabel,
+    required this.onPrimary,
+    this.secondaryLabel,
+    this.onSecondary,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String primaryLabel;
+  final VoidCallback onPrimary;
+  final String? secondaryLabel;
+  final VoidCallback? onSecondary;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const SizedBox(height: 48),
+        Icon(icon, size: 48),
+        const SizedBox(height: 16),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Text(message, textAlign: TextAlign.center),
+        const SizedBox(height: 24),
+        ElevatedButton(onPressed: onPrimary, child: Text(primaryLabel)),
+        if (secondaryLabel != null && onSecondary != null) ...[
+          const SizedBox(height: 8),
+          OutlinedButton(onPressed: onSecondary, child: Text(secondaryLabel!)),
+        ],
+      ],
+    );
+  }
+}
+
+class _ConnectionFailure extends StatelessWidget {
+  const _ConnectionFailure({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const SizedBox(height: 48),
+        const Icon(Icons.cloud_off, size: 48),
+        const SizedBox(height: 16),
+        const Text(
+          "Couldn't load your circle",
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Text(message, textAlign: TextAlign.center),
+        const SizedBox(height: 24),
+        ElevatedButton(onPressed: onRetry, child: const Text('Try again')),
+      ],
+    );
+  }
+}
+
+class _InlineError extends StatelessWidget {
+  const _InlineError({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.errorContainer,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Text(
+          message,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onErrorContainer,
+          ),
+        ),
+      ),
     );
   }
 }

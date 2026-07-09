@@ -34,6 +34,7 @@ class AcceptInviteScreen extends ConsumerStatefulWidget {
 class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
   late final TextEditingController _codeController;
   bool _isSubmitting = false;
+  String? _localError;
 
   @override
   void initState() {
@@ -51,9 +52,15 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
     final code = _codeController.text.trim();
     final linkToken = widget.initialLinkToken?.trim();
     final hasLinkToken = linkToken != null && linkToken.isNotEmpty;
-    if (!hasLinkToken && code.isEmpty) return;
+    if (!hasLinkToken && code.isEmpty) {
+      setState(() => _localError = 'Enter an invite code.');
+      return;
+    }
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _localError = null;
+    });
     await ref
         .read(familyControllerProvider.notifier)
         .redeemInvite(
@@ -84,7 +91,7 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
   @override
   Widget build(BuildContext context) {
     final familyState = ref.watch(familyControllerProvider).value;
-    final error = familyState?.error;
+    final error = _localError ?? familyState?.error;
 
     return Scaffold(
       appBar: AppBar(),

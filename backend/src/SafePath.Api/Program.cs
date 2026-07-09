@@ -61,6 +61,43 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("SafePathClient", policy =>
+    {
+        policy
+            .SetIsOriginAllowed(origin =>
+            {
+                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                {
+                    return false;
+                }
+
+                return uri.Host is "localhost" or "127.0.0.1" ||
+                    uri.Host.StartsWith("192.168.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("10.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.16.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.17.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.18.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.19.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.20.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.21.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.22.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.23.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.24.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.25.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.26.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.27.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.28.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.29.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.30.", StringComparison.Ordinal) ||
+                    uri.Host.StartsWith("172.31.", StringComparison.Ordinal);
+            })
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 builder.Services.AddRateLimiter(options =>
 {
     // T-05-02: rate-limit /invites/redeem per-IP to blunt invite-code brute-forcing
@@ -91,6 +128,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseRateLimiter();
+
+app.UseCors("SafePathClient");
 
 app.UseAuthentication();
 app.UseAuthorization();

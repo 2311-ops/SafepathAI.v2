@@ -8,7 +8,7 @@ import 'auth_interceptor.dart';
 /// for staging/production builds. Defaults to a local dev backend.
 const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://localhost:5000',
+  defaultValue: 'http://localhost:5059',
 );
 
 /// Builds the app's [Dio] client: attaches [AuthInterceptor] (bearer token +

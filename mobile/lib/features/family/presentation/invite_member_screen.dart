@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -24,16 +25,28 @@ class InviteMemberScreen extends ConsumerStatefulWidget {
 }
 
 class _InviteMemberScreenState extends ConsumerState<InviteMemberScreen> {
-  @override
-  void initState() {
-    super.initState();
-    final familyId = ref.read(familyControllerProvider).value?.family?.id;
-    if (familyId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ref.read(familyControllerProvider.notifier).generateInvite(familyId);
-      });
+  String? _requestedInviteForFamilyId;
+
+  void _maybeGenerateInvite(FamilyState? familyState) {
+    final familyId = familyState?.family?.id;
+    if (familyId == null ||
+        familyState?.latestInvite != null ||
+        _requestedInviteForFamilyId == familyId) {
+      return;
     }
+
+    _requestedInviteForFamilyId = familyId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(familyControllerProvider.notifier).generateInvite(familyId);
+    });
+  }
+
+  void _retryGenerateInvite() {
+    final familyId = ref.read(familyControllerProvider).value?.family?.id;
+    if (familyId == null) return;
+    _requestedInviteForFamilyId = familyId;
+    ref.read(familyControllerProvider.notifier).generateInvite(familyId);
   }
 
   /// The QR payload / "Copy link" target. There is no universal-link route
@@ -41,20 +54,22 @@ class _InviteMemberScreenState extends ConsumerState<InviteMemberScreen> {
   /// entry on `/invite/accept` — see 01-07-SUMMARY.md deviations); the QR
   /// still carries the full opaque link token so a future deep-link handler
   /// can be wired up without changing the invite payload shape.
-  String _inviteLink(Invitation invite) => 'safepathai://invite?token=${invite.linkToken}';
+  String _inviteLink(Invitation invite) =>
+      'safepathai://invite?token=${invite.linkToken}';
 
   Future<void> _onCopyLink(Invitation invite) async {
     await Clipboard.setData(ClipboardData(text: _inviteLink(invite)));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Invite link copied')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Invite link copied')));
   }
 
   Future<void> _onShare(Invitation invite) async {
     await SharePlus.instance.share(
       ShareParams(
-        text: 'Join our SafePath AI family circle: ${_inviteLink(invite)}\n'
+        text:
+            'Join our SafePath AI family circle: ${_inviteLink(invite)}\n'
             'Code: ${invite.code} (expires in 24h)',
       ),
     );
@@ -63,13 +78,17 @@ class _InviteMemberScreenState extends ConsumerState<InviteMemberScreen> {
   @override
   Widget build(BuildContext context) {
     final familyState = ref.watch(familyControllerProvider).value;
+    _maybeGenerateInvite(familyState);
+    final family = familyState?.family;
     final invite = familyState?.latestInvite;
     // Exclude the invite currently on display above — "Pending" lists
     // previously-generated, still-unredeemed invites, not a duplicate of
     // the card just shown (matches the mockup's F1-5 "Pending" section,
     // which is keyed by invitee label + relative time for *other* invites).
     final pending = (familyState?.pendingInvites ?? const [])
-        .where((pendingInvite) => pendingInvite.invitationId != invite?.invitationId)
+        .where(
+          (pendingInvite) => pendingInvite.invitationId != invite?.invitationId,
+        )
         .toList();
     final error = familyState?.error;
 
@@ -82,7 +101,56 @@ class _InviteMemberScreenState extends ConsumerState<InviteMemberScreen> {
             vertical: AppSpacing.lg,
           ),
           children: [
-            if (invite == null)
+            if (familyState == null || familyState.isLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (family == null)
+              SafePathCard(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  children: [
+                    const Icon(Icons.diversity_3, size: 48),
+                    const SizedBox(height: AppSpacing.md),
+                    Text('Create a circle first', style: AppTypography.title),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Guardian invites are generated from an active family circle.',
+                      textAlign: TextAlign.center,
+                      style: AppTypography.bodySecondary,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    PrimaryButton(
+                      label: 'Create circle',
+                      onPressed: () => context.go('/circle/create'),
+                    ),
+                  ],
+                ),
+              )
+            else if (invite == null && error != null)
+              SafePathCard(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  children: [
+                    const Icon(Icons.cloud_off, size: 48),
+                    const SizedBox(height: AppSpacing.md),
+                    Text('Invite not generated', style: AppTypography.title),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      error,
+                      textAlign: TextAlign.center,
+                      style: AppTypography.bodySecondary,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    PrimaryButton(
+                      label: 'Try again',
+                      onPressed: _retryGenerateInvite,
+                    ),
+                  ],
+                ),
+              )
+            else if (invite == null)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
                 child: Center(child: CircularProgressIndicator()),
@@ -114,7 +182,7 @@ class _InviteMemberScreenState extends ConsumerState<InviteMemberScreen> {
                   ],
                 ),
               ),
-            if (error != null) ...[
+            if (invite != null && error != null) ...[
               const SizedBox(height: AppSpacing.md),
               Text(error, style: AppTypography.bodySecondary),
             ],

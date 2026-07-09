@@ -54,6 +54,15 @@ status: complete
 - `flutter analyze`
 - Targeted widget/router tests during implementation; full `flutter test` tracked in the final audit-fix run.
 
+## Post-Review Role/Family-Circle Fix
+
+- Added backend profile-role loading on mobile via `/me`, so the authenticated landing chooses Guardian create-family setup or Member join-family setup instead of showing the same empty/error path to both roles.
+- Corrected the Flutter Web default API URL to `http://localhost:5059` and enabled local/LAN CORS in the API for protected Dio requests with Supabase JWTs.
+- Hardened invite generation and redemption UI states: Guardian no-family/retry states, QR/code display, Member empty-code validation, and invalid/expired/duplicate invite errors that stay on the join form.
+- Added deterministic Flutter tests for Guardian landing, Member landing, invite generation, manual code redemption, and invalid/expired/duplicate invite handling.
+- Verified with `flutter analyze`, `flutter test`, `dotnet build`, and `dotnet test` on 2026-07-10.
+- Web verification covered the role/invite widget flow under Chrome plus a local API CORS preflight from `http://localhost:3000` to `http://localhost:5059/me` with the `Authorization` header allowed.
+
 ## Remaining Notes
 
 QR generation uses the existing invite URL/code flow; no Phase 2 location or notification functionality was introduced.

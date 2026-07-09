@@ -18,17 +18,24 @@ import 'package:mobile/features/family/presentation/invite_member_screen.dart';
 /// Minimal fake — this test only exercises `generateInvite`, called once
 /// from the screen's `initState`.
 class _FakeFamilyApi implements FamilyApi {
+  int generateInviteCallCount = 0;
+
   @override
   Future<List<MyFamily>> getMyFamilies() async => const [];
 
   @override
-  Future<Family> createFamily(String name) async => Family(id: 'fam-1', name: name);
+  Future<Family> createFamily(String name) async =>
+      Family(id: 'fam-1', name: name);
 
   @override
   Future<List<FamilyMemberView>> listMembers(String familyId) async => const [];
 
   @override
-  Future<Invitation> generateInvite(String familyId, {String? inviteeLabel}) async {
+  Future<Invitation> generateInvite(
+    String familyId, {
+    String? inviteeLabel,
+  }) async {
+    generateInviteCallCount++;
     return Invitation(
       invitationId: 'inv-1',
       code: 'SP-4K9X',
@@ -63,9 +70,14 @@ class _FakeFamilyApi implements FamilyApi {
 class _SeededFamilyController extends FamilyController {
   @override
   FamilyState build() => const FamilyState(
-        family: Family(id: 'fam-1', name: 'The Rivera Family'),
-        members: [],
-      );
+    family: Family(id: 'fam-1', name: 'The Rivera Family'),
+    members: [],
+  );
+}
+
+class _EmptyFamilyController extends FamilyController {
+  @override
+  FamilyState build() => const FamilyState();
 }
 
 void main() {
@@ -73,7 +85,10 @@ void main() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
-  Widget buildTestApp() {
+  Widget buildTestApp({
+    FamilyApi? familyApi,
+    FamilyController Function()? familyController,
+  }) {
     final router = GoRouter(
       initialLocation: '/circle/invite',
       routes: [
@@ -85,8 +100,10 @@ void main() {
     );
     return ProviderScope(
       overrides: [
-        familyApiProvider.overrideWithValue(_FakeFamilyApi()),
-        familyControllerProvider.overrideWith(_SeededFamilyController.new),
+        familyApiProvider.overrideWithValue(familyApi ?? _FakeFamilyApi()),
+        familyControllerProvider.overrideWith(
+          familyController ?? _SeededFamilyController.new,
+        ),
       ],
       child: MaterialApp.router(
         theme: ThemeData(splashFactory: NoSplash.splashFactory),
@@ -115,7 +132,18 @@ void main() {
     },
   );
 
-  testWidgets('shows the "No pending invites yet" empty state on first open', (tester) async {
+  testWidgets('generates the invite from the active family', (tester) async {
+    final fakeApi = _FakeFamilyApi();
+
+    await tester.pumpWidget(buildTestApp(familyApi: fakeApi));
+    await tester.pumpAndSettle();
+
+    expect(fakeApi.generateInviteCallCount, 1);
+  });
+
+  testWidgets('shows the "No pending invites yet" empty state on first open', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildTestApp());
     await tester.pumpAndSettle();
 
@@ -124,5 +152,17 @@ void main() {
       find.text('Share your code or link above to add someone to your circle.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('shows create-circle recovery when no active family exists', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildTestApp(familyController: _EmptyFamilyController.new),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Create a circle first'), findsOneWidget);
+    expect(find.text('Create circle'), findsOneWidget);
   });
 }
