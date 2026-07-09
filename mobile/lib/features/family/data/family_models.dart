@@ -100,6 +100,33 @@ class Invitation {
       );
 }
 
+/// One of the caller's own active family memberships, as returned by
+/// `GET /families/mine` (`MyFamilyDto`) — unlike [FamilyMemberView], this is
+/// keyed by the caller's own membership row, not another member's. Used to
+/// restore [Family]/[FamilyMemberView] state after logout/login or a cold
+/// app start, since the plan-05 backend has no other way to discover a
+/// family the current session didn't just create or join (01-10-PLAN.md).
+class MyFamily {
+  const MyFamily({
+    required this.familyId,
+    required this.familyName,
+    required this.role,
+    required this.permissions,
+  });
+
+  final String familyId;
+  final String familyName;
+  final Role role;
+  final PermissionLevel permissions;
+
+  factory MyFamily.fromJson(Map<String, dynamic> json) => MyFamily(
+        familyId: json['familyId'] as String,
+        familyName: json['familyName'] as String,
+        role: Role.fromWire(json['role'] as String),
+        permissions: PermissionLevel.fromWire(json['permissions'] as String),
+      );
+}
+
 /// Result of `POST /invites/redeem` (`RedeemInviteResult`). [accepted] is a
 /// convenience derived from [status] so callers don't need to compare the
 /// raw wire string.

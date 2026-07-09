@@ -15,9 +15,12 @@ import '../../family/application/family_controller.dart';
 ///
 /// Upgraded in plan 01-07 to show the real family-circle member list (via
 /// [familyControllerProvider]) and, for Guardians, entry points into the
-/// Invite and Manage Permissions screens. There is no "list my families"
-/// backend endpoint yet, so the family shown here only reflects what this
-/// app session has created/joined — see 01-07-SUMMARY.md deviations.
+/// Invite and Manage Permissions screens. Plan 01-10 added a bootstrap fetch
+/// (`GET /families/mine`) so the circle survives logout/login and cold app
+/// starts, not just the session that created/joined it — this screen shows
+/// a loading spinner while that fetch is in flight (see
+/// [FamilyState.isLoading]) rather than flashing the "create a circle"
+/// empty state first.
 class LandingStubScreen extends ConsumerWidget {
   const LandingStubScreen({super.key});
 
@@ -52,6 +55,7 @@ class LandingStubScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final familyState = ref.watch(familyControllerProvider).value;
     final currentUserId = ref.watch(authApiProvider).currentSession?.user.id;
+    final isBootstrapping = familyState?.isLoading ?? false;
     final hasFamily = familyState?.family != null;
     final members = familyState?.members ?? const [];
     final isGuardian = members.any(
@@ -86,7 +90,9 @@ class LandingStubScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: !hasFamily
+      body: isBootstrapping
+          ? const Center(child: CircularProgressIndicator())
+          : !hasFamily
           ? ListView(
               padding: const EdgeInsets.all(16),
               children: [

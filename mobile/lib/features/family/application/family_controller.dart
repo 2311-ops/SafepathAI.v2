@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/application/auth_controller.dart';
+import '../../auth/application/auth_state.dart';
 import '../data/family_api.dart';
 import '../data/family_models.dart';
 
@@ -18,6 +20,7 @@ class FamilyState {
     this.pendingInvites = const [],
     this.latestInvite,
     this.error,
+    this.isLoading = false,
   });
 
   final Family? family;
@@ -26,6 +29,13 @@ class FamilyState {
   final Invitation? latestInvite;
   final String? error;
 
+  /// True while the auth-triggered bootstrap fetch (`GET /families/mine`,
+  /// 01-10-PLAN.md D-10-3) is in flight. Lets `landing_stub_screen.dart`
+  /// distinguish "still checking for an existing circle" from "confirmed no
+  /// circle yet, show the create-circle prompt" — both look like
+  /// `family == null` otherwise.
+  final bool isLoading;
+
   FamilyState copyWith({
     Family? family,
     List<FamilyMemberView>? members,
@@ -33,6 +43,7 @@ class FamilyState {
     Invitation? latestInvite,
     String? error,
     bool clearError = false,
+    bool? isLoading,
   }) {
     return FamilyState(
       family: family ?? this.family,
@@ -40,20 +51,66 @@ class FamilyState {
       pendingInvites: pendingInvites ?? this.pendingInvites,
       latestInvite: latestInvite ?? this.latestInvite,
       error: clearError ? null : (error ?? this.error),
+      isLoading: isLoading ?? this.isLoading,
     );
   }
 }
 
 /// Riverpod controller driving the family-circle screens against
 /// [FamilyApi] (plan-05 backend). Holds the current family + member list in
-/// memory for the app session (the plan-05 backend has no "list my
-/// families" endpoint, so there is nothing to restore across a cold app
-/// restart yet — see 01-07-SUMMARY.md deviations).
+/// memory, restored from `GET /families/mine` on cold app start (if a
+/// session already exists) and on every fresh login (01-10-PLAN.md D-10-3)
+/// — so logging out and back in no longer loses the circle (closes the gap
+/// noted in 01-07-SUMMARY.md deviations).
 class FamilyController extends AsyncNotifier<FamilyState> {
   @override
-  FamilyState build() => const FamilyState();
+  FamilyState build() {
+    ref.listen<AuthState>(authControllerProvider, (previous, next) {
+      final wasAuthenticated = previous is AuthAuthenticated;
+      if (next is AuthAuthenticated && !wasAuthenticated) {
+        _bootstrap();
+      }
+    });
+
+    if (ref.read(authControllerProvider) is AuthAuthenticated) {
+      // Fire-and-forget: must run after build() returns (the framework
+      // assigns `state` from this method's return value), so this is
+      // scheduled via a microtask rather than awaited here.
+      Future.microtask(_bootstrap);
+      return const FamilyState(isLoading: true);
+    }
+
+    return const FamilyState();
+  }
 
   FamilyState get _current => state.value ?? const FamilyState();
+
+  /// Fetches the caller's own family memberships (`GET /families/mine`) and
+  /// restores [FamilyState] from the first one. D-10-1: the schema allows
+  /// multiple active memberships, but no screen/flow supports more than one
+  /// yet, so only the first is used.
+  /// TODO(multi-family): revisit once a family-switcher UI exists.
+  Future<void> _bootstrap() async {
+    final api = ref.read(familyApiProvider);
+    state = AsyncData(_current.copyWith(isLoading: true, clearError: true));
+    try {
+      final families = await api.getMyFamilies();
+      if (families.isEmpty) {
+        state = AsyncData(_current.copyWith(isLoading: false));
+        return;
+      }
+
+      final mine = families.first;
+      final members = await api.listMembers(mine.familyId);
+      state = AsyncData(FamilyState(
+        family: Family(id: mine.familyId, name: mine.familyName),
+        members: members,
+        isLoading: false,
+      ));
+    } on FamilyApiException catch (error) {
+      state = AsyncData(_current.copyWith(isLoading: false, error: error.message));
+    }
+  }
 
   /// Creates a circle and loads the caller's own Guardian membership row
   /// (FAM-01).

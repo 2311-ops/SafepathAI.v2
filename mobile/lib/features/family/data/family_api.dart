@@ -30,6 +30,12 @@ class FamilyApiException implements Exception {
 /// (mirroring `auth_api.dart`'s `AuthApi` pattern) so `FamilyController` can
 /// be unit-tested against a fake without a real Dio/HTTP round-trip.
 abstract class FamilyApi {
+  /// `GET /families/mine` — the caller's own active family memberships,
+  /// used to restore [Family]/[FamilyMemberView] state on cold app start or
+  /// after logging back in (01-10-PLAN.md, D-10-2). Never 404s — an empty
+  /// list means the caller genuinely has no circle yet.
+  Future<List<MyFamily>> getMyFamilies();
+
   /// `POST /families` — creates a circle; the caller becomes its first
   /// Guardian (FAM-01).
   Future<Family> createFamily(String name);
@@ -67,6 +73,18 @@ class DioFamilyApi implements FamilyApi {
   DioFamilyApi(this._dio);
 
   final Dio _dio;
+
+  @override
+  Future<List<MyFamily>> getMyFamilies() async {
+    try {
+      final response = await _dio.get<List<dynamic>>('/families/mine');
+      return (response.data ?? const [])
+          .map((entry) => MyFamily.fromJson(entry as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (error) {
+      throw _mapError(error);
+    }
+  }
 
   @override
   Future<Family> createFamily(String name) async {

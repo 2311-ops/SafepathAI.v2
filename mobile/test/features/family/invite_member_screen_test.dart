@@ -19,6 +19,9 @@ import 'package:mobile/features/family/presentation/invite_member_screen.dart';
 /// from the screen's `initState`.
 class _FakeFamilyApi implements FamilyApi {
   @override
+  Future<List<MyFamily>> getMyFamilies() async => const [];
+
+  @override
   Future<Family> createFamily(String name) async => Family(id: 'fam-1', name: name);
 
   @override
