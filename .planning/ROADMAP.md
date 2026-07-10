@@ -69,14 +69,15 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 01.1: Animated Logo Splash Screen (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** On cold launch the app shows a calm, on-brand animated SafePath logo splash exactly once, then hands off to the existing router destination (Home if authenticated, Welcome if not) — additive only, with zero changes to auth, session, or routing semantics.
+**Requirements**: none (inserted decimal phase; no REQ-IDs mapped)
 **Depends on:** Phase 1
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 01.1 to break down)
+- [ ] 01.1-01-PLAN.md — SplashScreen widget + splashAnimationCompleteProvider + additive /splash route & redirect gate
+- [ ] 01.1-02-PLAN.md — Deterministic splash/gate tests, full-suite regression pass, human visual sign-off
 
 ### Phase 2: Real-Time Location, History & Privacy
 
