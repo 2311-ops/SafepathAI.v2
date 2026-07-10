@@ -67,6 +67,17 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **UI hint**: yes
 
+### Phase 01.1: Animated Logo Splash Screen (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 1
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 01.1 to break down)
+
 ### Phase 2: Real-Time Location, History & Privacy
 
 **Goal**: Family members can see each other's live and past location, with full control over what's shared and with whom.
