@@ -17,6 +17,8 @@ import '../../features/family/presentation/create_circle_screen.dart';
 import '../../features/family/presentation/invite_member_screen.dart';
 import '../../features/family/presentation/manage_permissions_screen.dart';
 import '../../features/home/presentation/landing_stub_screen.dart';
+import '../../features/splash/application/splash_providers.dart';
+import '../../features/splash/presentation/splash_screen.dart';
 
 /// Routes that belong to the pre-auth onboarding flow. An authenticated user
 /// landing on any of these gets redirected to `/home` instead.
@@ -51,6 +53,10 @@ class _AuthRefreshListenable extends ChangeNotifier {
       authControllerProvider,
       (previous, next) => notifyListeners(),
     );
+    ref.listen<bool>(
+      splashAnimationCompleteProvider,
+      (previous, next) => notifyListeners(),
+    );
   }
 }
 
@@ -60,7 +66,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final refreshListenable = _AuthRefreshListenable(ref);
 
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/splash',
     refreshListenable: refreshListenable,
     redirect: (context, state) {
       final authState = ref.read(authControllerProvider);
@@ -71,6 +77,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       );
       final onResetPassword = state.matchedLocation == '/reset-password';
 
+      if (state.matchedLocation == '/splash') {
+        if (!ref.read(splashAnimationCompleteProvider)) {
+          return null;
+        }
+        if (isRecovery) return '/reset-password';
+        if (isAuthenticated) return '/home';
+        return '/';
+      }
       if (isRecovery && !onResetPassword) {
         return '/reset-password';
       }
@@ -102,6 +116,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/splash',
+        name: 'splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(
         path: '/',
         name: 'welcome',
