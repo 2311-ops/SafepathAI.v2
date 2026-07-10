@@ -72,12 +72,12 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal:** On cold launch the app shows a calm, on-brand animated SafePath logo splash exactly once, then hands off to the existing router destination (Home if authenticated, Welcome if not) — additive only, with zero changes to auth, session, or routing semantics.
 **Requirements**: none (inserted decimal phase; no REQ-IDs mapped)
 **Depends on:** Phase 1
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 01.1-01-PLAN.md — SplashScreen widget + splashAnimationCompleteProvider + additive /splash route & redirect gate
+- [x] 01.1-01-PLAN.md — SplashScreen widget + splashAnimationCompleteProvider + additive /splash route & redirect gate
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

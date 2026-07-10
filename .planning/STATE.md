@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 02
-current_phase_name: real-time-location-history-privacy
+current_phase: 01.1
+current_phase_name: animated-logo-splash-screen
 status: executing
-stopped_at: Phase 01.1 UI-SPEC approved
-last_updated: "2026-07-10T22:05:42.550Z"
+stopped_at: Completed 01.1-01-PLAN.md
+last_updated: "2026-07-10T22:45:42.868Z"
 last_activity: 2026-07-10
-last_activity_desc: Completed Phase 01 after production UI review and closeout
+last_activity_desc: Phase 01.1 execution started
 progress:
   total_phases: 8
   completed_phases: 1
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 16
+  completed_plans: 15
   percent: 13
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-06)
 
 **Core value:** The SOS system must always work — a single tap or covert Silent/Duress trigger reliably delivers an immediate alert with live location to a user's designated guardians within seconds, bypassing every routine and AI pipeline.
-**Current focus:** Phase 02 - real-time-location-history-privacy
+**Current focus:** Phase 01.1 — animated-logo-splash-screen
 
 ## Current Position
 
-Phase: 02 (real-time-location-history-privacy) - READY TO PLAN
-Plan: TBD
+Phase: 01.1 (animated-logo-splash-screen) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-07-10 - Completed Phase 01 after production UI review and closeout
+Last activity: 2026-07-10 — Phase 01.1 execution started
 
 Progress: [#---------] 14%
 
@@ -63,6 +63,7 @@ Progress: [#---------] 14%
 | Phase 01-backend-auth-foundation P12 | review-fix | 2 tasks | family invariants/invites |
 | Phase 01-backend-auth-foundation P13 | review-fix | 3 tasks | ownership/delete/db |
 | Phase 01-backend-auth-foundation P14 | review-fix | 3 tasks | deep links/reset UX/tests |
+| Phase 01.1-animated-logo-splash-screen P01 | 15min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,7 @@ Recent decisions affecting current work:
 - [Phase 01-12]: Enforced the Phase 1 single-active-family invariant in backend command handlers and the database, returning 409 conflicts for duplicate create/join attempts and adding Guardian invite revocation.
 - [Phase 01-13]: Added Guardian ownership transfer and delete-family workflows, plus FK/cascade migration and an explicit RLS/Data API deny posture for family tables.
 - [Phase 01-14]: Added invite deep-link handling with pending-invite restoration after auth, distinct decline behavior, and amber expired-reset-link messaging while preserving SOS red exclusively for emergency surfaces.
+- [Phase 01.1-01]: Splash providers use Notifier/NotifierProvider + set() (matching deep_link_service.dart convention) instead of legacy StateProvider, which is unavailable in this project's flutter_riverpod 3.3.2
 
 ### Pending Todos
 
@@ -112,6 +114,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-10T21:22:37.095Z
-Stopped at: Phase 01.1 UI-SPEC approved
-Resume file: .planning/phases/01.1-animated-logo-splash-screen/01.1-UI-SPEC.md
+Last session: 2026-07-10T22:45:42.853Z
+Stopped at: Completed 01.1-01-PLAN.md
+Resume file: None
