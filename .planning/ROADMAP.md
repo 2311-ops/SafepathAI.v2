@@ -75,8 +75,12 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 2 plans
 
 Plans:
+**Wave 1**
 
 - [ ] 01.1-01-PLAN.md — SplashScreen widget + splashAnimationCompleteProvider + additive /splash route & redirect gate
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 01.1-02-PLAN.md — Deterministic splash/gate tests, full-suite regression pass, human visual sign-off
 
 ### Phase 2: Real-Time Location, History & Privacy
