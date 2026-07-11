@@ -9,8 +9,10 @@ import 'package:mobile/core/router/app_router.dart';
 import 'package:mobile/features/auth/data/auth_api.dart';
 import 'package:mobile/features/family/data/family_api.dart';
 import 'package:mobile/features/family/data/family_models.dart';
+import 'package:mobile/features/profile/data/profile_api.dart';
 
 import '../../helpers/fake_auth_api.dart';
+import '../../helpers/fake_profile_api.dart';
 
 void main() {
   setUpAll(() {
@@ -22,10 +24,12 @@ void main() {
   ) async {
     final authApi = FakeAuthApi();
     final familyApi = _PendingInviteFamilyApi();
+    final profileApi = FakeProfileApi();
     final container = ProviderContainer(
       overrides: [
         authApiProvider.overrideWithValue(authApi),
         familyApiProvider.overrideWithValue(familyApi),
+        profileApiProvider.overrideWithValue(profileApi),
       ],
     );
     addTearDown(container.dispose);

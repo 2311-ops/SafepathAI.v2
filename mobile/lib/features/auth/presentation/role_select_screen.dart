@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared_widgets/primary_button.dart';
+import '../../profile/application/profile_controller.dart';
 import '../application/auth_controller.dart';
 import '../application/auth_state.dart';
 import '../data/auth_models.dart';
@@ -30,11 +31,7 @@ const _roleOptions = [
     'Member',
     'Share your location and get alerts from your circle.',
   ),
-  _RoleOption(
-    Role.caregiver,
-    'Caregiver',
-    'Help look after a family member.',
-  ),
+  _RoleOption(Role.caregiver, 'Caregiver', 'Help look after a family member.'),
   _RoleOption(
     Role.orgAdmin,
     'School Admin',
@@ -63,11 +60,24 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
   Future<void> _onConfirm() async {
     final draft = ref.read(registerDraftProvider);
     if (draft == null) {
-      context.go('/register');
+      if (ref.read(authControllerProvider) is! AuthAuthenticated) {
+        context.go('/register');
+        return;
+      }
+
+      await ref.read(profileControllerProvider.notifier).updateRole(_selected);
+      if (!mounted) return;
+
+      final profileState = ref.read(profileControllerProvider).value;
+      if (profileState?.profile?.role != null) {
+        context.go('/home');
+      }
       return;
     }
 
-    await ref.read(authControllerProvider.notifier).register(
+    await ref
+        .read(authControllerProvider.notifier)
+        .register(
           email: draft.email,
           password: draft.password,
           fullName: draft.fullName,
@@ -86,11 +96,18 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
+    final profileState = ref.watch(profileControllerProvider).value;
     final draft = ref.watch(registerDraftProvider);
-    final isLoading = authState is AuthLoading;
-    final noticeMessage = authState is AuthError ? authState.message : null;
+    final isOnboarding = draft == null && authState is AuthAuthenticated;
+    final isLoading =
+        authState is AuthLoading || (profileState?.isLoading ?? false);
+    final noticeMessage = authState is AuthError
+        ? authState.message
+        : isOnboarding
+        ? profileState?.error
+        : null;
 
-    if (draft == null) {
+    if (draft == null && !isOnboarding) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) context.go('/register');
       });
@@ -138,7 +155,11 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
                 const SizedBox(height: AppSpacing.md),
               ],
               PrimaryButton(
-                label: isLoading ? 'Creating your circle...' : 'Create your circle',
+                label: isLoading
+                    ? (isOnboarding
+                          ? 'Saving your role...'
+                          : 'Creating your circle...')
+                    : (isOnboarding ? 'Continue' : 'Create your circle'),
                 onPressed: isLoading ? null : _onConfirm,
               ),
             ],

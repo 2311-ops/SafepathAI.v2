@@ -16,6 +16,8 @@ class FakeProfileApi implements ProfileApi {
   String? fullName;
   bool shouldThrowNetwork = false;
   int getMeCallCount = 0;
+  int updateRoleCallCount = 0;
+  Role? lastUpdatedRole;
 
   @override
   Future<UserProfile> getMe() async {
@@ -27,6 +29,26 @@ class FakeProfileApi implements ProfileApi {
       );
     }
 
+    return UserProfile(
+      userId: userId,
+      email: email,
+      fullName: fullName,
+      role: role,
+    );
+  }
+
+  @override
+  Future<UserProfile> updateRole(Role role) async {
+    updateRoleCallCount++;
+    lastUpdatedRole = role;
+    if (shouldThrowNetwork) {
+      throw ProfileApiException(
+        ProfileApiIssue.network,
+        message: "Couldn't connect. Check your connection and try again.",
+      );
+    }
+
+    this.role = role;
     return UserProfile(
       userId: userId,
       email: email,

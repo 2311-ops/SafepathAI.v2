@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<TransferOwnershipCommand, TransferOwnershipResult>, TransferOwnershipCommandHandler>();
         services.AddScoped<ICommandHandler<DeleteFamilyCommand, DeleteFamilyResult>, DeleteFamilyCommandHandler>();
         services.AddScoped<ICommandHandler<GetMeQuery, GetMeResult>, GetMeQueryHandler>();
+        services.AddScoped<ICommandHandler<UpdateMyRoleCommand, GetMeResult>, UpdateMyRoleCommandHandler>();
 
         return services;
     }

@@ -17,6 +17,7 @@ import '../../features/family/presentation/create_circle_screen.dart';
 import '../../features/family/presentation/invite_member_screen.dart';
 import '../../features/family/presentation/manage_permissions_screen.dart';
 import '../../features/home/presentation/landing_stub_screen.dart';
+import '../../features/profile/application/profile_controller.dart';
 import '../../features/splash/application/splash_providers.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 
@@ -38,6 +39,7 @@ const _unauthenticatedOnlyRoutes = {
 /// convenience/defense-in-depth, not the security boundary).
 const _authenticatedOnlyRoutes = {
   '/home',
+  '/onboarding/role',
   '/circle/create',
   '/circle/invite',
   '/circle/permissions',
@@ -57,6 +59,10 @@ class _AuthRefreshListenable extends ChangeNotifier {
       splashAnimationCompleteProvider,
       (previous, next) => notifyListeners(),
     );
+    ref.listen<AsyncValue<ProfileState>>(
+      profileControllerProvider,
+      (previous, next) => notifyListeners(),
+    );
   }
 }
 
@@ -73,23 +79,44 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authControllerProvider);
       final isAuthenticated = authState is AuthAuthenticated;
       final isRecovery = authState is AuthRecovery;
+      final profileState = ref.read(profileControllerProvider).value;
+      final profile = profileState?.profile;
+      final profileIsLoading = profileState?.isLoading ?? true;
+      final needsRoleOnboarding =
+          isAuthenticated &&
+          profile != null &&
+          profile.role == null &&
+          !profileIsLoading;
       final goingToAuthenticatedRoute = _authenticatedOnlyRoutes.contains(
         state.matchedLocation,
       );
+      final onSplash = state.matchedLocation == '/splash';
+      final splashComplete = ref.read(splashAnimationCompleteProvider);
+      final onInviteAccept = state.uri.path == '/invite/accept';
+      final onRoleOnboarding = state.matchedLocation == '/onboarding/role';
       final onResetPassword = state.matchedLocation == '/reset-password';
 
-      if (state.matchedLocation == '/splash') {
-        if (!ref.read(splashAnimationCompleteProvider)) {
-          return null;
+      if (onSplash && !splashComplete) {
+        return null;
+      }
+      if (isAuthenticated) {
+        final pendingInvite = ref.read(pendingInviteProvider);
+        if (pendingInvite != null && onInviteAccept) {
+          ref.read(pendingInviteProvider.notifier).set(null);
+        } else if (pendingInvite != null) {
+          return pendingInvite.location;
         }
+      }
+      if (onSplash) {
         if (isRecovery) return '/reset-password';
+        if (needsRoleOnboarding) return '/onboarding/role';
         if (isAuthenticated) return '/home';
         return '/';
       }
       if (isRecovery && !onResetPassword) {
         return '/reset-password';
       }
-      if (!isAuthenticated && state.matchedLocation == '/invite/accept') {
+      if (!isAuthenticated && onInviteAccept) {
         final token = state.uri.queryParameters['token'];
         final code = state.uri.queryParameters['code'];
         if ((token?.isNotEmpty ?? false) || (code?.isNotEmpty ?? false)) {
@@ -99,15 +126,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
         return '/';
       }
-      if (isAuthenticated && state.matchedLocation != '/invite/accept') {
-        final pendingInvite = ref.read(pendingInviteProvider);
-        if (pendingInvite != null) {
-          ref.read(pendingInviteProvider.notifier).set(null);
-          return pendingInvite.location;
-        }
-      }
       if (!isAuthenticated && goingToAuthenticatedRoute) {
         return '/';
+      }
+      if (needsRoleOnboarding && !onRoleOnboarding) {
+        return '/onboarding/role';
+      }
+      if (isAuthenticated && onRoleOnboarding && profile?.role != null) {
+        return '/home';
       }
       if (isAuthenticated &&
           (_unauthenticatedOnlyRoutes.contains(state.matchedLocation) ||
@@ -135,6 +161,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/register/role',
         name: 'register-role',
+        builder: (context, state) => const RoleSelectScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding/role',
+        name: 'onboarding-role',
         builder: (context, state) => const RoleSelectScreen(),
       ),
       GoRoute(

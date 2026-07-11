@@ -49,5 +49,50 @@ public class GetMeQueryTests : IDisposable
         Assert.Null(result.FullName);
     }
 
+    [Fact]
+    public async Task Handle_UserWithoutSelectedRole_ReturnsNullRole()
+    {
+        await using var db = _factory.CreateContext();
+        var userId = Guid.NewGuid();
+        db.Users.Add(new User
+        {
+            Id = userId,
+            Email = "oauth@safepath.test",
+            FullName = "OAuth User",
+            Role = null,
+            CreatedAt = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new GetMeQueryHandler(db);
+        var result = await handler.Handle(new GetMeQuery(userId));
+
+        Assert.Equal(userId, result.UserId);
+        Assert.Null(result.Role);
+    }
+
+    [Fact]
+    public async Task UpdateMyRole_SetsRoleForOAuthUser()
+    {
+        await using var db = _factory.CreateContext();
+        var userId = Guid.NewGuid();
+        db.Users.Add(new User
+        {
+            Id = userId,
+            Email = "oauth@safepath.test",
+            FullName = "OAuth User",
+            Role = null,
+            CreatedAt = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new UpdateMyRoleCommandHandler(db);
+        var result = await handler.Handle(
+            new UpdateMyRoleCommand(userId, Role.Caregiver, null, null));
+
+        Assert.Equal(Role.Caregiver, result.Role);
+        Assert.Equal(Role.Caregiver, db.Users.Single(u => u.Id == userId).Role);
+    }
+
     public void Dispose() => _factory.Dispose();
 }

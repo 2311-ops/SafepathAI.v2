@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/dio_client.dart';
+import '../../auth/data/auth_models.dart';
 import 'user_profile.dart';
 
 enum ProfileApiIssue { unauthenticated, network, unknown }
@@ -18,6 +19,8 @@ class ProfileApiException implements Exception {
 
 abstract class ProfileApi {
   Future<UserProfile> getMe();
+
+  Future<UserProfile> updateRole(Role role);
 }
 
 class DioProfileApi implements ProfileApi {
@@ -29,6 +32,19 @@ class DioProfileApi implements ProfileApi {
   Future<UserProfile> getMe() async {
     try {
       final response = await _dio.get<Map<String, dynamic>>('/me');
+      return UserProfile.fromJson(response.data!);
+    } on DioException catch (error) {
+      throw _mapError(error);
+    }
+  }
+
+  @override
+  Future<UserProfile> updateRole(Role role) async {
+    try {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        '/me/role',
+        data: {'role': role.wireValue},
+      );
       return UserProfile.fromJson(response.data!);
     } on DioException catch (error) {
       throw _mapError(error);

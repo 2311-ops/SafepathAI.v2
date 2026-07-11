@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/application/auth_controller.dart';
 import '../../auth/application/auth_state.dart';
+import '../../auth/data/auth_models.dart';
 import '../data/profile_api.dart';
 import '../data/user_profile.dart';
 
@@ -59,6 +60,22 @@ class ProfileController extends AsyncNotifier<ProfileState> {
         _current.copyWith(
           isLoading: false,
           error: error.message ?? 'Unable to load your profile.',
+        ),
+      );
+    }
+  }
+
+  Future<void> updateRole(Role role) async {
+    final api = ref.read(profileApiProvider);
+    state = AsyncData(_current.copyWith(isLoading: true, clearError: true));
+    try {
+      final profile = await api.updateRole(role);
+      state = AsyncData(ProfileState(profile: profile));
+    } on ProfileApiException catch (error) {
+      state = AsyncData(
+        _current.copyWith(
+          isLoading: false,
+          error: error.message ?? 'Unable to save your role.',
         ),
       );
     }

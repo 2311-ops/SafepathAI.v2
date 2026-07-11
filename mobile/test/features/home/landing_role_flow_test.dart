@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
@@ -72,6 +73,40 @@ void main() {
     expect(find.text('Enter invite code'), findsOneWidget);
     expect(find.text('Create a circle'), findsNothing);
   });
+
+  testWidgets(
+    'OAuth user without a role must choose one before reaching Home',
+    (tester) async {
+      final authApi = FakeAuthApi(initialSession: _fakeSession('oauth-user'));
+      final profileApi = FakeProfileApi(userId: 'oauth-user', role: null);
+      final familyApi = FakeFamilyApi();
+      addTearDown(authApi.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authApiProvider.overrideWithValue(authApi),
+            familyApiProvider.overrideWithValue(familyApi),
+            profileApiProvider.overrideWithValue(profileApi),
+          ],
+          child: const SafePathApp(showStartupSplash: false),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Who are you in this circle?'), findsOneWidget);
+      expect(find.text('Your circle'), findsNothing);
+
+      await tester.tap(find.text('Caregiver'));
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
+      await tester.pumpAndSettle();
+
+      expect(profileApi.updateRoleCallCount, 1);
+      expect(profileApi.lastUpdatedRole, Role.caregiver);
+      expect(find.text('Your circle'), findsOneWidget);
+      expect(find.text('Set up your circle'), findsOneWidget);
+    },
+  );
 }
 
 sb.Session _fakeSession(String userId) => sb.Session(
