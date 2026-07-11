@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart' as gsi;
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
@@ -98,6 +100,7 @@ class SupabaseAuthApi implements AuthApi {
     this._client, {
     this.googleSignInTokensProvider,
     this.googleIdTokenSignIn,
+    this.googleNativeSignInTimeout = const Duration(seconds: 12),
   });
 
   static const _googleSignInScopes = <String>['email', 'profile'];
@@ -105,6 +108,7 @@ class SupabaseAuthApi implements AuthApi {
   final sb.SupabaseClient _client;
   final GoogleSignInTokensProvider? googleSignInTokensProvider;
   final GoogleIdTokenSignIn? googleIdTokenSignIn;
+  final Duration googleNativeSignInTimeout;
 
   /// `google_sign_in`'s `GoogleSignIn.instance.initialize()` must be called
   /// exactly once and awaited before any other method on the instance is
@@ -247,12 +251,14 @@ class SupabaseAuthApi implements AuthApi {
   @override
   Future<bool> signInWithGoogle() async {
     try {
-      final tokens = await (googleSignInTokensProvider ?? _requestGoogleTokens)
-          .call();
-      _ensureCompleteGoogleTokens(tokens);
-      await (googleIdTokenSignIn ?? _signInWithGoogleTokens).call(
-        idToken: tokens.idToken,
-        accessToken: tokens.accessToken,
+      await _signInWithGoogleNatively().timeout(
+        googleNativeSignInTimeout,
+        onTimeout: () {
+          throw AuthApiException(
+            AuthIssue.unknown,
+            message: 'Google native sign-in timed out.',
+          );
+        },
       );
       return true;
     } on gsi.GoogleSignInException catch (error) {
@@ -273,6 +279,16 @@ class SupabaseAuthApi implements AuthApi {
     } catch (error) {
       throw AuthApiException(AuthIssue.network, message: error.toString());
     }
+  }
+
+  Future<void> _signInWithGoogleNatively() async {
+    final tokens = await (googleSignInTokensProvider ?? _requestGoogleTokens)
+        .call();
+    _ensureCompleteGoogleTokens(tokens);
+    await (googleIdTokenSignIn ?? _signInWithGoogleTokens).call(
+      idToken: tokens.idToken,
+      accessToken: tokens.accessToken,
+    );
   }
 
   Future<GoogleSignInTokens> _requestGoogleTokens() async {

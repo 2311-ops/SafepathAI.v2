@@ -21,10 +21,10 @@ samples, guidance on mobile development, and a full API reference.
 "Continue with Google" (Welcome + Login screens) uses the `google_sign_in`
 package's **native** on-device account picker
 (`GoogleSignIn.instance.authenticate()`) plus Supabase's
-`signInWithIdToken(provider: OAuthProvider.google, idToken: ...)` — not the
-browser/Custom Tab `signInWithOAuth` flow. This is a deliberate 01-09 reversal
-of 01-08's original browser-based implementation, made so no Supabase/Google
-URL is ever shown to the user during sign-in.
+`signInWithIdToken(provider: OAuthProvider.google, idToken: ..., accessToken: ...)`
+-- not the browser/Custom Tab `signInWithOAuth` flow. This is a deliberate
+01-09 reversal of 01-08's original browser-based implementation, made so no
+Supabase/Google URL is ever shown to the user during sign-in.
 
 - **Required client-side config: `GOOGLE_SERVER_CLIENT_ID`.** Add this key to
   `mobile/env.json` (gitignored) and pass it via `--dart-define-from-file`,
@@ -33,8 +33,8 @@ URL is ever shown to the user during sign-in.
   Supabase's Google provider on the dashboard) — **not** the Android
   client's ID. It's a public identifier, safe to commit to client code (like
   the Supabase anon key), but is read from `env.json` here to match the
-  project's existing config pattern. `signInWithGoogle()` throws a
-  `StateError` loudly if this is missing, rather than failing silently.
+  project's existing config pattern. `signInWithGoogle()` surfaces a clear
+  auth configuration error if this is missing, rather than failing silently.
 - **Required Google Cloud Console prerequisite: an Android OAuth client.**
   Google's native sign-in flow validates the calling app against an
   **Android**-type OAuth client registered in Google Cloud Console with this
@@ -62,7 +62,15 @@ URL is ever shown to the user during sign-in.
   backed out of the browser and returned to the app), `google_sign_in`'s
   `authenticate()` call is synchronously awaitable end-to-end — cancellation
   (`GoogleSignInExceptionCode.canceled`) resolves the same `await` directly,
-  with no separate app-resume recovery step needed.
+  with no separate app-resume recovery step needed. The app still guards
+  against a native picker hang with a timeout and checks the current Supabase
+  session after a successful token exchange so the UI does not stay pinned in
+  loading if the auth stream event is missed.
+- **Role selection after Google sign-in.** Google sign-in must not silently
+  default a new user to Member. Users whose profile has no role, plus legacy
+  Google users defaulted to Member without role metadata, are redirected to
+  role onboarding to choose Guardian / Parent, Member, Caregiver, or the
+  available role set before reaching Home.
 - **Testing.** Google Sign-In is unit/widget-tested with a mocked `AuthApi` /
   `AuthController` — it never drives a real Google sign-in flow in CI or
   automated tests. Manual verification requires a real device or emulator

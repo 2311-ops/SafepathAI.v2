@@ -53,12 +53,14 @@ class AuthController extends Notifier<AuthState> {
   }) async {
     state = const AuthLoading();
     try {
-      final response = await ref.read(authApiProvider).register(
-        email: email,
-        password: password,
-        fullName: fullName,
-        role: role,
-      );
+      final response = await ref
+          .read(authApiProvider)
+          .register(
+            email: email,
+            password: password,
+            fullName: fullName,
+            role: role,
+          );
 
       state = response.requiresEmailVerification
           ? const AuthPendingVerification(
@@ -73,10 +75,9 @@ class AuthController extends Notifier<AuthState> {
   Future<void> login({required String email, required String password}) async {
     state = const AuthLoading();
     try {
-      final response = await ref.read(authApiProvider).login(
-        email: email,
-        password: password,
-      );
+      final response = await ref
+          .read(authApiProvider)
+          .login(email: email, password: password);
 
       if (response.signedIn) {
         state = const AuthAuthenticated();
@@ -132,6 +133,11 @@ class AuthController extends Notifier<AuthState> {
         // User cancelled the native picker before completing it — nothing
         // went wrong, nothing happened yet, so no error banner.
         state = const AuthUnauthenticated();
+      } else if (ref.read(authApiProvider).currentSession != null) {
+        // Native token sign-in can complete before the auth-state stream
+        // listener observes the session on some Android devices. Do not leave
+        // the Google button pinned in loading if Supabase already has one.
+        state = const AuthAuthenticated();
       }
     } on AuthApiException catch (error) {
       state = AuthError(_googleSignInErrorMessage(error));
@@ -154,10 +160,8 @@ class AuthController extends Notifier<AuthState> {
 
   String _loginErrorMessage(AuthApiException error) {
     return switch (error.issue) {
-      AuthIssue.emailNotVerified =>
-        'Verify your email before logging in.',
-      AuthIssue.invalidCredentials =>
-        'Incorrect email or password. Try again.',
+      AuthIssue.emailNotVerified => 'Verify your email before logging in.',
+      AuthIssue.invalidCredentials => 'Incorrect email or password. Try again.',
       AuthIssue.network =>
         "Couldn't connect. Check your connection and try again.",
       _ => 'We could not log you in. Please try again.',

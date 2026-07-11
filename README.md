@@ -10,7 +10,7 @@ The product goal is family safety with secure auth, family circles, live locatio
 
 ## Current Project State
 
-Last checked with GSD on 2026-07-11.
+Last checked with GSD on 2026-07-12.
 
 | Area | State |
 | --- | --- |
@@ -28,8 +28,8 @@ Recent working fixes include:
 - Flutter startup splash is visible on slower physical Android startup.
 - Android routing now respects the intended splash route instead of skipping to `/`.
 - USB mobile API configuration supports physical-device local backend calls.
-- Google sign-in now passes both the Google ID token and access token to Supabase.
-- Mobile tests pass locally (`105` Flutter tests at the last verification).
+- Google sign-in uses the native Google account chooser, passes both the Google ID token and access token to Supabase, and routes users without a role to role selection before Home.
+- Mobile tests pass locally (`112` Flutter tests at the last verification).
 
 Known project-state caveat:
 

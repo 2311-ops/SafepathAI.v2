@@ -88,4 +88,5 @@ adb -s R58M30TGNXV shell monkey -p com.safepath.mobile -c android.intent.categor
 - If `flutter devices` does not show the phone, reconnect USB, unlock the phone, and accept the USB debugging prompt.
 - If profile or circle data does not load, make sure the backend terminal is still running and repeat `adb reverse tcp:5059 tcp:5059`.
 - If the app can sign in but cannot load `/me` or `/families/mine`, confirm the run command includes `--dart-define=API_BASE_URL=http://127.0.0.1:5059`.
+- If Google shows the account chooser but fails after selecting an account, confirm Google Cloud has an Android OAuth client for package `com.safepath.mobile` with this machine's debug SHA-1.
 - If you use Wi-Fi instead of USB forwarding, replace the API URL with your PC LAN IP, for example `--dart-define=API_BASE_URL=http://192.168.1.20:5059`.

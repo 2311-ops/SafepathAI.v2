@@ -305,6 +305,27 @@ void main() {
   );
 
   test(
+    'signInWithGoogle uses currentSession when the auth stream event is missed',
+    () async {
+      fakeApi.sessionOverride = sb.Session(
+        accessToken: 'already-created-google-token',
+        tokenType: 'bearer',
+        user: sb.User(
+          id: 'already-created-google-user-id',
+          appMetadata: const {},
+          userMetadata: const {},
+          aud: 'authenticated',
+          createdAt: DateTime.now().toIso8601String(),
+        ),
+      );
+
+      await container.read(authControllerProvider.notifier).signInWithGoogle();
+
+      expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
+    },
+  );
+
+  test(
     'signInWithGoogle cancellation transitions to Unauthenticated with no error',
     () async {
       fakeApi.googleSignInShouldLaunch = false;
