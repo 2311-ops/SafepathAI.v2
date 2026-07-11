@@ -36,7 +36,7 @@ void main() {
           familyApiProvider.overrideWithValue(familyApi),
           profileApiProvider.overrideWithValue(profileApi),
         ],
-        child: const SafePathApp(),
+        child: const SafePathApp(showStartupSplash: false),
       ),
     );
     await tester.pumpAndSettle();
@@ -62,7 +62,7 @@ void main() {
           familyApiProvider.overrideWithValue(familyApi),
           profileApiProvider.overrideWithValue(profileApi),
         ],
-        child: const SafePathApp(),
+        child: const SafePathApp(showStartupSplash: false),
       ),
     );
     await tester.pumpAndSettle();

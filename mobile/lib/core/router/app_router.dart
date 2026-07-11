@@ -67,6 +67,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     initialLocation: '/splash',
+    overridePlatformDefaultLocation: true,
     refreshListenable: refreshListenable,
     redirect: (context, state) {
       final authState = ref.read(authControllerProvider);

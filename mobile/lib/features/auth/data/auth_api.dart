@@ -41,6 +41,22 @@ class AuthSessionResult {
   final bool requiresEmailVerification;
 }
 
+class GoogleSignInTokens {
+  const GoogleSignInTokens({
+    required this.idToken,
+    required this.accessToken,
+  });
+
+  final String idToken;
+  final String accessToken;
+}
+
+typedef GoogleSignInTokensProvider = Future<GoogleSignInTokens> Function();
+typedef GoogleIdTokenSignIn = Future<void> Function({
+  required String idToken,
+  required String accessToken,
+});
+
 abstract class AuthApi {
   sb.Session? get currentSession;
 
@@ -78,9 +94,17 @@ abstract class AuthApi {
 }
 
 class SupabaseAuthApi implements AuthApi {
-  SupabaseAuthApi(this._client);
+  SupabaseAuthApi(
+    this._client, {
+    this.googleSignInTokensProvider,
+    this.googleIdTokenSignIn,
+  });
+
+  static const _googleSignInScopes = <String>['email', 'profile'];
 
   final sb.SupabaseClient _client;
+  final GoogleSignInTokensProvider? googleSignInTokensProvider;
+  final GoogleIdTokenSignIn? googleIdTokenSignIn;
 
   /// `google_sign_in`'s `GoogleSignIn.instance.initialize()` must be called
   /// exactly once and awaited before any other method on the instance is
@@ -207,29 +231,12 @@ class SupabaseAuthApi implements AuthApi {
   @override
   Future<bool> signInWithGoogle() async {
     try {
-      if (googleServerClientId.isEmpty) {
-        // Fail loudly but through the AuthApiException path so AuthController
-        // can surface the configuration issue as UI state instead of crashing.
-        throw AuthApiException(
-          AuthIssue.unknown,
-          message:
-              'Missing GOOGLE_SERVER_CLIENT_ID. Add it to mobile/env.json and pass it via --dart-define-from-file.',
-        );
-      }
-
-      await _ensureGoogleSignInInitialized();
-      final account = await gsi.GoogleSignIn.instance.authenticate();
-      final idToken = account.authentication.idToken;
-      if (idToken == null) {
-        throw AuthApiException(
-          AuthIssue.unknown,
-          message: 'Google did not return an ID token.',
-        );
-      }
-
-      await _client.auth.signInWithIdToken(
-        provider: sb.OAuthProvider.google,
-        idToken: idToken,
+      final tokens = await (googleSignInTokensProvider ?? _requestGoogleTokens)
+          .call();
+      _ensureCompleteGoogleTokens(tokens);
+      await (googleIdTokenSignIn ?? _signInWithGoogleTokens).call(
+        idToken: tokens.idToken,
+        accessToken: tokens.accessToken,
       );
       return true;
     } on gsi.GoogleSignInException catch (error) {
@@ -250,6 +257,68 @@ class SupabaseAuthApi implements AuthApi {
     } catch (error) {
       throw AuthApiException(AuthIssue.network, message: error.toString());
     }
+  }
+
+  Future<GoogleSignInTokens> _requestGoogleTokens() async {
+    if (googleServerClientId.isEmpty) {
+      // Fail loudly but through the AuthApiException path so AuthController
+      // can surface the configuration issue as UI state instead of crashing.
+      throw AuthApiException(
+        AuthIssue.unknown,
+        message:
+            'Missing GOOGLE_SERVER_CLIENT_ID. Add it to mobile/env.json and pass it via --dart-define-from-file.',
+      );
+    }
+
+    await _ensureGoogleSignInInitialized();
+    final account = await gsi.GoogleSignIn.instance.authenticate(
+      scopeHint: _googleSignInScopes,
+    );
+
+    final idToken = account.authentication.idToken;
+    if (idToken == null) {
+      throw AuthApiException(
+        AuthIssue.unknown,
+        message: 'Google did not return an ID token.',
+      );
+    }
+
+    final authorization =
+        await account.authorizationClient.authorizationForScopes(
+          _googleSignInScopes,
+        ) ??
+        await account.authorizationClient.authorizeScopes(_googleSignInScopes);
+
+    return GoogleSignInTokens(
+      idToken: idToken,
+      accessToken: authorization.accessToken,
+    );
+  }
+
+  void _ensureCompleteGoogleTokens(GoogleSignInTokens tokens) {
+    if (tokens.idToken.isEmpty) {
+      throw AuthApiException(
+        AuthIssue.unknown,
+        message: 'Google did not return an ID token.',
+      );
+    }
+    if (tokens.accessToken.isEmpty) {
+      throw AuthApiException(
+        AuthIssue.unknown,
+        message: 'Google did not return an access token.',
+      );
+    }
+  }
+
+  Future<void> _signInWithGoogleTokens({
+    required String idToken,
+    required String accessToken,
+  }) {
+    return _client.auth.signInWithIdToken(
+      provider: sb.OAuthProvider.google,
+      idToken: idToken,
+      accessToken: accessToken,
+    );
   }
 
   Future<void> _ensureGoogleSignInInitialized() {

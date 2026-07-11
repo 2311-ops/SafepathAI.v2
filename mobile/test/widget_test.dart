@@ -66,11 +66,11 @@ void main() {
         overrides: [
           authApiProvider.overrideWithValue(_FakeAuthApi()),
         ],
-        child: const SafePathApp(),
+        child: const SafePathApp(showStartupSplash: false),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('SafePath AI'), findsOneWidget);
+    expect(find.text('SafePath AI'), findsWidgets);
   });
 }

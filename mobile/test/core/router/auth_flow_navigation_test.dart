@@ -60,7 +60,7 @@ void main() {
         familyApiProvider.overrideWithValue(fakeFamilyApi),
         profileApiProvider.overrideWithValue(fakeProfileApi),
       ],
-      child: const SafePathApp(),
+      child: const SafePathApp(showStartupSplash: false),
     );
   }
 

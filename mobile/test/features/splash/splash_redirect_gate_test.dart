@@ -38,6 +38,8 @@ void main() {
 
   tearDown(() {
     fakeApi.dispose();
+    TestWidgetsFlutterBinding.instance.platformDispatcher
+        .clearDefaultRouteNameTestValue();
   });
 
   Widget buildApp() {
@@ -47,7 +49,7 @@ void main() {
         familyApiProvider.overrideWithValue(fakeFamilyApi),
         profileApiProvider.overrideWithValue(fakeProfileApi),
       ],
-      child: const SafePathApp(),
+      child: const SafePathApp(showStartupSplash: false),
     );
   }
 
@@ -73,6 +75,23 @@ void main() {
       expect(find.text('Create your circle'), findsOneWidget);
     },
   );
+
+  testWidgets('Android platform default route does not bypass /splash', (
+    tester,
+  ) async {
+    TestWidgetsFlutterBinding
+            .instance
+            .platformDispatcher
+            .defaultRouteNameTestValue =
+        '/';
+    fakeApi.initialSession = null;
+
+    await tester.pumpWidget(buildApp());
+    await tester.pump();
+
+    expect(find.byType(SplashScreen), findsOneWidget);
+    expect(find.text('Create your circle'), findsNothing);
+  });
 
   testWidgets('routes authenticated to Home', (tester) async {
     fakeApi.initialSession = _fakeSession();

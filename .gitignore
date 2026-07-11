@@ -20,6 +20,12 @@ mobile/.packages
 .DS_Store
 Thumbs.db
 
+# Local debug/run artifacts
+backend-api.*.log
+debug_screens/
+.claude/*.lock
+.planning/research/.cache/
+
 # Secrets — never commit
 .env
 *.env
