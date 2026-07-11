@@ -24,7 +24,10 @@ class _FakeAuthApi implements AuthApi {
     required String fullName,
     required Role role,
   }) async {
-    return const AuthSessionResult(signedIn: false, requiresEmailVerification: true);
+    return const AuthSessionResult(
+      signedIn: false,
+      requiresEmailVerification: true,
+    );
   }
 
   @override
@@ -50,6 +53,9 @@ class _FakeAuthApi implements AuthApi {
   Future<void> updatePassword({required String password}) async {}
 
   @override
+  Future<void> updateRoleMetadata(Role role) async {}
+
+  @override
   Future<bool> signInWithGoogle() async => true;
 }
 
@@ -63,9 +69,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          authApiProvider.overrideWithValue(_FakeAuthApi()),
-        ],
+        overrides: [authApiProvider.overrideWithValue(_FakeAuthApi())],
         child: const SafePathApp(showStartupSplash: false),
       ),
     );

@@ -44,15 +44,13 @@ class _StreamFakeAuthApi implements AuthApi {
     required String password,
     required String fullName,
     required Role role,
-  }) async =>
-      const AuthSessionResult(signedIn: false);
+  }) async => const AuthSessionResult(signedIn: false);
 
   @override
   Future<AuthSessionResult> login({
     required String email,
     required String password,
-  }) async =>
-      const AuthSessionResult(signedIn: false);
+  }) async => const AuthSessionResult(signedIn: false);
 
   @override
   Future<void> logout() async {}
@@ -62,6 +60,9 @@ class _StreamFakeAuthApi implements AuthApi {
 
   @override
   Future<void> updatePassword({required String password}) async {}
+
+  @override
+  Future<void> updateRoleMetadata(Role role) async {}
 
   @override
   Future<AuthSessionResult> refreshSession() async =>
@@ -74,16 +75,16 @@ class _StreamFakeAuthApi implements AuthApi {
 }
 
 sb.Session _session() => sb.Session(
-      accessToken: 'fake-access-token',
-      tokenType: 'bearer',
-      user: sb.User(
-        id: 'fake-user-id',
-        appMetadata: const {},
-        userMetadata: const {},
-        aud: 'authenticated',
-        createdAt: DateTime.now().toIso8601String(),
-      ),
-    );
+  accessToken: 'fake-access-token',
+  tokenType: 'bearer',
+  user: sb.User(
+    id: 'fake-user-id',
+    appMetadata: const {},
+    userMetadata: const {},
+    aud: 'authenticated',
+    createdAt: DateTime.now().toIso8601String(),
+  ),
+);
 
 void main() {
   late _StreamFakeAuthApi fakeApi;
@@ -120,26 +121,33 @@ void main() {
     expect(container.read(authControllerProvider), isA<AuthUnauthenticated>());
   });
 
-  test('INITIAL_SESSION with a session (restored after restart) -> Authenticated',
-      () async {
-    buildContainer();
-    fakeApi.emit(sb.AuthChangeEvent.initialSession, session: _session());
-    await Future<void>.delayed(Duration.zero);
+  test(
+    'INITIAL_SESSION with a session (restored after restart) -> Authenticated',
+    () async {
+      buildContainer();
+      fakeApi.emit(sb.AuthChangeEvent.initialSession, session: _session());
+      await Future<void>.delayed(Duration.zero);
 
-    expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
-  });
+      expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
+    },
+  );
 
-  test('SIGNED_OUT (explicit sign-out or expired session) -> Unauthenticated',
-      () async {
-    fakeApi.initialSession = _session();
-    buildContainer();
-    expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
+  test(
+    'SIGNED_OUT (explicit sign-out or expired session) -> Unauthenticated',
+    () async {
+      fakeApi.initialSession = _session();
+      buildContainer();
+      expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
 
-    fakeApi.emit(sb.AuthChangeEvent.signedOut);
-    await Future<void>.delayed(Duration.zero);
+      fakeApi.emit(sb.AuthChangeEvent.signedOut);
+      await Future<void>.delayed(Duration.zero);
 
-    expect(container.read(authControllerProvider), isA<AuthUnauthenticated>());
-  });
+      expect(
+        container.read(authControllerProvider),
+        isA<AuthUnauthenticated>(),
+      );
+    },
+  );
 
   test('TOKEN_REFRESHED with a session keeps the user Authenticated', () async {
     fakeApi.initialSession = _session();
@@ -151,40 +159,57 @@ void main() {
     expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
   });
 
-  test('PASSWORD_RECOVERY moves to AuthRecovery from any prior state', () async {
-    buildContainer();
+  test(
+    'PASSWORD_RECOVERY moves to AuthRecovery from any prior state',
+    () async {
+      buildContainer();
 
-    fakeApi.emit(sb.AuthChangeEvent.passwordRecovery, session: _session());
-    await Future<void>.delayed(Duration.zero);
+      fakeApi.emit(sb.AuthChangeEvent.passwordRecovery, session: _session());
+      await Future<void>.delayed(Duration.zero);
 
-    expect(container.read(authControllerProvider), isA<AuthRecovery>());
-  });
+      expect(container.read(authControllerProvider), isA<AuthRecovery>());
+    },
+  );
 
-  test('USER_UPDATED with a session (e.g. email verification completing) -> Authenticated',
-      () async {
-    buildContainer();
-    expect(container.read(authControllerProvider), isA<AuthUnauthenticated>());
+  test(
+    'USER_UPDATED with a session (e.g. email verification completing) -> Authenticated',
+    () async {
+      buildContainer();
+      expect(
+        container.read(authControllerProvider),
+        isA<AuthUnauthenticated>(),
+      );
 
-    fakeApi.emit(sb.AuthChangeEvent.userUpdated, session: _session());
-    await Future<void>.delayed(Duration.zero);
+      fakeApi.emit(sb.AuthChangeEvent.userUpdated, session: _session());
+      await Future<void>.delayed(Duration.zero);
 
-    expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
-  });
+      expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
+    },
+  );
 
-  test('a sequence of events transitions state correctly at each step', () async {
-    buildContainer();
-    expect(container.read(authControllerProvider), isA<AuthUnauthenticated>());
+  test(
+    'a sequence of events transitions state correctly at each step',
+    () async {
+      buildContainer();
+      expect(
+        container.read(authControllerProvider),
+        isA<AuthUnauthenticated>(),
+      );
 
-    fakeApi.emit(sb.AuthChangeEvent.signedIn, session: _session());
-    await Future<void>.delayed(Duration.zero);
-    expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
+      fakeApi.emit(sb.AuthChangeEvent.signedIn, session: _session());
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
 
-    fakeApi.emit(sb.AuthChangeEvent.passwordRecovery, session: _session());
-    await Future<void>.delayed(Duration.zero);
-    expect(container.read(authControllerProvider), isA<AuthRecovery>());
+      fakeApi.emit(sb.AuthChangeEvent.passwordRecovery, session: _session());
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(authControllerProvider), isA<AuthRecovery>());
 
-    fakeApi.emit(sb.AuthChangeEvent.signedOut);
-    await Future<void>.delayed(Duration.zero);
-    expect(container.read(authControllerProvider), isA<AuthUnauthenticated>());
-  });
+      fakeApi.emit(sb.AuthChangeEvent.signedOut);
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        container.read(authControllerProvider),
+        isA<AuthUnauthenticated>(),
+      );
+    },
+  );
 }

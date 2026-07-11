@@ -38,6 +38,7 @@ class FakeAuthApi implements AuthApi {
   bool loginShouldFail = false;
   bool logoutCalled = false;
   bool updatePasswordCalled = false;
+  bool updateRoleMetadataCalled = false;
   bool requestPasswordResetCalled = false;
   String? lastResetEmail;
   String? lastUpdatedPassword;
@@ -61,7 +62,8 @@ class FakeAuthApi implements AuthApi {
   /// controller build time.
   sb.Session? sessionOverride;
 
-  final StreamController<dynamic> _controller = StreamController<dynamic>.broadcast();
+  final StreamController<dynamic> _controller =
+      StreamController<dynamic>.broadcast();
 
   @override
   sb.Session? get currentSession => sessionOverride;
@@ -125,6 +127,11 @@ class FakeAuthApi implements AuthApi {
   }
 
   @override
+  Future<void> updateRoleMetadata(Role role) async {
+    updateRoleMetadataCalled = true;
+  }
+
+  @override
   Future<AuthSessionResult> refreshSession() async {
     return const AuthSessionResult(signedIn: true);
   }
@@ -134,7 +141,10 @@ class FakeAuthApi implements AuthApi {
     googleSignInCallCount++;
 
     if (googleSignInShouldFail) {
-      throw AuthApiException(googleSignInIssue, message: 'google sign-in failed');
+      throw AuthApiException(
+        googleSignInIssue,
+        message: 'google sign-in failed',
+      );
     }
 
     return googleSignInShouldLaunch;
@@ -175,9 +185,7 @@ void main() {
   setUp(() {
     fakeApi = FakeAuthApi();
     container = ProviderContainer(
-      overrides: [
-        authApiProvider.overrideWithValue(fakeApi),
-      ],
+      overrides: [authApiProvider.overrideWithValue(fakeApi)],
     );
   });
 
@@ -189,7 +197,9 @@ void main() {
   test(
     'register success saves the authenticated state when Supabase returns a session',
     () async {
-      await container.read(authControllerProvider.notifier).register(
+      await container
+          .read(authControllerProvider.notifier)
+          .register(
             email: 'new@family.com',
             password: 'correct-horse-1',
             fullName: 'New Guardian',
@@ -205,7 +215,9 @@ void main() {
     () async {
       fakeApi.registerShouldRequireVerification = true;
 
-      await container.read(authControllerProvider.notifier).register(
+      await container
+          .read(authControllerProvider.notifier)
+          .register(
             email: 'pending@family.com',
             password: 'correct-horse-1',
             fullName: 'Pending Guardian',
@@ -226,7 +238,9 @@ void main() {
     () async {
       fakeApi.registerShouldFail = true;
 
-      await container.read(authControllerProvider.notifier).register(
+      await container
+          .read(authControllerProvider.notifier)
+          .register(
             email: 'dup@family.com',
             password: 'correct-horse-1',
             fullName: 'Dup Guardian',
@@ -240,10 +254,9 @@ void main() {
   );
 
   test('login success saves the authenticated state', () async {
-    await container.read(authControllerProvider.notifier).login(
-          email: 'existing@family.com',
-          password: 'correct-horse-1',
-        );
+    await container
+        .read(authControllerProvider.notifier)
+        .login(email: 'existing@family.com', password: 'correct-horse-1');
 
     expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
     expect(fakeApi.lastLoginEmail, 'existing@family.com');
@@ -255,10 +268,9 @@ void main() {
     () async {
       fakeApi.loginShouldFail = true;
 
-      await container.read(authControllerProvider.notifier).login(
-            email: 'existing@family.com',
-            password: 'wrong-password',
-          );
+      await container
+          .read(authControllerProvider.notifier)
+          .login(email: 'existing@family.com', password: 'wrong-password');
 
       final state = container.read(authControllerProvider);
       expect(state, isA<AuthError>());
@@ -299,7 +311,10 @@ void main() {
 
       await container.read(authControllerProvider.notifier).signInWithGoogle();
 
-      expect(container.read(authControllerProvider), isA<AuthUnauthenticated>());
+      expect(
+        container.read(authControllerProvider),
+        isA<AuthUnauthenticated>(),
+      );
     },
   );
 

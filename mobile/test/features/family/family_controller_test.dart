@@ -95,6 +95,9 @@ class _FakeAuthApi implements AuthApi {
       throw UnimplementedError();
 
   @override
+  Future<void> updateRoleMetadata(Role role) => throw UnimplementedError();
+
+  @override
   Future<AuthSessionResult> refreshSession() => throw UnimplementedError();
 
   @override

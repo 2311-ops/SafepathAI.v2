@@ -42,20 +42,18 @@ class AuthSessionResult {
 }
 
 class GoogleSignInTokens {
-  const GoogleSignInTokens({
-    required this.idToken,
-    required this.accessToken,
-  });
+  const GoogleSignInTokens({required this.idToken, required this.accessToken});
 
   final String idToken;
   final String accessToken;
 }
 
 typedef GoogleSignInTokensProvider = Future<GoogleSignInTokens> Function();
-typedef GoogleIdTokenSignIn = Future<void> Function({
-  required String idToken,
-  required String accessToken,
-});
+typedef GoogleIdTokenSignIn =
+    Future<void> Function({
+      required String idToken,
+      required String accessToken,
+    });
 
 abstract class AuthApi {
   sb.Session? get currentSession;
@@ -79,6 +77,8 @@ abstract class AuthApi {
   Future<void> sendPasswordResetEmail({required String email});
 
   Future<void> updatePassword({required String password});
+
+  Future<void> updateRoleMetadata(Role role);
 
   Future<AuthSessionResult> refreshSession();
 
@@ -201,6 +201,22 @@ class SupabaseAuthApi implements AuthApi {
   Future<void> updatePassword({required String password}) async {
     try {
       await _client.auth.updateUser(sb.UserAttributes(password: password));
+    } on sb.AuthException catch (error) {
+      throw AuthApiException(
+        _issueFromMessage(error.message),
+        message: error.message,
+      );
+    } catch (error) {
+      throw AuthApiException(AuthIssue.network, message: error.toString());
+    }
+  }
+
+  @override
+  Future<void> updateRoleMetadata(Role role) async {
+    try {
+      await _client.auth.updateUser(
+        sb.UserAttributes(data: {'role': role.wireValue}),
+      );
     } on sb.AuthException catch (error) {
       throw AuthApiException(
         _issueFromMessage(error.message),

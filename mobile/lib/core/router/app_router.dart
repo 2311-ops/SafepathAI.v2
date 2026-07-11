@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../deep_link/deep_link_service.dart';
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/application/auth_state.dart';
+import '../../features/auth/data/auth_api.dart';
+import '../../features/auth/data/auth_models.dart';
 import '../../features/auth/presentation/check_email_screen.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
@@ -82,10 +84,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       final profileState = ref.read(profileControllerProvider).value;
       final profile = profileState?.profile;
       final profileIsLoading = profileState?.isLoading ?? true;
+      final sessionRoleValue = ref
+          .read(authApiProvider)
+          .currentSession
+          ?.user
+          .userMetadata?['role'];
+      final sessionHasRoleMetadata =
+          sessionRoleValue is String && sessionRoleValue.trim().isNotEmpty;
+      final legacyGoogleDefaultedToMember =
+          profile?.role == Role.member &&
+          !sessionHasRoleMetadata &&
+          !(profileState?.roleMetadataSynced ?? false);
       final needsRoleOnboarding =
           isAuthenticated &&
           profile != null &&
-          profile.role == null &&
+          (profile.role == null || legacyGoogleDefaultedToMember) &&
           !profileIsLoading;
       final goingToAuthenticatedRoute = _authenticatedOnlyRoutes.contains(
         state.matchedLocation,

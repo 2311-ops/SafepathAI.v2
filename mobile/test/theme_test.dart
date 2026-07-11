@@ -36,7 +36,10 @@ class _FakeAuthApi implements AuthApi {
     required String fullName,
     required Role role,
   }) async {
-    return const AuthSessionResult(signedIn: false, requiresEmailVerification: true);
+    return const AuthSessionResult(
+      signedIn: false,
+      requiresEmailVerification: true,
+    );
   }
 
   @override
@@ -62,6 +65,9 @@ class _FakeAuthApi implements AuthApi {
   Future<void> updatePassword({required String password}) async {}
 
   @override
+  Future<void> updateRoleMetadata(Role role) async {}
+
+  @override
   Future<bool> signInWithGoogle() async => true;
 }
 
@@ -84,28 +90,23 @@ void main() {
     expect(AppColors.appBg, const Color(0xFFECF0EF));
   });
 
-  testWidgets(
-    'buildSafePathTheme uses Manrope for headings and JetBrains Mono '
-    'for the mono style',
-    (WidgetTester tester) async {
-      final theme = buildSafePathTheme();
+  testWidgets('buildSafePathTheme uses Manrope for headings and JetBrains Mono '
+      'for the mono style', (WidgetTester tester) async {
+    final theme = buildSafePathTheme();
 
-      final headingFamily = theme.textTheme.headlineMedium?.fontFamily ?? '';
-      final captionFamily = theme.textTheme.labelSmall?.fontFamily ?? '';
+    final headingFamily = theme.textTheme.headlineMedium?.fontFamily ?? '';
+    final captionFamily = theme.textTheme.labelSmall?.fontFamily ?? '';
 
-      expect(headingFamily.contains('Manrope'), isTrue);
-      expect(captionFamily.contains('JetBrainsMono'), isTrue);
-    },
-  );
+    expect(headingFamily.contains('Manrope'), isTrue);
+    expect(captionFamily.contains('JetBrainsMono'), isTrue);
+  });
 
   testWidgets('SafePathApp builds and shows the themed placeholder route', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          authApiProvider.overrideWithValue(_FakeAuthApi()),
-        ],
+        overrides: [authApiProvider.overrideWithValue(_FakeAuthApi())],
         child: const SafePathApp(showStartupSplash: false),
       ),
     );

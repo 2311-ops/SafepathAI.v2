@@ -51,7 +51,9 @@ void main() {
   testWidgets('Member login routes to the Member join-family flow', (
     tester,
   ) async {
-    final authApi = FakeAuthApi(initialSession: _fakeSession('member-user'));
+    final authApi = FakeAuthApi(
+      initialSession: _fakeSession('member-user', role: Role.member),
+    );
     final profileApi = FakeProfileApi(userId: 'member-user', role: Role.member);
     final familyApi = FakeFamilyApi();
     addTearDown(authApi.dispose);
@@ -103,19 +105,60 @@ void main() {
 
       expect(profileApi.updateRoleCallCount, 1);
       expect(profileApi.lastUpdatedRole, Role.caregiver);
+      expect(authApi.updateRoleMetadataCallCount, 1);
+      expect(authApi.lastUpdatedMetadataRole, Role.caregiver);
       expect(find.text('Your circle'), findsOneWidget);
       expect(find.text('Set up your circle'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'Google user defaulted to Member by old backend trigger must still choose a role',
+    (tester) async {
+      final authApi = FakeAuthApi(
+        initialSession: _fakeSession('legacy-google'),
+      );
+      final profileApi = FakeProfileApi(
+        userId: 'legacy-google',
+        role: Role.member,
+      );
+      final familyApi = FakeFamilyApi();
+      addTearDown(authApi.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authApiProvider.overrideWithValue(authApi),
+            familyApiProvider.overrideWithValue(familyApi),
+            profileApiProvider.overrideWithValue(profileApi),
+          ],
+          child: const SafePathApp(showStartupSplash: false),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Who are you in this circle?'), findsOneWidget);
+      expect(find.text('Join a family circle'), findsNothing);
+
+      await tester.tap(find.text('Guardian / Parent'));
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
+      await tester.pumpAndSettle();
+
+      expect(profileApi.lastUpdatedRole, Role.guardian);
+      expect(authApi.lastUpdatedMetadataRole, Role.guardian);
+      expect(find.text('Your circle'), findsOneWidget);
+      expect(find.text('Create your family circle'), findsOneWidget);
+    },
+  );
 }
 
-sb.Session _fakeSession(String userId) => sb.Session(
+sb.Session _fakeSession(String userId, {Role? role}) => sb.Session(
   accessToken: 'fake-access-token',
   tokenType: 'bearer',
   user: sb.User(
     id: userId,
     appMetadata: const {},
-    userMetadata: const {},
+    userMetadata: role == null ? const {} : {'role': role.wireValue},
     aud: 'authenticated',
     createdAt: DateTime.now().toIso8601String(),
   ),

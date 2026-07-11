@@ -38,6 +38,7 @@ class FakeAuthApi implements AuthApi {
   int loginCallCount = 0;
   int resetCallCount = 0;
   int updatePasswordCallCount = 0;
+  int updateRoleMetadataCallCount = 0;
   int refreshCallCount = 0;
   int googleSignInCallCount = 0;
   bool logoutCalled = false;
@@ -49,6 +50,7 @@ class FakeAuthApi implements AuthApi {
   String? lastLoginPassword;
   String? lastResetEmail;
   String? lastUpdatedPassword;
+  Role? lastUpdatedMetadataRole;
 
   /// Optional artificial delay so tests can observe the loading state before
   /// the future resolves (e.g. to assert a button is disabled mid-flight).
@@ -130,8 +132,19 @@ class FakeAuthApi implements AuthApi {
     if (responseDelay > Duration.zero) await Future.delayed(responseDelay);
 
     if (updatePasswordShouldFail) {
-      throw AuthApiException(AuthIssue.network, message: 'update password failed');
+      throw AuthApiException(
+        AuthIssue.network,
+        message: 'update password failed',
+      );
     }
+  }
+
+  @override
+  Future<void> updateRoleMetadata(Role role) async {
+    updateRoleMetadataCallCount++;
+    lastUpdatedMetadataRole = role;
+
+    if (responseDelay > Duration.zero) await Future.delayed(responseDelay);
   }
 
   @override
@@ -141,7 +154,10 @@ class FakeAuthApi implements AuthApi {
     if (responseDelay > Duration.zero) await Future.delayed(responseDelay);
 
     if (refreshShouldFail) {
-      throw AuthApiException(refreshFailureIssue, message: refreshFailureMessage);
+      throw AuthApiException(
+        refreshFailureIssue,
+        message: refreshFailureMessage,
+      );
     }
 
     return const AuthSessionResult(signedIn: true);
@@ -154,7 +170,10 @@ class FakeAuthApi implements AuthApi {
     if (responseDelay > Duration.zero) await Future.delayed(responseDelay);
 
     if (googleSignInShouldFail) {
-      throw AuthApiException(googleSignInIssue, message: 'google sign-in failed');
+      throw AuthApiException(
+        googleSignInIssue,
+        message: 'google sign-in failed',
+      );
     }
 
     return googleSignInShouldLaunch;
