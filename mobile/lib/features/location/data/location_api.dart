@@ -19,6 +19,22 @@ class LocationApiException implements Exception {
 abstract class LocationApi {
   /// `GET /families/{familyId}/live-locations`.
   Future<List<LiveLocation>> getLiveLocations(String familyId);
+
+  /// `GET /families/{familyId}/members/{targetUserId}/history`.
+  Future<LocationHistory> getHistory(
+    String familyId,
+    String targetUserId,
+    DateTime fromUtc,
+    DateTime toUtc,
+  );
+
+  /// `GET /families/{familyId}/members/{targetUserId}/travel-stats`.
+  Future<TravelStats> getTravelStats(
+    String familyId,
+    String targetUserId,
+    DateTime fromUtc,
+    DateTime toUtc,
+  );
 }
 
 class DioLocationApi implements LocationApi {
@@ -42,6 +58,49 @@ class DioLocationApi implements LocationApi {
     } on DioException catch (error) {
       throw _mapError(error);
     }
+  }
+
+  @override
+  Future<LocationHistory> getHistory(
+    String familyId,
+    String targetUserId,
+    DateTime fromUtc,
+    DateTime toUtc,
+  ) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/families/$familyId/members/$targetUserId/history',
+        queryParameters: _rangeQuery(fromUtc, toUtc),
+      );
+      return LocationHistory.fromJson(response.data ?? const {});
+    } on DioException catch (error) {
+      throw _mapError(error);
+    }
+  }
+
+  @override
+  Future<TravelStats> getTravelStats(
+    String familyId,
+    String targetUserId,
+    DateTime fromUtc,
+    DateTime toUtc,
+  ) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/families/$familyId/members/$targetUserId/travel-stats',
+        queryParameters: _rangeQuery(fromUtc, toUtc),
+      );
+      return TravelStats.fromJson(response.data ?? const {});
+    } on DioException catch (error) {
+      throw _mapError(error);
+    }
+  }
+
+  Map<String, String> _rangeQuery(DateTime fromUtc, DateTime toUtc) {
+    return {
+      'from': fromUtc.toUtc().toIso8601String(),
+      'to': toUtc.toUtc().toIso8601String(),
+    };
   }
 
   LocationApiException _mapError(DioException error) {
