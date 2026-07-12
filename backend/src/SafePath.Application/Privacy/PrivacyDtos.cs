@@ -35,3 +35,10 @@ public record MyDataExportDto(
     IReadOnlyList<ExportSharingPreferenceDto> SharingPreferences);
 
 public record DeleteMyDataResult(int PingsDeleted);
+
+public record PrivacyPolicyDto(
+    string Title,
+    string NoDataResaleCommitment,
+    string DataCollected,
+    string Retention,
+    string ExportAndDeleteRights);

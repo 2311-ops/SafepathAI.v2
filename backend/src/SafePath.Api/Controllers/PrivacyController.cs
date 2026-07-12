@@ -66,6 +66,15 @@ public class PrivacyController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("privacy/policy")]
+    public ActionResult<PrivacyPolicyDto> GetPolicy() =>
+        Ok(new PrivacyPolicyDto(
+            "SafePath Privacy Commitment",
+            "SafePath does not sell, rent, or resell family location, health, or safety data. Family safety data is used only to provide the safety features a user turns on.",
+            "SafePath collects location pings when location sharing is enabled so approved family members can see live location, history, travel stats, and safety context.",
+            "Location records are retained to power family history and stats until the user deletes them. Privacy sharing preferences are retained so SafePath can enforce the user's current choices.",
+            "Users can export their own location and sharing data as JSON and can permanently delete their own location records from the Privacy Center."));
+
     [HttpGet("families/{familyId:guid}/sharing-matrix")]
     public async Task<ActionResult<SharingMatrixDto>> GetSharingMatrix(Guid familyId, CancellationToken cancellationToken)
     {
