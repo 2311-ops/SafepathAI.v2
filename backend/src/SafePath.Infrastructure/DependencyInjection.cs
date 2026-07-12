@@ -25,6 +25,7 @@ public static class DependencyInjection
         services.AddSignalR();
         services.AddSingleton<IUserIdProvider, SupabaseUserIdProvider>();
         services.AddSingleton<PresenceTracker>();
+        services.AddSingleton<IPresenceQuery>(provider => provider.GetRequiredService<PresenceTracker>());
         services.AddScoped<ILocationBroadcastService, LocationBroadcastService>();
 
         return services;

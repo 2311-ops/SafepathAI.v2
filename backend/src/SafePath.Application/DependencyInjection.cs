@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<GetMeQuery, GetMeResult>, GetMeQueryHandler>();
         services.AddScoped<ICommandHandler<UpdateMyRoleCommand, GetMeResult>, UpdateMyRoleCommandHandler>();
         services.AddScoped<ICommandHandler<ReportLocationCommand, ReportLocationResult>, ReportLocationCommandHandler>();
+        services.AddScoped<ICommandHandler<GetLiveLocationsQuery, IReadOnlyList<MemberLiveLocationDto>>, GetLiveLocationsQueryHandler>();
 
         return services;
     }

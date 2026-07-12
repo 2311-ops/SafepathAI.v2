@@ -1,8 +1,9 @@
 using System.Collections.Concurrent;
+using SafePath.Application.Common.Interfaces;
 
 namespace SafePath.Infrastructure.RealTime;
 
-public class PresenceTracker
+public class PresenceTracker : IPresenceQuery
 {
     private readonly ConcurrentDictionary<Guid, HashSet<string>> _connections = new();
 
