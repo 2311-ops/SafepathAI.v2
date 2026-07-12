@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 02
-current_phase_name: real-time-location-history-privacy
 status: phase_in_progress
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-07-12T19:44:13.320Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-07-12T19:59:54.795Z"
 last_activity: 2026-07-12
-last_activity_desc: Completed Phase 02 Plan 01 real-time transport walking skeleton
+last_activity_desc: Completed Phase 02 Plan 02 location persistence and live broadcast spine
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 25
-  completed_plans: 17
-  percent: 68
+  completed_plans: 18
+  percent: 72
+current_phase_name: real-time-location-history-privacy
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 ## Current Position
 
 Phase: 02-real-time-location-history-privacy - IN PROGRESS
-Plan: 02-02-PLAN.md (next)
-Status: 02-01 complete; ready for 02-02
-Last activity: 2026-07-12 - Completed Phase 02 Plan 01 real-time transport walking skeleton
+Plan: 02-03-PLAN.md (next)
+Status: 02-02 complete; ready for 02-03
+Last activity: 2026-07-12 - Completed Phase 02 Plan 02 location persistence and live broadcast spine
 
-Progress: [#######---] 68%
+Progress: [#######---] 72%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [#######---] 68%
 | Phase 01.1-animated-logo-splash-screen P01 | 15min | 2 tasks | 3 files |
 | Phase 01.1-animated-logo-splash-screen P02 | 35min | 4 tasks | tests/auth/splash |
 | Phase 02-real-time-location-history-privacy P01 | multi-session | 4 tasks | 19 files |
+| Phase 02-real-time-location-history-privacy P02 | 8min | 3 tasks | 24 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,9 @@ Recent decisions affecting current work:
 - [Phase 02-01]: Approved and retained signalr_netcore 1.4.4 after package legitimacy review and physical-device smoke verification.
 - [Phase 02-01]: SignalR hub user identity is normalized through SupabaseUserIdProvider using the JWT sub claim, matching the backend application user ID model.
 - [Phase 02-01]: Temporary Task 4 smoke-only hub method and Flutter smoke entrypoint were removed before close-out; permanent verification is the integration guard plus recorded device smoke evidence.
+- [Phase 02-02]: Location DTOs live under SafePath.Application.Location; Application handlers own the feature contracts while Infrastructure hub/client code consumes them.
+- [Phase 02-02]: Live-location presence combines IPresenceQuery connection state with a 2-minute ping freshness window, preserving connected-but-stale rendering via RecordedAtUtc.
+- [Phase 02-02]: ReportLocationCommand validates coordinates, non-future timestamps, non-negative accuracy, and battery percent 0-100 before persisting raw pings.
 
 ### Pending Todos
 
@@ -119,6 +123,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T19:42:39.153Z
-Stopped at: Completed 02-01-PLAN.md
-Resume file: .planning/phases/02-real-time-location-history-privacy/02-02-PLAN.md
+Last session: 2026-07-12T19:59:54.776Z
+Stopped at: Completed 02-02-PLAN.md
+Resume file: .planning/phases/02-real-time-location-history-privacy/02-03-PLAN.md
