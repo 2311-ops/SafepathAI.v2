@@ -16,24 +16,31 @@ import '../../helpers/fake_auth_api.dart';
 class _SeededFamilyController extends FamilyController {
   @override
   FamilyState build() => FamilyState(
-        family: const Family(id: 'fam-1', name: 'Safe circle'),
-        members: [
-          FamilyMemberView(
-            memberId: 'mem-self',
-            userId: 'self-user',
-            role: Role.guardian,
-            permission: PermissionLevel.fullLocation,
-            joinedAt: DateTime.utc(2026, 7, 12),
-          ),
-          FamilyMemberView(
-            memberId: 'mem-recipient',
-            userId: 'recipient-user',
-            role: Role.member,
-            permission: PermissionLevel.fullLocation,
-            joinedAt: DateTime.utc(2026, 7, 12),
-          ),
-        ],
-      );
+    family: const Family(id: 'fam-1', name: 'Safe circle'),
+    members: [
+      FamilyMemberView(
+        memberId: 'mem-self',
+        userId: 'self-user',
+        role: Role.guardian,
+        permission: PermissionLevel.fullLocation,
+        joinedAt: DateTime.utc(2026, 7, 12),
+      ),
+      FamilyMemberView(
+        memberId: 'mem-first-recipient',
+        userId: 'first-recipient-user',
+        role: Role.member,
+        permission: PermissionLevel.fullLocation,
+        joinedAt: DateTime.utc(2026, 7, 12),
+      ),
+      FamilyMemberView(
+        memberId: 'mem-second-recipient',
+        userId: 'second-recipient-user',
+        role: Role.member,
+        permission: PermissionLevel.fullLocation,
+        joinedAt: DateTime.utc(2026, 7, 12),
+      ),
+    ],
+  );
 }
 
 class _SpyPrivacyController extends PrivacyController {
@@ -47,30 +54,48 @@ class _SpyPrivacyController extends PrivacyController {
 
   @override
   PrivacyState build() => PrivacyState(
-        matrix: SharingMatrix(
-          entries: [
-            const SharingCell(
-              recipientId: 'mem-recipient',
-              recipientName: 'Recipient',
-              dataType: SharedDataType.liveLocation,
-              isEnabled: true,
-            ),
-            const SharingCell(
-              recipientId: 'mem-recipient',
-              recipientName: 'Recipient',
-              dataType: SharedDataType.history,
-              isEnabled: false,
-            ),
-            SharingCell(
-              recipientId: 'mem-recipient',
-              recipientName: 'Recipient',
-              dataType: SharedDataType.wellness,
-              isEnabled: true,
-              expiresAtUtc: DateTime.utc(2026, 7, 12, 14),
-            ),
-          ],
+    matrix: SharingMatrix(
+      entries: [
+        const SharingCell(
+          recipientId: 'mem-first-recipient',
+          recipientName: 'First Recipient',
+          dataType: SharedDataType.liveLocation,
+          isEnabled: true,
         ),
-      );
+        const SharingCell(
+          recipientId: 'mem-first-recipient',
+          recipientName: 'First Recipient',
+          dataType: SharedDataType.history,
+          isEnabled: false,
+        ),
+        const SharingCell(
+          recipientId: 'mem-first-recipient',
+          recipientName: 'First Recipient',
+          dataType: SharedDataType.wellness,
+          isEnabled: true,
+        ),
+        const SharingCell(
+          recipientId: 'mem-second-recipient',
+          recipientName: 'Second Recipient',
+          dataType: SharedDataType.liveLocation,
+          isEnabled: true,
+        ),
+        const SharingCell(
+          recipientId: 'mem-second-recipient',
+          recipientName: 'Second Recipient',
+          dataType: SharedDataType.history,
+          isEnabled: false,
+        ),
+        SharingCell(
+          recipientId: 'mem-second-recipient',
+          recipientName: 'Second Recipient',
+          dataType: SharedDataType.wellness,
+          isEnabled: true,
+          expiresAtUtc: DateTime.utc(2026, 7, 12, 14),
+        ),
+      ],
+    ),
+  );
 
   @override
   Future<void> toggle({
@@ -130,14 +155,18 @@ void main() {
     await tester.pumpWidget(_app(controller));
 
     expect(find.text('Privacy Center'), findsWidgets);
-    expect(find.text('Recipient'), findsOneWidget);
-    expect(find.text('Live location'), findsOneWidget);
-    expect(find.text('History'), findsOneWidget);
-    expect(find.text('Wellness'), findsOneWidget);
-    expect(find.text('1 hour'), findsOneWidget);
-    expect(find.text('4 hours'), findsOneWidget);
-    expect(find.text('8 hours'), findsOneWidget);
-    expect(find.text('Custom'), findsOneWidget);
+    expect(find.text('First Recipient'), findsOneWidget);
+    expect(find.text('Second Recipient'), findsOneWidget);
+    expect(find.text('Live location'), findsNWidgets(2));
+    expect(find.text('History'), findsNWidgets(2));
+    expect(find.text('Wellness'), findsNWidgets(2));
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('temporary-share-mem-first-recipient-custom')),
+    );
+    expect(find.text('1 hour'), findsAtLeastNWidgets(1));
+    expect(find.text('4 hours'), findsAtLeastNWidgets(1));
+    expect(find.text('8 hours'), findsAtLeastNWidgets(1));
+    expect(find.text('Custom'), findsAtLeastNWidgets(1));
     expect(find.text('Sharing for 1 hour - 3h 30m left'), findsOneWidget);
   });
 
@@ -149,24 +178,54 @@ void main() {
     await tester.pump();
 
     expect(controller.toggleCallCount, 1);
-    expect(controller.lastRecipientId, 'mem-recipient');
+    expect(controller.lastRecipientId, 'mem-first-recipient');
     expect(controller.lastDataType, SharedDataType.liveLocation);
     expect(controller.lastEnabled, isFalse);
   });
 
-  testWidgets('duration chip starts temporary live-location sharing', (
+  testWidgets('4-hour duration chip uses the selected recipient row', (
     tester,
   ) async {
     final controller = _SpyPrivacyController();
 
     await tester.pumpWidget(_app(controller));
-    await tester.tap(find.text('4 hours'));
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('temporary-share-mem-second-recipient-4h')),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('temporary-share-mem-second-recipient-4h')),
+    );
     await tester.pump();
 
     expect(controller.temporaryShareCallCount, 1);
-    expect(controller.lastRecipientId, 'mem-recipient');
+    expect(controller.lastRecipientId, 'mem-second-recipient');
     expect(controller.lastDataType, SharedDataType.liveLocation);
     expect(controller.lastDuration, const Duration(hours: 4));
+  });
+
+  testWidgets('custom duration accepts user-entered hours', (tester) async {
+    final controller = _SpyPrivacyController();
+
+    await tester.pumpWidget(_app(controller));
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('temporary-share-mem-second-recipient-custom')),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('temporary-share-mem-second-recipient-custom')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('custom-duration-field')),
+      '6',
+    );
+    await tester.tap(find.widgetWithText(TextButton, 'Start sharing'));
+    await tester.pumpAndSettle();
+
+    expect(controller.temporaryShareCallCount, 1);
+    expect(controller.lastRecipientId, 'mem-second-recipient');
+    expect(controller.lastDataType, SharedDataType.liveLocation);
+    expect(controller.lastDuration, const Duration(hours: 6));
   });
 
   testWidgets('delete data is confirmation-gated', (tester) async {
