@@ -26,7 +26,7 @@ public class BroadcastGatingTests : IDisposable
             seed.FamilyId,
             seed.RecipientMemberId,
             SharedDataType.LiveLocation,
-            isEnabled: false,
+            IsEnabled: false,
             expiresAt));
 
         Assert.Equal(seed.OwnerUserId, db.SharingPreferences.Single().OwnerUserId);
@@ -38,8 +38,8 @@ public class BroadcastGatingTests : IDisposable
             seed.FamilyId,
             seed.RecipientMemberId,
             SharedDataType.LiveLocation,
-            isEnabled: true,
-            expiresAtUtc: null));
+            IsEnabled: true,
+            ExpiresAtUtc: null));
 
         var stored = Assert.Single(db.SharingPreferences);
         Assert.Equal(seed.OwnerUserId, stored.OwnerUserId);

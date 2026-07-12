@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Application.Families;
 using SafePath.Application.Location;
+using SafePath.Application.Privacy;
 
 namespace SafePath.Application;
 
@@ -23,6 +24,8 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<UpdateMyRoleCommand, GetMeResult>, UpdateMyRoleCommandHandler>();
         services.AddScoped<ICommandHandler<ReportLocationCommand, ReportLocationResult>, ReportLocationCommandHandler>();
         services.AddScoped<ICommandHandler<GetLiveLocationsQuery, IReadOnlyList<MemberLiveLocationDto>>, GetLiveLocationsQueryHandler>();
+        services.AddScoped<ICommandHandler<UpdateSharingPreferenceCommand, SharingPreferenceDto>, UpdateSharingPreferenceCommandHandler>();
+        services.AddScoped<ICommandHandler<GetSharingMatrixQuery, SharingMatrixDto>, GetSharingMatrixQueryHandler>();
 
         return services;
     }

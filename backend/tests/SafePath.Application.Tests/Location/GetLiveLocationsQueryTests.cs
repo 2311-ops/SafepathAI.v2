@@ -82,7 +82,11 @@ public class GetLiveLocationsQueryTests : IDisposable
             NewPing(memberId, 30.0444, 31.2357, latest));
         await db.SaveChangesAsync();
         var presence = new FakePresenceQuery();
-        var handler = new GetLiveLocationsQueryHandler(db, new FamilyAuthorizationService(db), presence);
+        var handler = new GetLiveLocationsQueryHandler(
+            db,
+            new FamilyAuthorizationService(db),
+            presence,
+            new SharingAuthorizationService(db));
 
         var result = await handler.Handle(new GetLiveLocationsQuery(callerId, familyId));
 
@@ -105,7 +109,11 @@ public class GetLiveLocationsQueryTests : IDisposable
     {
         await using var db = _factory.CreateContext();
         var (familyId, _, _, _) = await SeedLiveLocationFamily(db);
-        var handler = new GetLiveLocationsQueryHandler(db, new FamilyAuthorizationService(db), new FakePresenceQuery());
+        var handler = new GetLiveLocationsQueryHandler(
+            db,
+            new FamilyAuthorizationService(db),
+            new FakePresenceQuery(),
+            new SharingAuthorizationService(db));
 
         await Assert.ThrowsAsync<FamilyAuthorizationDeniedException>(
             () => handler.Handle(new GetLiveLocationsQuery(Guid.NewGuid(), familyId)));
@@ -123,7 +131,11 @@ public class GetLiveLocationsQueryTests : IDisposable
             NewPing(recentDisconnectedId, 30.0555, 31.2468, recentRecordedAt));
         await db.SaveChangesAsync();
         var presence = new FakePresenceQuery(staleConnectedId);
-        var handler = new GetLiveLocationsQueryHandler(db, new FamilyAuthorizationService(db), presence);
+        var handler = new GetLiveLocationsQueryHandler(
+            db,
+            new FamilyAuthorizationService(db),
+            presence,
+            new SharingAuthorizationService(db));
 
         var result = await handler.Handle(new GetLiveLocationsQuery(callerId, familyId));
 

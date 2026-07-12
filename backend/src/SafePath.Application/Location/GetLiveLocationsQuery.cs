@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SafePath.Application.Common.Interfaces;
+using SafePath.Domain.Enums;
 
 namespace SafePath.Application.Location;
 
@@ -12,15 +13,18 @@ public class GetLiveLocationsQueryHandler : ICommandHandler<GetLiveLocationsQuer
     private readonly IApplicationDbContext _db;
     private readonly IFamilyAuthorizationService _authorization;
     private readonly IPresenceQuery _presence;
+    private readonly ISharingAuthorizationService _sharing;
 
     public GetLiveLocationsQueryHandler(
         IApplicationDbContext db,
         IFamilyAuthorizationService authorization,
-        IPresenceQuery presence)
+        IPresenceQuery presence,
+        ISharingAuthorizationService sharing)
     {
         _db = db;
         _authorization = authorization;
         _presence = presence;
+        _sharing = sharing;
     }
 
     public async Task<IReadOnlyList<MemberLiveLocationDto>> Handle(GetLiveLocationsQuery query, CancellationToken cancellationToken = default)
@@ -45,15 +49,21 @@ public class GetLiveLocationsQueryHandler : ICommandHandler<GetLiveLocationsQuer
                 .OrderByDescending(p => p.RecordedAtUtc)
                 .FirstOrDefaultAsync(cancellationToken);
 
+            var canViewLocation = await _sharing.CanView(
+                query.CallerUserId,
+                member.UserId,
+                query.FamilyId,
+                SharedDataType.LiveLocation,
+                cancellationToken);
             var isRecent = latestPing is not null && now - latestPing.RecordedAtUtc <= PingFreshnessWindow;
             results.Add(new MemberLiveLocationDto(
                 member.UserId,
                 member.FullName,
-                latestPing?.Latitude,
-                latestPing?.Longitude,
-                latestPing?.AccuracyMeters,
-                latestPing?.BatteryPercent,
-                latestPing?.RecordedAtUtc,
+                canViewLocation ? latestPing?.Latitude : null,
+                canViewLocation ? latestPing?.Longitude : null,
+                canViewLocation ? latestPing?.AccuracyMeters : null,
+                canViewLocation ? latestPing?.BatteryPercent : null,
+                canViewLocation ? latestPing?.RecordedAtUtc : null,
                 _presence.IsOnline(member.UserId) || isRecent));
         }
 

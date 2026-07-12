@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Domain.Entities;
+using SafePath.Domain.Enums;
 
 namespace SafePath.Application.Location;
 
@@ -20,15 +21,18 @@ public class ReportLocationCommandHandler : ICommandHandler<ReportLocationComman
     private readonly IApplicationDbContext _db;
     private readonly IFamilyAuthorizationService _authorization;
     private readonly ILocationBroadcastService _broadcast;
+    private readonly ISharingAuthorizationService _sharing;
 
     public ReportLocationCommandHandler(
         IApplicationDbContext db,
         IFamilyAuthorizationService authorization,
-        ILocationBroadcastService broadcast)
+        ILocationBroadcastService broadcast,
+        ISharingAuthorizationService sharing)
     {
         _db = db;
         _authorization = authorization;
         _broadcast = broadcast;
+        _sharing = sharing;
     }
 
     public async Task<ReportLocationResult> Handle(ReportLocationCommand command, CancellationToken cancellationToken = default)
@@ -51,10 +55,16 @@ public class ReportLocationCommandHandler : ICommandHandler<ReportLocationComman
         _db.LocationPings.Add(ping);
         await _db.SaveChangesAsync(cancellationToken);
 
-        var eligibleRecipients = await _db.FamilyMembers
+        var candidateRecipients = await _db.FamilyMembers
             .Where(m => m.FamilyId == command.FamilyId && m.IsActive)
             .Select(m => m.UserId)
             .ToListAsync(cancellationToken);
+        var eligibleRecipients = await _sharing.FilterRecipients(
+            command.CallerUserId,
+            command.FamilyId,
+            SharedDataType.LiveLocation,
+            candidateRecipients,
+            cancellationToken);
 
         await _broadcast.BroadcastLocation(
             command.FamilyId,

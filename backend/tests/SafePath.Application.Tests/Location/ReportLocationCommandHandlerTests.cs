@@ -19,7 +19,11 @@ public class ReportLocationCommandHandlerTests : IDisposable
         await using var db = _factory.CreateContext();
         var (familyId, callerId, recipientId) = await SeedFamily(db);
         var broadcast = new RecordingLocationBroadcastService();
-        var handler = new ReportLocationCommandHandler(db, new FamilyAuthorizationService(db), broadcast);
+        var handler = new ReportLocationCommandHandler(
+            db,
+            new FamilyAuthorizationService(db),
+            broadcast,
+            new SharingAuthorizationService(db));
         var recordedAt = DateTime.UtcNow.AddSeconds(-30);
 
         await handler.Handle(new ReportLocationCommand(
@@ -55,7 +59,8 @@ public class ReportLocationCommandHandlerTests : IDisposable
         var handler = new ReportLocationCommandHandler(
             db,
             new FamilyAuthorizationService(db),
-            new RecordingLocationBroadcastService());
+            new RecordingLocationBroadcastService(),
+            new SharingAuthorizationService(db));
 
         await Assert.ThrowsAsync<ArgumentException>(() => handler.Handle(new ReportLocationCommand(
             callerId,
@@ -77,7 +82,8 @@ public class ReportLocationCommandHandlerTests : IDisposable
         var handler = new ReportLocationCommandHandler(
             db,
             new FamilyAuthorizationService(db),
-            new RecordingLocationBroadcastService());
+            new RecordingLocationBroadcastService(),
+            new SharingAuthorizationService(db));
 
         await Assert.ThrowsAsync<ArgumentException>(() => handler.Handle(new ReportLocationCommand(
             callerId,
@@ -99,7 +105,8 @@ public class ReportLocationCommandHandlerTests : IDisposable
         var handler = new ReportLocationCommandHandler(
             db,
             new FamilyAuthorizationService(db),
-            new RecordingLocationBroadcastService());
+            new RecordingLocationBroadcastService(),
+            new SharingAuthorizationService(db));
 
         await handler.Handle(new ReportLocationCommand(
             callerId,
