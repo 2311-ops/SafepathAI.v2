@@ -24,7 +24,7 @@ dependency is satisfied with seeded/synthetic data.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Backend & Auth Foundation** - Auth, roles, and family circles on a Clean Architecture backend + Supabase, with the app's design system wired into Flutter.
-- [x] **Phase 2: Real-Time Location, History & Privacy** - Family members see live and historical location on a shared map, with full privacy controls over what's shared. (completed 2026-07-13 after LOC-05 gap closure)
+- [x] **Phase 2: Real-Time Location, History & Privacy** - Family members see live and historical location on a shared map, with full privacy controls over what's shared. (completed 2026-07-13 after LOC-05 and PRIV-03 gap closures)
 - [ ] **Phase 3: SOS Fast Path (Core Value)** - One tap (or covert trigger) reliably alerts guardians with live location within seconds, bypassing every routine and AI pipeline.
 - [ ] **Phase 4: Geofencing** - Safe zones trigger reliable enter/exit alerts without GPS-drift false positives.
 - [ ] **Phase 5: AI Analytics & Family Dashboard** - Explainable anomaly detection, ETA prediction, safety scoring, and family dashboards.
@@ -101,8 +101,6 @@ Plans:
 
 Plans:
 
-- [x] 02-11-PLAN.md
-
 **Wave 1**
 
 - [x] 02-01-PLAN.md — Real-time transport walking skeleton + signalr_netcore [SUS] spike (LOC-01/02, PRIV-01)
@@ -130,9 +128,10 @@ Plans:
 
 - [x] 02-09-PLAN.md — Mobile Privacy Center: sharing matrix + temporary sharing + export/delete + policy (PRIV-02/03/04/05)
 
-**Wave 7** *(gaps-only LOC-05 closure)*
+**Wave 7** *(gaps-only LOC-05 and PRIV-03 closure)*
 
 - [x] 02-10-PLAN.md - /home permission gate + LocationController streaming guard (LOC-05)
+- [x] 02-11-PLAN.md - recipient-scoped temporary sharing + custom duration input (PRIV-03)
 
 **UI hint**: yes
 

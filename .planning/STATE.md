@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 02
+current_phase: 03
 status: ready_for_next_phase
-stopped_at: Completed 02-10-PLAN.md
+stopped_at: Completed 02-11-PLAN.md
 last_updated: "2026-07-12T23:00:13.071Z"
 last_activity: 2026-07-13
-last_activity_desc: Completed Phase 02 Plan 10 LOC-05 permission priming gap closure
+last_activity_desc: Completed Phase 02 Plan 11 PRIV-03 temporary sharing UI gap closure
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 27
   completed_plans: 27
-  percent: 38
+  percent: 100
 current_phase_name: sos-fast-path-core-value
 ---
 
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 
 Phase: 02-real-time-location-history-privacy - COMPLETE
 Plan: Phase 03 planning next
-Status: 02-10 complete; Phase 02 now has 10/10 plan summaries including LOC-05 gap closure
-Last activity: 2026-07-13 - Completed Phase 02 Plan 10 LOC-05 permission priming gap closure
+Status: 02-11 complete; Phase 02 now has 11/11 plan summaries including LOC-05 and PRIV-03 gap closures
+Last activity: 2026-07-13 - Completed Phase 02 Plan 11 PRIV-03 temporary sharing UI gap closure
 
 Progress: [##########] 100%
 
@@ -75,6 +75,7 @@ Progress: [##########] 100%
 | Phase 02-real-time-location-history-privacy P08 | 9min | 3 tasks | 12 files |
 | Phase 02-real-time-location-history-privacy P09 | 11min | 3 tasks | 12 files |
 | Phase 02-real-time-location-history-privacy P10 | 17min | 2 tasks | 5 files |
+| Phase 02-real-time-location-history-privacy P11 | 7min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -127,6 +128,8 @@ Recent decisions affecting current work:
 - [Phase 02]: [Phase 02-09]: PrivacyController derives familyId from FamilyController and uses server-backed PATCH toggles with rollback on failure.
 - [Phase 02]: [Phase 02-09]: Privacy export uses existing share_plus JSON text sharing; delete uses Ink/700 confirmation friction and no SOS-red token.
 - [Phase 02]: [Phase 02-10]: LOC-05 is enforced at both /home routing and LocationController bootstrap; non-granted permission reaches priming before MainShell/LiveMapScreen and before live API, SignalR, or Geolocator streaming.
+- [Phase 02]: [Phase 02-11]: Temporary sharing controls are recipient-scoped inside each Privacy Center recipient row, so presets and Custom pass that row's memberId to PrivacyController.startTemporaryShare.
+- [Phase 02]: [Phase 02-11]: Custom temporary sharing defaults to hours, supports minutes/hours, validates non-numeric/non-positive/greater-than-7-day values, and passes the parsed Duration.
 
 ### Pending Todos
 
@@ -152,5 +155,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-07-12T23:00:13.056Z
-Stopped at: Completed 02-10-PLAN.md
+Stopped at: Completed 02-11-PLAN.md
 Resume file: None
