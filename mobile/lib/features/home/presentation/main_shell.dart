@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../location/presentation/live_map_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -41,7 +42,7 @@ class _MainShellState extends State<MainShell> {
       body: IndexedStack(
         index: _index,
         children: const [
-          _MapTabPlaceholder(),
+          LiveMapScreen(),
           _PlainTabPlaceholder(
             icon: Icons.history,
             title: 'Activity',
@@ -212,19 +213,6 @@ class _SosTabButton extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _MapTabPlaceholder extends StatelessWidget {
-  const _MapTabPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _PlainTabPlaceholder(
-      icon: Icons.map,
-      title: 'Map',
-      body: 'Turn on location sharing to see your live map.',
     );
   }
 }

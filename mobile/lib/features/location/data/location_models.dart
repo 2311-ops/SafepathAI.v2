@@ -40,3 +40,29 @@ class PresenceChange {
     );
   }
 }
+
+class ReportLocationPayload {
+  const ReportLocationPayload({
+    required this.latitude,
+    required this.longitude,
+    required this.accuracyMeters,
+    required this.recordedAtUtc,
+    this.batteryPercent,
+  });
+
+  final double latitude;
+  final double longitude;
+  final double accuracyMeters;
+  final int? batteryPercent;
+  final DateTime recordedAtUtc;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'latitude': latitude,
+      'longitude': longitude,
+      'accuracyMeters': accuracyMeters,
+      'batteryPercent': batteryPercent,
+      'recordedAtUtc': recordedAtUtc.toUtc().toIso8601String(),
+    };
+  }
+}

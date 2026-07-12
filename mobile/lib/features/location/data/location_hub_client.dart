@@ -21,6 +21,8 @@ abstract class LocationHubClient {
 
   Future<void> disconnect();
 
+  Future<void> reportLocation(ReportLocationPayload location);
+
   Stream<LiveLocation> get locationUpdates;
 
   Stream<PresenceChange> get presenceChanges;
@@ -126,6 +128,16 @@ class SignalRLocationHubClient implements LocationHubClient {
     _setState(LocationHubConnectionState.disconnecting);
     await connection.stop();
     _setState(LocationHubConnectionState.disconnected);
+  }
+
+  @override
+  Future<void> reportLocation(ReportLocationPayload location) async {
+    final connection = _connection;
+    if (connection == null ||
+        connection.state != signalr.HubConnectionState.Connected) {
+      return;
+    }
+    await connection.invoke('ReportLocation', args: [location.toJson()]);
   }
 
   @override

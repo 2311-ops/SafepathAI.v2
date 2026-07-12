@@ -14,6 +14,8 @@ class FakeLocationHubClient implements LocationHubClient {
   String? lastConnectedFamilyId;
   int connectCallCount = 0;
   int disconnectCallCount = 0;
+  int reportLocationCallCount = 0;
+  ReportLocationPayload? lastReportedLocation;
   LocationHubConnectionState _state = LocationHubConnectionState.disconnected;
 
   @override
@@ -41,6 +43,12 @@ class FakeLocationHubClient implements LocationHubClient {
     setState(LocationHubConnectionState.disconnected);
   }
 
+  @override
+  Future<void> reportLocation(ReportLocationPayload location) async {
+    reportLocationCallCount++;
+    lastReportedLocation = location;
+  }
+
   void emitLocation(LiveLocation location) {
     _locationUpdates.add(location);
   }
@@ -51,7 +59,9 @@ class FakeLocationHubClient implements LocationHubClient {
 
   void setState(LocationHubConnectionState state) {
     _state = state;
-    _stateChanges.add(state);
+    if (!_stateChanges.isClosed) {
+      _stateChanges.add(state);
+    }
   }
 
   @override
