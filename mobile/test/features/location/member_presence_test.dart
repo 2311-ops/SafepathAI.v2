@@ -11,6 +11,7 @@ import 'package:mobile/features/auth/data/auth_models.dart';
 import 'package:mobile/features/family/data/family_api.dart';
 import 'package:mobile/features/family/data/family_models.dart';
 import 'package:mobile/features/location/application/location_controller.dart';
+import 'package:mobile/features/location/application/permission_controller.dart';
 import 'package:mobile/features/location/data/location_api.dart';
 import 'package:mobile/features/location/data/location_hub_client.dart';
 import 'package:mobile/features/location/data/location_models.dart';
@@ -69,6 +70,21 @@ class _FakeAuthApi implements AuthApi {
   Future<bool> signInWithGoogle() => throw UnimplementedError();
 }
 
+class _GrantedLocationPermissionService implements LocationPermissionService {
+  const _GrantedLocationPermissionService();
+
+  @override
+  Future<LocationPermissionStatus> checkPermission() async =>
+      LocationPermissionStatus.granted;
+
+  @override
+  Future<LocationPermissionStatus> requestPermission() async =>
+      LocationPermissionStatus.granted;
+
+  @override
+  Future<bool> openAppSettings() async => true;
+}
+
 sb.Session _session({String userId = 'self-user'}) {
   return sb.Session(
     accessToken: 'token',
@@ -96,6 +112,9 @@ ProviderContainer _container({
       locationApiProvider.overrideWithValue(locationApi),
       locationHubClientProvider.overrideWithValue(hubClient),
       positionStreamProvider.overrideWithValue(const Stream<Position>.empty()),
+      locationPermissionServiceProvider.overrideWithValue(
+        const _GrantedLocationPermissionService(),
+      ),
       batteryLevelProvider.overrideWith((ref) async => 72),
     ],
   );
