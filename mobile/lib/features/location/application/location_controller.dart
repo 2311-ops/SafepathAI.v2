@@ -152,7 +152,6 @@ class LocationController extends AsyncNotifier<LocationState> {
     final generation = _generation;
     if (!_ownsBootstrap(familyId, bootstrapToken, generation)) return;
 
-    _connectedFamilyId = familyId;
     state = AsyncData(_current.copyWith(isLoading: true, clearError: true));
 
     try {
@@ -186,10 +185,12 @@ class LocationController extends AsyncNotifier<LocationState> {
       _hubOwnerToken = bootstrapToken;
       await hubClient.connect(familyId);
       if (!_ownsBootstrap(familyId, bootstrapToken, generation)) {
-        if (_hubOwnerToken == bootstrapToken) {
+        if (_hubOwnerToken == null || _hubOwnerToken == bootstrapToken) {
           await hubClient.disconnect();
-          _hubClient = null;
-          _hubOwnerToken = null;
+          if (_hubClient == hubClient) {
+            _hubClient = null;
+            _hubOwnerToken = null;
+          }
         }
         return;
       }
@@ -214,15 +215,32 @@ class LocationController extends AsyncNotifier<LocationState> {
         return;
       }
 
+      _connectedFamilyId = familyId;
       _locationSubscription = locationSubscription;
       _presenceSubscription = presenceSubscription;
       _lowBatterySubscription = lowBatterySubscription;
       _positionSubscription = positionSubscription;
     } on LocationApiException catch (error) {
+      if (bootstrapToken != _bootstrapToken || generation != _generation) {
+        return;
+      }
+      _connectedFamilyId = null;
+      if (_hubOwnerToken == bootstrapToken) {
+        _hubClient = null;
+        _hubOwnerToken = null;
+      }
       state = AsyncData(
         _current.copyWith(isLoading: false, error: error.message),
       );
     } catch (_) {
+      if (bootstrapToken != _bootstrapToken || generation != _generation) {
+        return;
+      }
+      _connectedFamilyId = null;
+      if (_hubOwnerToken == bootstrapToken) {
+        _hubClient = null;
+        _hubOwnerToken = null;
+      }
       state = AsyncData(
         _current.copyWith(
           isLoading: false,

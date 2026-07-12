@@ -112,6 +112,38 @@ class _DelayedLiveLocationApi extends FakeLocationApi {
   }
 }
 
+class _FailingOnceLocationApi extends FakeLocationApi {
+  bool _shouldFail = true;
+
+  @override
+  Future<List<LiveLocation>> getLiveLocations(String familyId) async {
+    getLiveLocationsCallCount++;
+    lastFamilyId = familyId;
+    if (_shouldFail) {
+      _shouldFail = false;
+      throw LocationApiException(
+        LocationApiIssue.network,
+        message: "Couldn't connect. Check your connection and try again.",
+      );
+    }
+    return liveLocationsToReturn;
+  }
+}
+
+class _DelayedConnectHubClient extends FakeLocationHubClient {
+  _DelayedConnectHubClient(this.connectCompleter);
+
+  final Completer<void> connectCompleter;
+
+  @override
+  Future<void> connect(String familyId) async {
+    connectCallCount++;
+    lastConnectedFamilyId = familyId;
+    await connectCompleter.future;
+    setState(LocationHubConnectionState.connected);
+  }
+}
+
 Position _position({
   required double lat,
   required double lng,
@@ -418,6 +450,83 @@ void main() {
       await pumpEventQueue();
 
       expect(hubClient.reportLocationCallCount, 0);
+    },
+  );
+
+  test(
+    'disconnects a stale hub connect that finishes after sign-out',
+    () async {
+      final connectCompleter = Completer<void>();
+      final delayedHubClient = _DelayedConnectHubClient(connectCompleter);
+      hubClient = delayedHubClient;
+      container.dispose();
+      container = _container(
+        authApi: authApi,
+        familyApi: familyApi,
+        locationApi: locationApi,
+        hubClient: hubClient,
+        positionStream: positions.stream,
+        permissionService: permissionService,
+      );
+
+      container.read(locationControllerProvider);
+      await pumpEventQueue();
+
+      expect(hubClient.connectCallCount, 1);
+
+      authApi.signOut();
+      connectCompleter.complete();
+      await pumpEventQueue();
+
+      expect(hubClient.disconnectCallCount, greaterThanOrEqualTo(1));
+      expect(hubClient.state, LocationHubConnectionState.disconnected);
+
+      positions.add(
+        _position(
+          lat: 30.09,
+          lng: 31.28,
+          timestamp: DateTime.utc(2026, 7, 12, 12, 20),
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(hubClient.reportLocationCallCount, 0);
+    },
+  );
+
+  test(
+    'retries the same family after a failed live location bootstrap',
+    () async {
+      final failingOnceApi = _FailingOnceLocationApi();
+      locationApi = failingOnceApi;
+      container.dispose();
+      container = _container(
+        authApi: authApi,
+        familyApi: familyApi,
+        locationApi: locationApi,
+        hubClient: hubClient,
+        positionStream: positions.stream,
+        permissionService: permissionService,
+      );
+
+      container.read(permissionControllerProvider);
+      container.read(locationControllerProvider);
+      await pumpEventQueue();
+
+      expect(locationApi.getLiveLocationsCallCount, 1);
+      expect(hubClient.connectCallCount, 0);
+      expect(
+        container.read(locationControllerProvider).value?.error,
+        "Couldn't connect. Check your connection and try again.",
+      );
+
+      await container
+          .read(permissionControllerProvider.notifier)
+          .checkPermission();
+      await pumpEventQueue();
+
+      expect(locationApi.getLiveLocationsCallCount, 2);
+      expect(hubClient.connectCallCount, 1);
     },
   );
 }
