@@ -28,6 +28,8 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<GetTravelStatsQuery, TravelStatsDto>, GetTravelStatsQueryHandler>();
         services.AddScoped<ICommandHandler<UpdateSharingPreferenceCommand, SharingPreferenceDto>, UpdateSharingPreferenceCommandHandler>();
         services.AddScoped<ICommandHandler<GetSharingMatrixQuery, SharingMatrixDto>, GetSharingMatrixQueryHandler>();
+        services.AddScoped<ICommandHandler<ExportMyDataQuery, MyDataExportDto>, ExportMyDataQueryHandler>();
+        services.AddScoped<ICommandHandler<DeleteMyDataCommand, DeleteMyDataResult>, DeleteMyDataCommandHandler>();
 
         return services;
     }
