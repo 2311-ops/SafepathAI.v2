@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IFamilyAuthorizationService, FamilyAuthorizationService>();
+        services.AddScoped<ISharingAuthorizationService, SharingAuthorizationService>();
         services.AddScoped<IInviteCodeGenerator, InviteCodeGenerator>();
         services.AddSignalR();
         services.AddSingleton<IUserIdProvider, SupabaseUserIdProvider>();

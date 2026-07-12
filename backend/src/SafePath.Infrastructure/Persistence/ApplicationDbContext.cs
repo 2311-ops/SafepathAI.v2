@@ -16,6 +16,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<FamilyMember> FamilyMembers => Set<FamilyMember>();
     public DbSet<FamilyInvitation> FamilyInvitations => Set<FamilyInvitation>();
     public DbSet<LocationPing> LocationPings => Set<LocationPing>();
+    public DbSet<SharingPreference> SharingPreferences => Set<SharingPreference>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -24,6 +25,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new FamilyMemberConfiguration());
         modelBuilder.ApplyConfiguration(new FamilyInvitationConfiguration());
         modelBuilder.ApplyConfiguration(new LocationPingConfiguration());
+        modelBuilder.ApplyConfiguration(new SharingPreferenceConfiguration());
 
         base.OnModelCreating(modelBuilder);
     }
