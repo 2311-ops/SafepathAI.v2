@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 02
 status: phase_in_progress
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-07-12T19:59:54.795Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-07-12T20:15:04.983Z"
 last_activity: 2026-07-12
-last_activity_desc: Completed Phase 02 Plan 02 location persistence and live broadcast spine
+last_activity_desc: Completed Phase 02 Plan 03 privacy sharing matrix and temporary sharing
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 25
-  completed_plans: 18
-  percent: 72
+  completed_plans: 19
+  percent: 76
 current_phase_name: real-time-location-history-privacy
 ---
 
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 ## Current Position
 
 Phase: 02-real-time-location-history-privacy - IN PROGRESS
-Plan: 02-03-PLAN.md (next)
-Status: 02-02 complete; ready for 02-03
-Last activity: 2026-07-12 - Completed Phase 02 Plan 02 location persistence and live broadcast spine
+Plan: 02-04-PLAN.md (next)
+Status: 02-03 complete; ready for 02-04
+Last activity: 2026-07-12 - Completed Phase 02 Plan 03 privacy sharing matrix and temporary sharing
 
-Progress: [#######---] 72%
+Progress: [########--] 76%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [#######---] 72%
 | Phase 01.1-animated-logo-splash-screen P02 | 35min | 4 tasks | tests/auth/splash |
 | Phase 02-real-time-location-history-privacy P01 | multi-session | 4 tasks | 19 files |
 | Phase 02-real-time-location-history-privacy P02 | 8min | 3 tasks | 24 files |
+| Phase 02-real-time-location-history-privacy P03 | 9min | 3 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,10 @@ Recent decisions affecting current work:
 - [Phase 02-02]: Location DTOs live under SafePath.Application.Location; Application handlers own the feature contracts while Infrastructure hub/client code consumes them.
 - [Phase 02-02]: Live-location presence combines IPresenceQuery connection state with a 2-minute ping freshness window, preserving connected-but-stale rendering via RecordedAtUtc.
 - [Phase 02-02]: ReportLocationCommand validates coordinates, non-future timestamps, non-negative accuracy, and battery percent 0-100 before persisting raw pings.
+- [Phase 02-03]: SharingPreference is additive to FAM-04 PermissionLevel; privacy sharing consent and member permissions remain separate authorization axes.
+- [Phase 02-03]: Missing sharing rows default to shared-with-family, explicit recipient rows override default rows, and expired rows are denied at authorization time.
+- [Phase 02-03]: Privacy preference updates force OwnerUserId to the authenticated caller; clients cannot set another user's owner id.
+- [Phase 02-03]: Temporary sharing expiry uses a hosted BackgroundService plus authorization-time expiry checks; no queue or cryptography library was added.
 
 ### Pending Todos
 
@@ -123,6 +128,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T19:59:54.776Z
-Stopped at: Completed 02-02-PLAN.md
-Resume file: .planning/phases/02-real-time-location-history-privacy/02-03-PLAN.md
+Last session: 2026-07-12T20:15:04.965Z
+Stopped at: Completed 02-03-PLAN.md
+Resume file: .planning/phases/02-real-time-location-history-privacy/02-04-PLAN.md

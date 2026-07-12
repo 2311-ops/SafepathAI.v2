@@ -97,7 +97,7 @@ Plans:
   4. User receives a low-battery alert for themselves or a family member (NOTIF-01)
   5. User can toggle sharing per data type/recipient, enable temporary auto-stopping location sharing, and export or delete their data from a Privacy Center — backed by end-to-end encrypted communication and a documented no-data-resale commitment (PRIV-01, PRIV-02, PRIV-03, PRIV-04, PRIV-05)
 
-**Plans**: 2/9 plans executed
+**Plans**: 3/9 plans executed
 
 Plans:
 
@@ -111,7 +111,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 02-03-PLAN.md — Privacy sharing matrix + temporary sharing + broadcast/read double-gate (PRIV-02/03/01)
+- [x] 02-03-PLAN.md — Privacy sharing matrix + temporary sharing + broadcast/read double-gate (PRIV-02/03/01)
 - [ ] 02-06-PLAN.md — Mobile app shell + permission priming + battery screen + self-location Live Map (LOC-01/04/05)
 
 **Wave 4** *(blocked on Wave 3)*
@@ -219,7 +219,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Backend & Auth Foundation | 14/14 | Complete | 2026-07-10 |
-| 2. Real-Time Location, History & Privacy | 2/9 | In Progress | - |
+| 2. Real-Time Location, History & Privacy | 3/9 | In Progress | - |
 | 3. SOS Fast Path (Core Value) | 0/TBD | Not started | - |
 | 4. Geofencing | 0/TBD | Not started | - |
 | 5. AI Analytics & Family Dashboard | 0/TBD | Not started | - |

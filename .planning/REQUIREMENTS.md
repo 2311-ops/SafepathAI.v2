@@ -76,8 +76,8 @@
 ### Privacy and Security (PRIV)
 
 - [x] **PRIV-01**: All sensitive communication is end-to-end encrypted
-- [ ] **PRIV-02**: User can toggle sharing per data type (live location, history, wellness) and per recipient
-- [ ] **PRIV-03**: User can enable temporary, time-boxed location sharing that auto-stops
+- [x] **PRIV-02**: User can toggle sharing per data type (live location, history, wellness) and per recipient
+- [x] **PRIV-03**: User can enable temporary, time-boxed location sharing that auto-stops
 - [ ] **PRIV-04**: User can export or delete their data from a Privacy Center
 - [ ] **PRIV-05**: Platform maintains a documented, verifiable no-data-resale commitment
 
@@ -177,8 +177,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HIST-03 | Phase 2 | Pending |
 | NOTIF-01 | Phase 2 | Pending |
 | PRIV-01 | Phase 2 | Complete |
-| PRIV-02 | Phase 2 | Pending |
-| PRIV-03 | Phase 2 | Pending |
+| PRIV-02 | Phase 2 | Complete |
+| PRIV-03 | Phase 2 | Complete |
 | PRIV-04 | Phase 2 | Pending |
 | PRIV-05 | Phase 2 | Pending |
 | SOS-01 | Phase 3 | Pending |
