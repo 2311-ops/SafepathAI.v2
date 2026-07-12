@@ -10,6 +10,7 @@ import 'package:mobile/features/auth/data/auth_models.dart';
 import 'package:mobile/features/family/data/family_api.dart';
 import 'package:mobile/features/family/data/family_models.dart';
 import 'package:mobile/features/location/application/location_controller.dart';
+import 'package:mobile/features/location/application/permission_controller.dart';
 import 'package:mobile/features/location/data/location_api.dart';
 import 'package:mobile/features/location/data/location_hub_client.dart';
 import 'package:mobile/features/location/data/location_models.dart';
@@ -72,6 +73,32 @@ class _FakeAuthApi implements AuthApi {
   Future<bool> signInWithGoogle() => throw UnimplementedError();
 }
 
+class _FakeLocationPermissionService implements LocationPermissionService {
+  LocationPermissionStatus checkResult = LocationPermissionStatus.granted;
+  LocationPermissionStatus requestResult = LocationPermissionStatus.granted;
+  int checkCallCount = 0;
+  int requestCallCount = 0;
+  int openSettingsCallCount = 0;
+
+  @override
+  Future<LocationPermissionStatus> checkPermission() async {
+    checkCallCount++;
+    return checkResult;
+  }
+
+  @override
+  Future<LocationPermissionStatus> requestPermission() async {
+    requestCallCount++;
+    return requestResult;
+  }
+
+  @override
+  Future<bool> openAppSettings() async {
+    openSettingsCallCount++;
+    return true;
+  }
+}
+
 Position _position({
   required double lat,
   required double lng,
@@ -111,6 +138,7 @@ ProviderContainer _container({
   required FakeLocationApi locationApi,
   required FakeLocationHubClient hubClient,
   required Stream<Position> positionStream,
+  required _FakeLocationPermissionService permissionService,
 }) {
   return ProviderContainer(
     overrides: [
@@ -119,6 +147,7 @@ ProviderContainer _container({
       locationApiProvider.overrideWithValue(locationApi),
       locationHubClientProvider.overrideWithValue(hubClient),
       positionStreamProvider.overrideWithValue(positionStream),
+      locationPermissionServiceProvider.overrideWithValue(permissionService),
       batteryLevelProvider.overrideWith((ref) async => 72),
     ],
   );
@@ -130,6 +159,7 @@ void main() {
   late FakeFamilyApi familyApi;
   late FakeLocationApi locationApi;
   late FakeLocationHubClient hubClient;
+  late _FakeLocationPermissionService permissionService;
   late ProviderContainer container;
 
   setUp(() {
@@ -155,12 +185,14 @@ void main() {
       ];
     locationApi = FakeLocationApi();
     hubClient = FakeLocationHubClient();
+    permissionService = _FakeLocationPermissionService();
     container = _container(
       authApi: authApi,
       familyApi: familyApi,
       locationApi: locationApi,
       hubClient: hubClient,
       positionStream: positions.stream,
+      permissionService: permissionService,
     );
   });
 
@@ -228,6 +260,42 @@ void main() {
         container.read(locationControllerProvider).value?.members,
         isEmpty,
       );
+    },
+  );
+
+  test(
+    'does not connect, fetch live locations, or stream positions before permission is granted',
+    () async {
+      permissionService.checkResult = LocationPermissionStatus.denied;
+      permissionService.requestResult = LocationPermissionStatus.granted;
+
+      container.read(permissionControllerProvider);
+      container.read(locationControllerProvider);
+      await pumpEventQueue();
+
+      final deniedAt = DateTime.utc(2026, 7, 12, 12);
+      positions.add(_position(lat: 30.05, lng: 31.24, timestamp: deniedAt));
+      await pumpEventQueue();
+
+      expect(locationApi.getLiveLocationsCallCount, 0);
+      expect(hubClient.connectCallCount, 0);
+      expect(hubClient.reportLocationCallCount, 0);
+      expect(container.read(locationControllerProvider).value?.members, isEmpty);
+
+      await container
+          .read(permissionControllerProvider.notifier)
+          .requestPermission();
+      await pumpEventQueue();
+
+      expect(hubClient.connectCallCount, 1);
+      expect(locationApi.getLiveLocationsCallCount, 1);
+
+      final grantedAt = DateTime.utc(2026, 7, 12, 12, 5);
+      positions.add(_position(lat: 30.06, lng: 31.25, timestamp: grantedAt));
+      await pumpEventQueue();
+
+      expect(hubClient.reportLocationCallCount, 1);
+      expect(hubClient.lastReportedLocation?.latitude, 30.06);
     },
   );
 }
