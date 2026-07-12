@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<IFamilyAuthorizationService, FamilyAuthorizationService>();
         services.AddScoped<IInviteCodeGenerator, InviteCodeGenerator>();
         services.AddSignalR();
+        services.AddSingleton<IUserIdProvider, SupabaseUserIdProvider>();
         services.AddSingleton<PresenceTracker>();
         services.AddScoped<ILocationBroadcastService, LocationBroadcastService>();
 
