@@ -7,7 +7,7 @@ using Xunit;
 
 namespace SafePath.Application.Tests.Location;
 
-public class LocationFoundationTests : IDisposable
+public class GetLiveLocationsQueryTests : IDisposable
 {
     private readonly SqliteInMemoryDbContextFactory _factory = new();
 
@@ -26,6 +26,14 @@ public class LocationFoundationTests : IDisposable
         var userId = Guid.NewGuid();
         var recordedAt = DateTime.UtcNow.AddMinutes(-2);
 
+        db.Users.Add(new User
+        {
+            Id = userId,
+            Email = "member@example.com",
+            FullName = "Member One",
+            Role = null,
+            CreatedAt = DateTime.UtcNow,
+        });
         db.LocationPings.Add(new LocationPing
         {
             Id = Guid.NewGuid(),
