@@ -4,10 +4,10 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 03
 status: ready_for_next_phase
-stopped_at: Completed 02-09-PLAN.md
-last_updated: "2026-07-12T21:52:01.583Z"
+stopped_at: Completed 02-10-PLAN.md
+last_updated: "2026-07-12T22:47:46Z"
 last_activity: 2026-07-13
-last_activity_desc: Completed Phase 02 Plan 09 mobile Privacy Center sharing, export/delete, and policy
+last_activity_desc: Completed Phase 02 Plan 10 LOC-05 permission priming gap closure
 progress:
   total_phases: 8
   completed_phases: 3
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 
 Phase: 02-real-time-location-history-privacy - COMPLETE
 Plan: Phase 03 planning next
-Status: 02-09 complete; Phase 02 now has 9/9 plan summaries
-Last activity: 2026-07-13 - Completed Phase 02 Plan 09 mobile Privacy Center sharing, export/delete, and policy
+Status: 02-10 complete; Phase 02 now has 10/10 plan summaries including LOC-05 gap closure
+Last activity: 2026-07-13 - Completed Phase 02 Plan 10 LOC-05 permission priming gap closure
 
 Progress: [##########] 100%
 
@@ -74,6 +74,7 @@ Progress: [##########] 100%
 | Phase 02-real-time-location-history-privacy P05 | 8min | 3 tasks | 18 files |
 | Phase 02-real-time-location-history-privacy P08 | 9min | 3 tasks | 12 files |
 | Phase 02-real-time-location-history-privacy P09 | 11min | 3 tasks | 12 files |
+| Phase 02-real-time-location-history-privacy P10 | 17min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,7 @@ Recent decisions affecting current work:
 - [Phase 02-08]: Mobile history routes render with google_maps_flutter Polyline inside route_stats_sheet.dart; Activity remains shell-hosted rather than adding a separate /activity route.
 - [Phase 02]: [Phase 02-09]: PrivacyController derives familyId from FamilyController and uses server-backed PATCH toggles with rollback on failure.
 - [Phase 02]: [Phase 02-09]: Privacy export uses existing share_plus JSON text sharing; delete uses Ink/700 confirmation friction and no SOS-red token.
+- [Phase 02]: [Phase 02-10]: LOC-05 is enforced at both /home routing and LocationController bootstrap; non-granted permission reaches priming before MainShell/LiveMapScreen and before live API, SignalR, or Geolocator streaming.
 
 ### Pending Todos
 
@@ -149,6 +151,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T21:51:50.838Z
-Stopped at: Completed 02-09-PLAN.md
+Last session: 2026-07-12T22:47:46Z
+Stopped at: Completed 02-10-PLAN.md
 Resume file: None
