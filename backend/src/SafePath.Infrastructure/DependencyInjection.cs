@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddSingleton<PresenceTracker>();
         services.AddSingleton<IPresenceQuery>(provider => provider.GetRequiredService<PresenceTracker>());
         services.AddScoped<ILocationBroadcastService, LocationBroadcastService>();
+        services.AddHostedService<SharingPreferenceSweepService>();
 
         return services;
     }
