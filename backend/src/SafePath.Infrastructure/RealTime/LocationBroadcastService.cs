@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using SafePath.Application.Common.Interfaces;
+using SafePath.Application.Location;
 
 namespace SafePath.Infrastructure.RealTime;
 

@@ -1,3 +1,5 @@
+using SafePath.Application.Location;
+
 namespace SafePath.Application.Common.Interfaces;
 
 public interface ILocationBroadcastService

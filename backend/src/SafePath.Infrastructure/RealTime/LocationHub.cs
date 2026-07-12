@@ -1,19 +1,32 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using SafePath.Application.Common.Interfaces;
+using SafePath.Application.Location;
 
 namespace SafePath.Infrastructure.RealTime;
+
+public record ReportLocationRequest(
+    double Latitude,
+    double Longitude,
+    double AccuracyMeters,
+    int? BatteryPercent,
+    DateTime RecordedAtUtc);
 
 [Authorize]
 public class LocationHub : Hub<ILocationClient>
 {
     private readonly IFamilyAuthorizationService _authorization;
     private readonly PresenceTracker _presence;
+    private readonly ICommandHandler<ReportLocationCommand, ReportLocationResult> _reportLocation;
 
-    public LocationHub(IFamilyAuthorizationService authorization, PresenceTracker presence)
+    public LocationHub(
+        IFamilyAuthorizationService authorization,
+        PresenceTracker presence,
+        ICommandHandler<ReportLocationCommand, ReportLocationResult> reportLocation)
     {
         _authorization = authorization;
         _presence = presence;
+        _reportLocation = reportLocation;
     }
 
     public override async Task OnConnectedAsync()
@@ -49,6 +62,23 @@ public class LocationHub : Hub<ILocationClient>
         }
 
         await base.OnDisconnectedAsync(exception);
+    }
+
+    public Task<ReportLocationResult> ReportLocation(ReportLocationRequest request)
+    {
+        var userId = GetUserId();
+        var familyId = GetFamilyIdFromQuery();
+
+        return _reportLocation.Handle(
+            new ReportLocationCommand(
+                userId,
+                familyId,
+                request.Latitude,
+                request.Longitude,
+                request.AccuracyMeters,
+                request.BatteryPercent,
+                request.RecordedAtUtc),
+            Context.ConnectionAborted);
     }
 
     public static string FamilyGroupName(Guid familyId) => $"family:{familyId}";

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Application.Families;
+using SafePath.Application.Location;
 
 namespace SafePath.Application;
 
@@ -20,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<DeleteFamilyCommand, DeleteFamilyResult>, DeleteFamilyCommandHandler>();
         services.AddScoped<ICommandHandler<GetMeQuery, GetMeResult>, GetMeQueryHandler>();
         services.AddScoped<ICommandHandler<UpdateMyRoleCommand, GetMeResult>, UpdateMyRoleCommandHandler>();
+        services.AddScoped<ICommandHandler<ReportLocationCommand, ReportLocationResult>, ReportLocationCommandHandler>();
 
         return services;
     }

@@ -1,4 +1,4 @@
-namespace SafePath.Application.Common.Interfaces;
+namespace SafePath.Application.Location;
 
 public record LocationUpdateDto(
     Guid UserId,
