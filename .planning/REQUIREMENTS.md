@@ -27,8 +27,8 @@
 - [x] **LOC-01**: User's live location updates continuously and appears on a shared family map
 - [x] **LOC-02**: User sees each family member's last-seen timestamp and online/offline status
 - [x] **LOC-03**: User sees a stale-location indicator with a visible accuracy radius when location data is old or imprecise
-- [ ] **LOC-04**: User sees a battery-usage transparency screen explaining what background tracking costs in battery
-- [ ] **LOC-05**: User sees an in-app permission-priming screen before the OS location-permission dialog appears
+- [x] **LOC-04**: User sees a battery-usage transparency screen explaining what background tracking costs in battery
+- [x] **LOC-05**: User sees an in-app permission-priming screen before the OS location-permission dialog appears
 
 ### Location History (HIST)
 
@@ -170,8 +170,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LOC-01 | Phase 2 | Complete |
 | LOC-02 | Phase 2 | Complete |
 | LOC-03 | Phase 2 | Complete |
-| LOC-04 | Phase 2 | Pending |
-| LOC-05 | Phase 2 | Pending |
+| LOC-04 | Phase 2 | Complete |
+| LOC-05 | Phase 2 | Complete |
 | HIST-01 | Phase 2 | Pending |
 | HIST-02 | Phase 2 | Pending |
 | HIST-03 | Phase 2 | Pending |

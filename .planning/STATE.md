@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 02
 status: phase_in_progress
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-07-12T20:15:04.983Z"
+stopped_at: Completed 02-06-PLAN.md
+last_updated: "2026-07-12T20:36:43.722Z"
 last_activity: 2026-07-12
-last_activity_desc: Completed Phase 02 Plan 03 privacy sharing matrix and temporary sharing
+last_activity_desc: Completed Phase 02 Plan 06 mobile shell, permission priming, battery transparency, and self-location map
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 25
-  completed_plans: 19
-  percent: 76
+  completed_plans: 20
+  percent: 80
 current_phase_name: real-time-location-history-privacy
 ---
 
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 ## Current Position
 
 Phase: 02-real-time-location-history-privacy - IN PROGRESS
-Plan: 02-04-PLAN.md (next)
-Status: 02-03 complete; ready for 02-04
-Last activity: 2026-07-12 - Completed Phase 02 Plan 03 privacy sharing matrix and temporary sharing
+Plan: 02-04-PLAN.md (next incomplete)
+Status: 02-06 complete; 02-04/02-05 remain incomplete from earlier waves
+Last activity: 2026-07-12 - Completed Phase 02 Plan 06 mobile shell, permission priming, battery transparency, and self-location map
 
-Progress: [########--] 76%
+Progress: [########--] 80%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [########--] 76%
 | Phase 02-real-time-location-history-privacy P01 | multi-session | 4 tasks | 19 files |
 | Phase 02-real-time-location-history-privacy P02 | 8min | 3 tasks | 24 files |
 | Phase 02-real-time-location-history-privacy P03 | 9min | 3 tasks | 25 files |
+| Phase 02-real-time-location-history-privacy P06 | 18min | 3 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,9 @@ Recent decisions affecting current work:
 - [Phase 02-03]: Missing sharing rows default to shared-with-family, explicit recipient rows override default rows, and expired rows are denied at authorization time.
 - [Phase 02-03]: Privacy preference updates force OwnerUserId to the authenticated caller; clients cannot set another user's owner id.
 - [Phase 02-03]: Temporary sharing expiry uses a hosted BackgroundService plus authorization-time expiry checks; no queue or cryptography library was added.
+- [Phase 02-06]: Google Maps API keys are wired through build-time placeholders rather than hardcoded secrets; provide MAPS_API_KEY_ANDROID and MAPS_API_KEY_IOS in local/device builds.
+- [Phase 02-06]: Mobile location permission prompting uses an injectable Geolocator permission service so requestPermission is strictly CTA-gated and testable.
+- [Phase 02-06]: LocationController opens the hub only after authenticated auth state plus loaded family state, then tears down on sign-out.
 
 ### Pending Todos
 
@@ -128,6 +132,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T20:15:04.965Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-07-12T20:36:43.708Z
+Stopped at: Completed 02-06-PLAN.md
 Resume file: .planning/phases/02-real-time-location-history-privacy/02-04-PLAN.md
