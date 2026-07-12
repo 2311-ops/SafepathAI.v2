@@ -72,7 +72,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal:** On cold launch the app shows a calm, on-brand animated SafePath logo splash exactly once, then hands off to the existing router destination (Home if authenticated, Welcome if not) — additive only, with zero changes to auth, session, or routing semantics.
 **Requirements**: none (inserted decimal phase; no REQ-IDs mapped)
 **Depends on:** Phase 1
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans executed
 
 Plans:
 **Wave 1**
@@ -81,7 +81,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01.1-02-PLAN.md — Deterministic splash/gate tests, full-suite regression pass, human visual sign-off
+- [x] 01.1-02-PLAN.md — Deterministic splash/gate tests, full-suite regression pass, human visual sign-off
 
 ### Phase 2: Real-Time Location, History & Privacy
 
@@ -97,7 +97,31 @@ Plans:
   4. User receives a low-battery alert for themselves or a family member (NOTIF-01)
   5. User can toggle sharing per data type/recipient, enable temporary auto-stopping location sharing, and export or delete their data from a Privacy Center — backed by end-to-end encrypted communication and a documented no-data-resale commitment (PRIV-01, PRIV-02, PRIV-03, PRIV-04, PRIV-05)
 
-**Plans**: TBD
+**Plans**: 9 plans (6 waves) — parallel backend + mobile chains
+
+Plans:
+
+**Wave 1**
+- [ ] 02-01-PLAN.md — Real-time transport walking skeleton + signalr_netcore [SUS] spike (LOC-01/02, PRIV-01)
+
+**Wave 2** *(blocked on Wave 1)*
+- [ ] 02-02-PLAN.md — Location persistence + live broadcast + dual-signal presence (LOC-01/02/03)
+
+**Wave 3** *(blocked on Wave 2)*
+- [ ] 02-03-PLAN.md — Privacy sharing matrix + temporary sharing + broadcast/read double-gate (PRIV-02/03/01)
+- [ ] 02-06-PLAN.md — Mobile app shell + permission priming + battery screen + self-location Live Map (LOC-01/04/05)
+
+**Wave 4** *(blocked on Wave 3)*
+- [ ] 02-04-PLAN.md — Location history + route polyline + travel stats (HIST-01/02/03)
+- [ ] 02-07-PLAN.md — Mobile family presence + staleness/accuracy + low-battery banner (LOC-02/03, NOTIF-01)
+
+**Wave 5** *(blocked on Wave 4)*
+- [ ] 02-05-PLAN.md — Low-battery alert + data export/delete + no-data-resale policy (NOTIF-01, PRIV-04/05)
+- [ ] 02-08-PLAN.md — Mobile history timeline + route + stats screens (HIST-01/02/03)
+
+**Wave 6** *(blocked on Wave 5)*
+- [ ] 02-09-PLAN.md — Mobile Privacy Center: sharing matrix + temporary sharing + export/delete + policy (PRIV-02/03/04/05)
+
 **UI hint**: yes
 
 ### Phase 3: SOS Fast Path (Core Value)
@@ -189,7 +213,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Backend & Auth Foundation | 14/14 | Complete | 2026-07-10 |
-| 2. Real-Time Location, History & Privacy | 0/TBD | Not started | - |
+| 2. Real-Time Location, History & Privacy | 0/9 | Planned | - |
 | 3. SOS Fast Path (Core Value) | 0/TBD | Not started | - |
 | 4. Geofencing | 0/TBD | Not started | - |
 | 5. AI Analytics & Family Dashboard | 0/TBD | Not started | - |
