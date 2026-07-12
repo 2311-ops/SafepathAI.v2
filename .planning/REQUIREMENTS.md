@@ -53,7 +53,7 @@
 
 ### Smart Notifications (NOTIF)
 
-- [ ] **NOTIF-01**: User receives a low-battery alert for themselves or a family member
+- [x] **NOTIF-01**: User receives a low-battery alert for themselves or a family member
 - [ ] **NOTIF-02**: User receives a geofence enter/exit alert
 - [ ] **NOTIF-03**: User receives an SOS alert
 - [ ] **NOTIF-04**: User receives an inactivity alert
@@ -175,7 +175,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HIST-01 | Phase 2 | Complete |
 | HIST-02 | Phase 2 | Complete |
 | HIST-03 | Phase 2 | Complete |
-| NOTIF-01 | Phase 2 | Pending |
+| NOTIF-01 | Phase 2 | Complete |
 | PRIV-01 | Phase 2 | Complete |
 | PRIV-02 | Phase 2 | Complete |
 | PRIV-03 | Phase 2 | Complete |

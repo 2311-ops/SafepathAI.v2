@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 02
 status: phase_in_progress
-stopped_at: Completed 02-04-PLAN.md
-last_updated: "2026-07-12T20:49:14.634Z"
+stopped_at: Completed 02-07-PLAN.md
+last_updated: "2026-07-12T21:06:50.841Z"
 last_activity: 2026-07-12
-last_activity_desc: Completed Phase 02 Plan 04 location history, route polyline, and travel stats
+last_activity_desc: Completed Phase 02 Plan 07 mobile family presence, staleness, accuracy, and low-battery banner
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 25
-  completed_plans: 21
-  percent: 84
+  completed_plans: 22
+  percent: 88
 current_phase_name: real-time-location-history-privacy
 ---
 
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 ## Current Position
 
 Phase: 02-real-time-location-history-privacy - IN PROGRESS
-Plan: 02-07-PLAN.md (next Wave 4 incomplete)
-Status: 02-04 complete; 02-07 remains in Wave 4; 02-05/02-08/02-09 remain later incomplete plans
-Last activity: 2026-07-12 - Completed Phase 02 Plan 04 location history, route polyline, and travel stats
+Plan: 02-05-PLAN.md (next incomplete)
+Status: 02-07 complete; 02-05/02-08/02-09 remain later incomplete plans
+Last activity: 2026-07-12 - Completed Phase 02 Plan 07 mobile family presence, staleness, accuracy, and low-battery banner
 
-Progress: [########--] 84%
+Progress: [#########-] 88%
 
 ## Performance Metrics
 
@@ -70,6 +70,7 @@ Progress: [########--] 84%
 | Phase 02-real-time-location-history-privacy P03 | 9min | 3 tasks | 25 files |
 | Phase 02-real-time-location-history-privacy P06 | 18min | 3 tasks | 22 files |
 | Phase 02-real-time-location-history-privacy P04 | 7min | 3 tasks | 10 files |
+| Phase 02 P07 | 12min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -112,6 +113,8 @@ Recent decisions affecting current work:
 - [Phase 02-04]: TimeAway is defined as elapsed time between first and last ping in the bounded history range, or zero with fewer than two pings.
 - [Phase 02-04]: History and travel-stats reads enforce RequireMembership, target-in-family re-scope, and SharedDataType.History before any LocationPing range read.
 - [Phase 02-04]: StopDetection uses DwellTimeDefaults plus averaged dwell-cluster coordinates as the representative stop point.
+- [Phase 02]: [Phase 02-07]: Mobile LiveLocation now mirrors backend MemberLiveLocationDto displayName/isOnline while keeping hub PresenceChanged as an independent state signal. — Required so the member detail sheet can show names/status without collapsing presence and staleness.
+- [Phase 02]: [Phase 02-07]: LowBattery is implemented as a typed mobile hub stream and caution banner ahead of the absent backend 02-05 event. — The 02-07 plan required the client surface, but 02-05-SUMMARY.md and the backend event are not present yet.
 
 ### Pending Todos
 
@@ -136,6 +139,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T20:48:46.417Z
-Stopped at: Completed 02-04-PLAN.md
-Resume file: .planning/phases/02-real-time-location-history-privacy/02-07-PLAN.md
+Last session: 2026-07-12T21:06:32.275Z
+Stopped at: Completed 02-07-PLAN.md
+Resume file: None

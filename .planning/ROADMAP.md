@@ -97,7 +97,7 @@ Plans:
   4. User receives a low-battery alert for themselves or a family member (NOTIF-01)
   5. User can toggle sharing per data type/recipient, enable temporary auto-stopping location sharing, and export or delete their data from a Privacy Center — backed by end-to-end encrypted communication and a documented no-data-resale commitment (PRIV-01, PRIV-02, PRIV-03, PRIV-04, PRIV-05)
 
-**Plans**: 5/9 plans executed
+**Plans**: 6/9 plans executed
 
 Plans:
 
@@ -117,7 +117,7 @@ Plans:
 **Wave 4** *(blocked on Wave 3)*
 
 - [x] 02-04-PLAN.md — Location history + route polyline + travel stats (HIST-01/02/03)
-- [ ] 02-07-PLAN.md — Mobile family presence + staleness/accuracy + low-battery banner (LOC-02/03, NOTIF-01)
+- [x] 02-07-PLAN.md — Mobile family presence + staleness/accuracy + low-battery banner (LOC-02/03, NOTIF-01)
 
 **Wave 5** *(blocked on Wave 4)*
 
@@ -219,7 +219,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Backend & Auth Foundation | 14/14 | Complete | 2026-07-10 |
-| 2. Real-Time Location, History & Privacy | 5/9 | In Progress | - |
+| 2. Real-Time Location, History & Privacy | 6/9 | In Progress | - |
 | 3. SOS Fast Path (Core Value) | 0/TBD | Not started | - |
 | 4. Geofencing | 0/TBD | Not started | - |
 | 5. AI Analytics & Family Dashboard | 0/TBD | Not started | - |
