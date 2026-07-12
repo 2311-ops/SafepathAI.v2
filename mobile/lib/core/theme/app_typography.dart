@@ -52,6 +52,15 @@ abstract final class AppTypography {
     color: AppColors.bodySecondary,
   );
 
+  /// 20px/800 Manrope - route and activity stat values.
+  static TextStyle get statValue => GoogleFonts.manrope(
+    fontSize: 20,
+    fontWeight: FontWeight.w800,
+    height: 1.1,
+    letterSpacing: 0,
+    color: AppColors.ink,
+  );
+
   /// Primary CTA button label — 700 weight/16px per UI-SPEC ("Primary CTA
   /// buttons specifically render at 700 weight, 16px").
   static TextStyle get ctaLabel => GoogleFonts.manrope(
