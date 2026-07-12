@@ -21,6 +21,7 @@ import '../../features/family/presentation/manage_permissions_screen.dart';
 import '../../features/home/presentation/main_shell.dart';
 import '../../features/location/presentation/battery_transparency_screen.dart';
 import '../../features/location/presentation/permission_priming_screen.dart';
+import '../../features/privacy/presentation/privacy_policy_screen.dart';
 import '../../features/profile/application/profile_controller.dart';
 import '../../features/splash/application/splash_providers.dart';
 import '../../features/splash/presentation/splash_screen.dart';
@@ -50,6 +51,7 @@ const _authenticatedOnlyRoutes = {
   '/invite/accept',
   '/permission-priming',
   '/battery-info',
+  '/privacy/policy',
 };
 
 /// Bridges [authControllerProvider] changes to go_router's
@@ -220,6 +222,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/battery-info',
         name: 'battery-info',
         builder: (context, state) => const BatteryTransparencyScreen(),
+      ),
+      GoRoute(
+        path: '/privacy/policy',
+        name: 'privacy-policy',
+        builder: (context, state) => const PrivacyPolicyScreen(),
       ),
       GoRoute(
         path: '/circle/create',

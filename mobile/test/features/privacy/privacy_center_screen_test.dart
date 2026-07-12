@@ -39,6 +39,7 @@ class _SeededFamilyController extends FamilyController {
 class _SpyPrivacyController extends PrivacyController {
   int toggleCallCount = 0;
   int temporaryShareCallCount = 0;
+  int deleteMyDataCallCount = 0;
   String? lastRecipientId;
   SharedDataType? lastDataType;
   bool? lastEnabled;
@@ -94,6 +95,11 @@ class _SpyPrivacyController extends PrivacyController {
     lastRecipientId = recipientId;
     lastDataType = dataType;
     lastDuration = duration;
+  }
+
+  @override
+  Future<void> deleteMyData() async {
+    deleteMyDataCallCount++;
   }
 }
 
@@ -161,6 +167,30 @@ void main() {
     expect(controller.lastRecipientId, 'mem-recipient');
     expect(controller.lastDataType, SharedDataType.liveLocation);
     expect(controller.lastDuration, const Duration(hours: 4));
+  });
+
+  testWidgets('delete data is confirmation-gated', (tester) async {
+    final controller = _SpyPrivacyController();
+
+    await tester.pumpWidget(_app(controller));
+    await tester.drag(find.byType(ListView), const Offset(0, -520));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete my data'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delete all your location data?'), findsOneWidget);
+    expect(
+      find.text(
+        "This permanently removes your live location, history, and stats from SafePath. Your family won't be able to see past activity anymore. This can't be undone.",
+      ),
+      findsOneWidget,
+    );
+    expect(controller.deleteMyDataCallCount, 0);
+
+    await tester.tap(find.widgetWithText(TextButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(controller.deleteMyDataCallCount, 1);
   });
 }
 

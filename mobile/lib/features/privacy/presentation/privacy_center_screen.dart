@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -14,6 +16,45 @@ import '../data/privacy_models.dart';
 
 class PrivacyCenterScreen extends ConsumerWidget {
   const PrivacyCenterScreen({super.key});
+
+  Future<void> _exportMyData(BuildContext context, WidgetRef ref) async {
+    final json = await ref.read(privacyControllerProvider.notifier).exportMyData();
+    if (json == null) return;
+    await SharePlus.instance.share(
+      ShareParams(subject: 'SafePath data export', text: json),
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete all your location data?'),
+        content: const Text(
+          "This permanently removes your live location, history, and stats from SafePath. Your family won't be able to see past activity anymore. This can't be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(
+                color: AppColors.ink,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    await ref.read(privacyControllerProvider.notifier).deleteMyData();
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -103,6 +144,14 @@ class PrivacyCenterScreen extends ConsumerWidget {
                           duration: duration,
                         ),
               ),
+              const SizedBox(height: AppSpacing.xl),
+              _PrivacyActionsSection(
+                isExporting: privacyState.isExporting,
+                isDeleting: privacyState.isDeleting,
+                onExport: () => _exportMyData(context, ref),
+                onDelete: () => _confirmDelete(context, ref),
+                onPolicy: () => context.go('/privacy/policy'),
+              ),
             ],
           ),
         ),
@@ -124,6 +173,62 @@ class PrivacyCenterScreen extends ConsumerWidget {
       }
     }
     return null;
+  }
+}
+
+class _PrivacyActionsSection extends StatelessWidget {
+  const _PrivacyActionsSection({
+    required this.isExporting,
+    required this.isDeleting,
+    required this.onExport,
+    required this.onDelete,
+    required this.onPolicy,
+  });
+
+  final bool isExporting;
+  final bool isDeleting;
+  final VoidCallback onExport;
+  final VoidCallback onDelete;
+  final VoidCallback onPolicy;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafePathCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Your data', style: AppTypography.title),
+          const SizedBox(height: AppSpacing.sm),
+          TextButton.icon(
+            onPressed: isExporting ? null : onExport,
+            icon: isExporting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.file_download_outlined),
+            label: const Text('Export my data'),
+          ),
+          TextButton.icon(
+            onPressed: onPolicy,
+            icon: const Icon(Icons.policy_outlined),
+            label: const Text('Privacy policy'),
+          ),
+          TextButton.icon(
+            onPressed: isDeleting ? null : onDelete,
+            icon: const Icon(Icons.delete_outline, color: AppColors.ink),
+            label: const Text(
+              'Delete my data',
+              style: TextStyle(
+                color: AppColors.ink,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

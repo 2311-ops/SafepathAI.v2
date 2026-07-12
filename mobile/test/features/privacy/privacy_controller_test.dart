@@ -244,4 +244,25 @@ void main() {
       const Duration(hours: 3, minutes: 30),
     );
   });
+
+  test('export failure surfaces the exact UI copy', () async {
+    container.read(familyControllerProvider);
+    await pumpEventQueue();
+    container.read(privacyControllerProvider);
+    await pumpEventQueue();
+
+    privacyApi.exportError = PrivacyApiException(
+      PrivacyApiIssue.network,
+      message: "Couldn't prepare your export. Try again in a moment.",
+    );
+
+    final result = await container
+        .read(privacyControllerProvider.notifier)
+        .exportMyData();
+
+    final state = container.read(privacyControllerProvider).value!;
+    expect(result, isNull);
+    expect(privacyApi.exportMyDataCallCount, 1);
+    expect(state.error, "Couldn't prepare your export. Try again in a moment.");
+  });
 }

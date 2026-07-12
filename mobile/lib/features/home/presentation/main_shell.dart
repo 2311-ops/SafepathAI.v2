@@ -5,6 +5,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../location/presentation/history_timeline_screen.dart';
 import '../../location/presentation/live_map_screen.dart';
+import '../../privacy/presentation/privacy_center_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -55,11 +56,7 @@ class _MainShellState extends State<MainShell> {
             title: 'Insights',
             body: 'Insights are coming soon',
           ),
-          _PlainTabPlaceholder(
-            icon: Icons.privacy_tip,
-            title: 'Privacy',
-            body: 'Privacy controls are coming soon.',
-          ),
+          PrivacyCenterScreen(),
         ],
       ),
       bottomNavigationBar: SafeArea(
