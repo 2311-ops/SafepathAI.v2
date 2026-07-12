@@ -24,8 +24,8 @@
 
 ### Real-Time Location Tracking (LOC)
 
-- [ ] **LOC-01**: User's live location updates continuously and appears on a shared family map
-- [ ] **LOC-02**: User sees each family member's last-seen timestamp and online/offline status
+- [x] **LOC-01**: User's live location updates continuously and appears on a shared family map
+- [x] **LOC-02**: User sees each family member's last-seen timestamp and online/offline status
 - [ ] **LOC-03**: User sees a stale-location indicator with a visible accuracy radius when location data is old or imprecise
 - [ ] **LOC-04**: User sees a battery-usage transparency screen explaining what background tracking costs in battery
 - [ ] **LOC-05**: User sees an in-app permission-priming screen before the OS location-permission dialog appears
@@ -75,7 +75,7 @@
 
 ### Privacy and Security (PRIV)
 
-- [ ] **PRIV-01**: All sensitive communication is end-to-end encrypted
+- [x] **PRIV-01**: All sensitive communication is end-to-end encrypted
 - [ ] **PRIV-02**: User can toggle sharing per data type (live location, history, wellness) and per recipient
 - [ ] **PRIV-03**: User can enable temporary, time-boxed location sharing that auto-stops
 - [ ] **PRIV-04**: User can export or delete their data from a Privacy Center
@@ -167,8 +167,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FAM-04 | Phase 1 | Complete |
 | FAM-05 | Phase 1 | Complete |
 | DESIGN-01 | Phase 1 | Complete |
-| LOC-01 | Phase 2 | Pending |
-| LOC-02 | Phase 2 | Pending |
+| LOC-01 | Phase 2 | Complete |
+| LOC-02 | Phase 2 | Complete |
 | LOC-03 | Phase 2 | Pending |
 | LOC-04 | Phase 2 | Pending |
 | LOC-05 | Phase 2 | Pending |
@@ -176,7 +176,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HIST-02 | Phase 2 | Pending |
 | HIST-03 | Phase 2 | Pending |
 | NOTIF-01 | Phase 2 | Pending |
-| PRIV-01 | Phase 2 | Pending |
+| PRIV-01 | Phase 2 | Complete |
 | PRIV-02 | Phase 2 | Pending |
 | PRIV-03 | Phase 2 | Pending |
 | PRIV-04 | Phase 2 | Pending |

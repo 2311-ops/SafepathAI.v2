@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 0
-current_phase_name: v1.0
-status: ready_for_milestone_completion
-stopped_at: Phase 2 context gathered
-last_updated: "2026-07-12T00:15:25.031Z"
+current_phase: 02
+current_phase_name: real-time-location-history-privacy
+status: phase_in_progress
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-07-12T19:44:13.320Z"
 last_activity: 2026-07-12
-last_activity_desc: Phase 01.1 verification completed and milestone audit passed
+last_activity_desc: Completed Phase 02 Plan 01 real-time transport walking skeleton
 progress:
   total_phases: 8
   completed_phases: 2
-  total_plans: 16
-  completed_plans: 16
-  percent: 25
+  total_plans: 25
+  completed_plans: 17
+  percent: 68
 ---
 
 # Project State
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 
 ## Current Position
 
-Phase: milestone-closeout (v1.0) - READY
-Plan: Complete milestone archive after final audit
-Status: Phase 1 and Phase 01.1 verified
-Last activity: 2026-07-12 - Phase 01.1 verification completed and milestone audit passed
+Phase: 02-real-time-location-history-privacy - IN PROGRESS
+Plan: 02-02-PLAN.md (next)
+Status: 02-01 complete; ready for 02-02
+Last activity: 2026-07-12 - Completed Phase 02 Plan 01 real-time transport walking skeleton
 
-Progress: [###-------] 25%
+Progress: [#######---] 68%
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Progress: [###-------] 25%
 | Phase 01-backend-auth-foundation P14 | review-fix | 3 tasks | deep links/reset UX/tests |
 | Phase 01.1-animated-logo-splash-screen P01 | 15min | 2 tasks | 3 files |
 | Phase 01.1-animated-logo-splash-screen P02 | 35min | 4 tasks | tests/auth/splash |
+| Phase 02-real-time-location-history-privacy P01 | multi-session | 4 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work:
 - [Phase 01-13]: Added Guardian ownership transfer and delete-family workflows, plus FK/cascade migration and an explicit RLS/Data API deny posture for family tables.
 - [Phase 01-14]: Added invite deep-link handling with pending-invite restoration after auth, distinct decline behavior, and amber expired-reset-link messaging while preserving SOS red exclusively for emergency surfaces.
 - [Phase 01.1-01]: Splash providers use Notifier/NotifierProvider + set() (matching deep_link_service.dart convention) instead of legacy StateProvider, which is unavailable in this project's flutter_riverpod 3.3.2
+- [Phase 02-01]: Approved and retained signalr_netcore 1.4.4 after package legitimacy review and physical-device smoke verification.
+- [Phase 02-01]: SignalR hub user identity is normalized through SupabaseUserIdProvider using the JWT sub claim, matching the backend application user ID model.
+- [Phase 02-01]: Temporary Task 4 smoke-only hub method and Flutter smoke entrypoint were removed before close-out; permanent verification is the integration guard plus recorded device smoke evidence.
 
 ### Pending Todos
 
@@ -115,6 +119,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T00:15:25.017Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-real-time-location-history-privacy/02-CONTEXT.md
+Last session: 2026-07-12T19:42:39.153Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: .planning/phases/02-real-time-location-history-privacy/02-02-PLAN.md
