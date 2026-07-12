@@ -4,6 +4,10 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>MAPS_API_KEY_IOS</key>
+	<string>$(MAPS_API_KEY_IOS)</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SafePath uses your location while the app is open so your family can see that you are safe.</string>
 	<!-- safepathai:// deep link — handles both the password-reset email link
 	     and the Google OAuth redirect-back (01-08-PLAN.md D-08-3: this scheme
 	     was previously unregistered on iOS, so neither flow could return into

@@ -18,7 +18,9 @@ import '../../features/family/presentation/accept_invite_screen.dart';
 import '../../features/family/presentation/create_circle_screen.dart';
 import '../../features/family/presentation/invite_member_screen.dart';
 import '../../features/family/presentation/manage_permissions_screen.dart';
-import '../../features/home/presentation/landing_stub_screen.dart';
+import '../../features/home/presentation/main_shell.dart';
+import '../../features/location/presentation/battery_transparency_screen.dart';
+import '../../features/location/presentation/permission_priming_screen.dart';
 import '../../features/profile/application/profile_controller.dart';
 import '../../features/splash/application/splash_providers.dart';
 import '../../features/splash/presentation/splash_screen.dart';
@@ -46,6 +48,8 @@ const _authenticatedOnlyRoutes = {
   '/circle/invite',
   '/circle/permissions',
   '/invite/accept',
+  '/permission-priming',
+  '/battery-info',
 };
 
 /// Bridges [authControllerProvider] changes to go_router's
@@ -205,7 +209,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/home',
         name: 'home',
-        builder: (context, state) => const LandingStubScreen(),
+        builder: (context, state) => const MainShell(),
+      ),
+      GoRoute(
+        path: '/permission-priming',
+        name: 'permission-priming',
+        builder: (context, state) => const PermissionPrimingScreen(),
+      ),
+      GoRoute(
+        path: '/battery-info',
+        name: 'battery-info',
+        builder: (context, state) => const BatteryTransparencyScreen(),
       ),
       GoRoute(
         path: '/circle/create',

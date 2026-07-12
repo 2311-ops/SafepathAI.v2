@@ -23,6 +23,8 @@ abstract final class AppColors {
 
   /// Safe green — positive/safe status indicators.
   static const Color safe = Color(0xFF2F9E6B);
+  static const Color safeBg = Color(0xFFEAF5EF);
+  static const Color safeBgBorder = Color(0xFFCDE9DA);
 
   /// Caution amber — non-SOS attention/warning/validation-error states.
   static const Color caution = Color(0xFFC98A2B);
@@ -36,6 +38,9 @@ abstract final class AppColors {
 
   /// Default app background (dominant, 60%).
   static const Color appBg = Color(0xFFECF0EF);
+  static const Color primaryTintBg = Color(0xFFE3EFEE);
+  static const Color hairline = Color(0xFFE4EAE8);
+  static const Color hairlineSoft = Color(0xFFF0F3F2);
 
   /// Ink — primary body/heading text color.
   static const Color ink = Color(0xFF15302E);
@@ -49,6 +54,9 @@ abstract final class AppColors {
 
   /// Secondary body text color (subtitles, helper text).
   static const Color bodySecondary = Color(0xFF5E726F);
+  static const Color toggleOffTrack = Color(0xFFDDE5E3);
+  static const Color memberViolet = Color(0xFF6E66C9);
+  static const Color memberPink = Color(0xFFC95E8F);
 
   // Form validation / error-state tokens (defined by extension, not in the
   // hifi mockup — see 01-UI-SPEC.md "Form validation / error states").
