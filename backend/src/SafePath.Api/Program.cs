@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using SafePath.Application;
 using SafePath.Infrastructure;
+using SafePath.Infrastructure.RealTime;
 
 var envPath = new[]
 {
@@ -56,6 +57,22 @@ builder.Services
             NameClaimType = "sub",
             RoleClaimType = "role",
             ClockSkew = TimeSpan.FromMinutes(1),
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    path.StartsWithSegments("/hubs/location"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            },
         };
     });
 
@@ -134,6 +151,7 @@ app.UseCors("SafePathClient");
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapHub<LocationHub>("/hubs/location");
 app.MapControllers();
 
 app.Run();

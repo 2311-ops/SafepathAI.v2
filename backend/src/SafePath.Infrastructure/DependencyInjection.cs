@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Infrastructure.Identity;
 using SafePath.Infrastructure.Persistence;
+using SafePath.Infrastructure.RealTime;
 
 namespace SafePath.Infrastructure;
 
@@ -20,6 +21,9 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IFamilyAuthorizationService, FamilyAuthorizationService>();
         services.AddScoped<IInviteCodeGenerator, InviteCodeGenerator>();
+        services.AddSignalR();
+        services.AddSingleton<PresenceTracker>();
+        services.AddScoped<ILocationBroadcastService, LocationBroadcastService>();
 
         return services;
     }
