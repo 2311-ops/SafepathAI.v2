@@ -12,6 +12,7 @@ import '../../family/application/family_controller.dart';
 import '../../family/data/family_models.dart';
 import '../application/history_controller.dart';
 import '../data/location_models.dart';
+import 'route_stats_sheet.dart';
 
 class HistoryTimelineScreen extends ConsumerWidget {
   const HistoryTimelineScreen({super.key});
@@ -121,8 +122,19 @@ class HistoryTimelineScreen extends ConsumerWidget {
                   const Center(child: CircularProgressIndicator())
                 else if (historyState.isEmpty)
                   _EmptyHistory(memberName: memberName)
-                else
+                else ...[
+                  PrimaryButton(
+                    label: 'View route',
+                    onPressed: () => showRouteStatsSheet(
+                      context: context,
+                      history: historyState.history,
+                      stats: historyState.stats,
+                      memberName: memberName,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
                   _TimelineList(history: historyState.history),
+                ],
               ],
             ],
           ),
@@ -207,7 +219,7 @@ class _HistoryHeader extends StatelessWidget {
           Text('History', style: AppTypography.heading),
           const SizedBox(height: AppSpacing.md),
           DropdownButtonFormField<String>(
-            value: selectedUserId,
+            initialValue: selectedUserId,
             decoration: const InputDecoration(labelText: 'Family member'),
             items: [
               for (final member in members)

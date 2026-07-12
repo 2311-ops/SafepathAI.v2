@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../location/presentation/history_timeline_screen.dart';
 import '../../location/presentation/live_map_screen.dart';
 
 class MainShell extends StatefulWidget {
@@ -43,11 +44,7 @@ class _MainShellState extends State<MainShell> {
         index: _index,
         children: const [
           LiveMapScreen(),
-          _PlainTabPlaceholder(
-            icon: Icons.history,
-            title: 'Activity',
-            body: 'Location history is coming soon.',
-          ),
+          HistoryTimelineScreen(),
           _PlainTabPlaceholder(
             icon: Icons.sos,
             title: 'SOS',
