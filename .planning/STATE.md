@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 02
 status: phase_in_progress
-stopped_at: Completed 02-05-PLAN.md
-last_updated: "2026-07-12T21:22:00.941Z"
-last_activity: 2026-07-12
-last_activity_desc: Completed Phase 02 Plan 05 low-battery alert, privacy export/delete, and no-data-resale policy
+stopped_at: Completed 02-08-PLAN.md
+last_updated: "2026-07-13T00:34:33Z"
+last_activity: 2026-07-13
+last_activity_desc: Completed Phase 02 Plan 08 mobile history timeline, route polyline, and travel stats
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 25
-  completed_plans: 23
-  percent: 92
+  completed_plans: 24
+  percent: 96
 current_phase_name: real-time-location-history-privacy
 ---
 
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 ## Current Position
 
 Phase: 02-real-time-location-history-privacy - IN PROGRESS
-Plan: 02-08-PLAN.md (next incomplete)
-Status: 02-05 complete; 02-08/02-09 remain later incomplete plans
-Last activity: 2026-07-12 - Completed Phase 02 Plan 05 low-battery alert, privacy export/delete, and no-data-resale policy
+Plan: 02-09-PLAN.md (next incomplete)
+Status: 02-08 complete; 02-09 remains as the final incomplete Phase 02 plan
+Last activity: 2026-07-13 - Completed Phase 02 Plan 08 mobile history timeline, route polyline, and travel stats
 
-Progress: [#########-] 92%
+Progress: [##########] 96%
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Progress: [#########-] 92%
 | Phase 02-real-time-location-history-privacy P04 | 7min | 3 tasks | 10 files |
 | Phase 02 P07 | 12min | 3 tasks | 12 files |
 | Phase 02-real-time-location-history-privacy P05 | 8min | 3 tasks | 18 files |
+| Phase 02-real-time-location-history-privacy P08 | 9min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,8 @@ Recent decisions affecting current work:
 - [Phase 02-05]: LowBatteryAlertTracker is injected through an Application interface so the falling-edge tracker remains an Infrastructure singleton without breaking Clean Architecture.
 - [Phase 02-05]: Low-battery alerts reuse the LiveLocation eligible-recipient filter before hub fan-out, so disabled sharing suppresses battery alerts to that recipient.
 - [Phase 02-05]: Privacy export/delete endpoints derive the caller from ICurrentUserService only; export includes caller location/sharing rows and delete hard-deletes only caller LocationPings.
+- [Phase 02-08]: HistoryController derives familyId from FamilyController instead of duplicating family discovery in the location feature.
+- [Phase 02-08]: Mobile history routes render with google_maps_flutter Polyline inside route_stats_sheet.dart; Activity remains shell-hosted rather than adding a separate /activity route.
 
 ### Pending Todos
 
@@ -143,6 +146,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T21:22:00.925Z
-Stopped at: Completed 02-05-PLAN.md
+Last session: 2026-07-13T00:34:33Z
+Stopped at: Completed 02-08-PLAN.md
 Resume file: None
