@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 02
 status: phase_in_progress
-stopped_at: Completed 02-06-PLAN.md
-last_updated: "2026-07-12T20:36:43.722Z"
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-07-12T20:49:14.634Z"
 last_activity: 2026-07-12
-last_activity_desc: Completed Phase 02 Plan 06 mobile shell, permission priming, battery transparency, and self-location map
+last_activity_desc: Completed Phase 02 Plan 04 location history, route polyline, and travel stats
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 25
-  completed_plans: 20
-  percent: 80
+  completed_plans: 21
+  percent: 84
 current_phase_name: real-time-location-history-privacy
 ---
 
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 ## Current Position
 
 Phase: 02-real-time-location-history-privacy - IN PROGRESS
-Plan: 02-04-PLAN.md (next incomplete)
-Status: 02-06 complete; 02-04/02-05 remain incomplete from earlier waves
-Last activity: 2026-07-12 - Completed Phase 02 Plan 06 mobile shell, permission priming, battery transparency, and self-location map
+Plan: 02-07-PLAN.md (next Wave 4 incomplete)
+Status: 02-04 complete; 02-07 remains in Wave 4; 02-05/02-08/02-09 remain later incomplete plans
+Last activity: 2026-07-12 - Completed Phase 02 Plan 04 location history, route polyline, and travel stats
 
-Progress: [########--] 80%
+Progress: [########--] 84%
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Progress: [########--] 80%
 | Phase 02-real-time-location-history-privacy P02 | 8min | 3 tasks | 24 files |
 | Phase 02-real-time-location-history-privacy P03 | 9min | 3 tasks | 25 files |
 | Phase 02-real-time-location-history-privacy P06 | 18min | 3 tasks | 22 files |
+| Phase 02-real-time-location-history-privacy P04 | 7min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,9 @@ Recent decisions affecting current work:
 - [Phase 02-06]: Google Maps API keys are wired through build-time placeholders rather than hardcoded secrets; provide MAPS_API_KEY_ANDROID and MAPS_API_KEY_IOS in local/device builds.
 - [Phase 02-06]: Mobile location permission prompting uses an injectable Geolocator permission service so requestPermission is strictly CTA-gated and testable.
 - [Phase 02-06]: LocationController opens the hub only after authenticated auth state plus loaded family state, then tears down on sign-out.
+- [Phase 02-04]: TimeAway is defined as elapsed time between first and last ping in the bounded history range, or zero with fewer than two pings.
+- [Phase 02-04]: History and travel-stats reads enforce RequireMembership, target-in-family re-scope, and SharedDataType.History before any LocationPing range read.
+- [Phase 02-04]: StopDetection uses DwellTimeDefaults plus averaged dwell-cluster coordinates as the representative stop point.
 
 ### Pending Todos
 
@@ -132,6 +136,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T20:36:43.708Z
-Stopped at: Completed 02-06-PLAN.md
-Resume file: .planning/phases/02-real-time-location-history-privacy/02-04-PLAN.md
+Last session: 2026-07-12T20:48:46.417Z
+Stopped at: Completed 02-04-PLAN.md
+Resume file: .planning/phases/02-real-time-location-history-privacy/02-07-PLAN.md

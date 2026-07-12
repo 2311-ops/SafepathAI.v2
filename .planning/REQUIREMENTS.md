@@ -32,9 +32,9 @@
 
 ### Location History (HIST)
 
-- [ ] **HIST-01**: User can view a historical timeline of a family member's stays and movements
-- [ ] **HIST-02**: User can view a route visualization of past travel
-- [ ] **HIST-03**: User can view travel statistics (distance, time away, stops)
+- [x] **HIST-01**: User can view a historical timeline of a family member's stays and movements
+- [x] **HIST-02**: User can view a route visualization of past travel
+- [x] **HIST-03**: User can view travel statistics (distance, time away, stops)
 
 ### Geofencing (GEO)
 
@@ -172,9 +172,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LOC-03 | Phase 2 | Complete |
 | LOC-04 | Phase 2 | Complete |
 | LOC-05 | Phase 2 | Complete |
-| HIST-01 | Phase 2 | Pending |
-| HIST-02 | Phase 2 | Pending |
-| HIST-03 | Phase 2 | Pending |
+| HIST-01 | Phase 2 | Complete |
+| HIST-02 | Phase 2 | Complete |
+| HIST-03 | Phase 2 | Complete |
 | NOTIF-01 | Phase 2 | Pending |
 | PRIV-01 | Phase 2 | Complete |
 | PRIV-02 | Phase 2 | Complete |
