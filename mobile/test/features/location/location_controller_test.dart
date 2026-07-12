@@ -296,7 +296,10 @@ void main() {
       expect(locationApi.getLiveLocationsCallCount, 0);
       expect(hubClient.connectCallCount, 0);
       expect(hubClient.reportLocationCallCount, 0);
-      expect(container.read(locationControllerProvider).value?.members, isEmpty);
+      expect(
+        container.read(locationControllerProvider).value?.members,
+        isEmpty,
+      );
 
       await container
           .read(permissionControllerProvider.notifier)
@@ -315,39 +318,70 @@ void main() {
     },
   );
 
+  test('does not connect if auth changes while live locations load', () async {
+    final liveLocationsCompleter = Completer<List<LiveLocation>>();
+    locationApi = _DelayedLiveLocationApi(liveLocationsCompleter);
+    container.dispose();
+    container = _container(
+      authApi: authApi,
+      familyApi: familyApi,
+      locationApi: locationApi,
+      hubClient: hubClient,
+      positionStream: positions.stream,
+      permissionService: permissionService,
+    );
+
+    container.read(permissionControllerProvider);
+    container.read(locationControllerProvider);
+    await pumpEventQueue();
+
+    expect(locationApi.getLiveLocationsCallCount, 1);
+
+    authApi.signOut();
+    liveLocationsCompleter.complete(const []);
+    await pumpEventQueue();
+
+    expect(hubClient.connectCallCount, 0);
+    expect(hubClient.reportLocationCallCount, 0);
+    expect(container.read(locationControllerProvider).value?.members, isEmpty);
+  });
+
+  test('does not report an in-flight position after sign-out', () async {
+    final batteryCompleter = Completer<int?>();
+    container.dispose();
+    container = _container(
+      authApi: authApi,
+      familyApi: familyApi,
+      locationApi: locationApi,
+      hubClient: hubClient,
+      positionStream: positions.stream,
+      permissionService: permissionService,
+      batteryLevelFuture: batteryCompleter.future,
+    );
+
+    container.read(locationControllerProvider);
+    await pumpEventQueue();
+
+    expect(hubClient.connectCallCount, 1);
+
+    positions.add(
+      _position(
+        lat: 30.07,
+        lng: 31.26,
+        timestamp: DateTime.utc(2026, 7, 12, 12, 10),
+      ),
+    );
+    await pumpEventQueue();
+
+    authApi.signOut();
+    batteryCompleter.complete(44);
+    await pumpEventQueue();
+
+    expect(hubClient.reportLocationCallCount, 0);
+  });
+
   test(
-    'does not connect if auth changes while live locations load',
-    () async {
-      final liveLocationsCompleter = Completer<List<LiveLocation>>();
-      locationApi = _DelayedLiveLocationApi(liveLocationsCompleter);
-      container.dispose();
-      container = _container(
-        authApi: authApi,
-        familyApi: familyApi,
-        locationApi: locationApi,
-        hubClient: hubClient,
-        positionStream: positions.stream,
-        permissionService: permissionService,
-      );
-
-      container.read(permissionControllerProvider);
-      container.read(locationControllerProvider);
-      await pumpEventQueue();
-
-      expect(locationApi.getLiveLocationsCallCount, 1);
-
-      authApi.signOut();
-      liveLocationsCompleter.complete(const []);
-      await pumpEventQueue();
-
-      expect(hubClient.connectCallCount, 0);
-      expect(hubClient.reportLocationCallCount, 0);
-      expect(container.read(locationControllerProvider).value?.members, isEmpty);
-    },
-  );
-
-  test(
-    'does not report an in-flight position after sign-out',
+    'does not report an in-flight position after permission is revoked',
     () async {
       final batteryCompleter = Completer<int?>();
       container.dispose();
@@ -361,6 +395,7 @@ void main() {
         batteryLevelFuture: batteryCompleter.future,
       );
 
+      container.read(permissionControllerProvider);
       container.read(locationControllerProvider);
       await pumpEventQueue();
 
@@ -368,14 +403,17 @@ void main() {
 
       positions.add(
         _position(
-          lat: 30.07,
-          lng: 31.26,
-          timestamp: DateTime.utc(2026, 7, 12, 12, 10),
+          lat: 30.08,
+          lng: 31.27,
+          timestamp: DateTime.utc(2026, 7, 12, 12, 15),
         ),
       );
       await pumpEventQueue();
 
-      authApi.signOut();
+      permissionService.checkResult = LocationPermissionStatus.denied;
+      await container
+          .read(permissionControllerProvider.notifier)
+          .checkPermission();
       batteryCompleter.complete(44);
       await pumpEventQueue();
 

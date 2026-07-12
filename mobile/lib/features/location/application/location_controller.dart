@@ -83,6 +83,8 @@ class LocationController extends AsyncNotifier<LocationState> {
   LocationHubClient? _hubClient;
   String? _connectedFamilyId;
   int _generation = 0;
+  int _bootstrapToken = 0;
+  int? _hubOwnerToken;
 
   @override
   LocationState build() {
@@ -145,8 +147,11 @@ class LocationController extends AsyncNotifier<LocationState> {
 
     if (_connectedFamilyId == familyId) return;
 
-    await _stop(clearState: false);
+    final bootstrapToken = ++_bootstrapToken;
+    await _stop(clearState: false, invalidateBootstrap: false);
     final generation = _generation;
+    if (!_ownsBootstrap(familyId, bootstrapToken, generation)) return;
+
     _connectedFamilyId = familyId;
     state = AsyncData(_current.copyWith(isLoading: true, clearError: true));
 
@@ -154,7 +159,7 @@ class LocationController extends AsyncNotifier<LocationState> {
       final initialLocations = await ref
           .read(locationApiProvider)
           .getLiveLocations(familyId);
-      if (!_canStream(familyId, generation)) return;
+      if (!_ownsBootstrap(familyId, bootstrapToken, generation)) return;
 
       final currentUserId = ref.read(authApiProvider).currentSession?.user.id;
       final initialMembers = {
@@ -178,23 +183,41 @@ class LocationController extends AsyncNotifier<LocationState> {
 
       final hubClient = ref.read(locationHubClientProvider);
       _hubClient = hubClient;
+      _hubOwnerToken = bootstrapToken;
       await hubClient.connect(familyId);
-      if (!_canStream(familyId, generation)) {
-        await hubClient.disconnect();
-        if (_hubClient == hubClient) {
+      if (!_ownsBootstrap(familyId, bootstrapToken, generation)) {
+        if (_hubOwnerToken == bootstrapToken) {
+          await hubClient.disconnect();
           _hubClient = null;
+          _hubOwnerToken = null;
         }
         return;
       }
 
-      _locationSubscription = hubClient.locationUpdates.listen(_applyLocation);
-      _presenceSubscription = hubClient.presenceChanges.listen(_applyPresence);
-      _lowBatterySubscription = hubClient.lowBatteryAlerts.listen(
+      final locationSubscription = hubClient.locationUpdates.listen(
+        _applyLocation,
+      );
+      final presenceSubscription = hubClient.presenceChanges.listen(
+        _applyPresence,
+      );
+      final lowBatterySubscription = hubClient.lowBatteryAlerts.listen(
         _applyLowBatteryAlert,
       );
-      _positionSubscription = ref
+      final positionSubscription = ref
           .read(positionStreamProvider)
           .listen(_reportPosition, onError: (_) {});
+      if (!_ownsBootstrap(familyId, bootstrapToken, generation)) {
+        await locationSubscription.cancel();
+        await presenceSubscription.cancel();
+        await lowBatterySubscription.cancel();
+        await positionSubscription.cancel();
+        return;
+      }
+
+      _locationSubscription = locationSubscription;
+      _presenceSubscription = presenceSubscription;
+      _lowBatterySubscription = lowBatterySubscription;
+      _positionSubscription = positionSubscription;
     } on LocationApiException catch (error) {
       state = AsyncData(
         _current.copyWith(isLoading: false, error: error.message),
@@ -209,9 +232,18 @@ class LocationController extends AsyncNotifier<LocationState> {
     }
   }
 
-  Future<void> _stop({bool clearState = true}) async {
+  Future<void> _stop({
+    bool clearState = true,
+    bool invalidateBootstrap = true,
+  }) async {
+    if (invalidateBootstrap) {
+      _bootstrapToken++;
+    }
     _generation++;
     _connectedFamilyId = null;
+    final hubClient = _hubClient;
+    _hubClient = null;
+    _hubOwnerToken = null;
     await _positionSubscription?.cancel();
     await _locationSubscription?.cancel();
     await _presenceSubscription?.cancel();
@@ -220,8 +252,7 @@ class LocationController extends AsyncNotifier<LocationState> {
     _locationSubscription = null;
     _presenceSubscription = null;
     _lowBatterySubscription = null;
-    await _hubClient?.disconnect();
-    _hubClient = null;
+    await hubClient?.disconnect();
     if (clearState) {
       state = const AsyncData(LocationState());
     }
@@ -270,6 +301,11 @@ class LocationController extends AsyncNotifier<LocationState> {
     );
   }
 
+  bool _ownsBootstrap(String familyId, int bootstrapToken, int generation) {
+    return bootstrapToken == _bootstrapToken &&
+        _canStream(familyId, generation);
+  }
+
   bool _canStream(String familyId, int generation) {
     return generation == _generation && _canUseLocationPipeline(familyId);
   }
@@ -282,7 +318,11 @@ class LocationController extends AsyncNotifier<LocationState> {
 
   bool _canUseLocationPipeline(String familyId) {
     final authState = ref.read(authControllerProvider);
-    final currentFamilyId = ref.read(familyControllerProvider).value?.family?.id;
+    final currentFamilyId = ref
+        .read(familyControllerProvider)
+        .value
+        ?.family
+        ?.id;
     return ref.read(permissionControllerProvider).isGranted &&
         authState is AuthAuthenticated &&
         currentFamilyId == familyId;
