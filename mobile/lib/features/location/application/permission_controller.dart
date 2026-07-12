@@ -80,20 +80,30 @@ class PermissionController extends Notifier<PermissionPrimingState> {
   Future<LocationPermissionStatus> checkPermission() async {
     final service = ref.read(locationPermissionServiceProvider);
     state = state.copyWith(isChecking: true);
-    final status = await service.checkPermission();
-    state = state.copyWith(status: status, isChecking: false);
-    return status;
+    try {
+      final status = await service.checkPermission();
+      state = state.copyWith(status: status, isChecking: false);
+      return status;
+    } catch (_) {
+      state = state.copyWith(isChecking: false);
+      rethrow;
+    }
   }
 
   Future<LocationPermissionStatus> requestPermission() async {
     final service = ref.read(locationPermissionServiceProvider);
     state = state.copyWith(isRequesting: true);
-    final status = await service.requestPermission();
-    state = state.copyWith(status: status, isRequesting: false);
-    if (status == LocationPermissionStatus.deniedForever) {
-      await service.openAppSettings();
+    try {
+      final status = await service.requestPermission();
+      state = state.copyWith(status: status, isRequesting: false);
+      if (status == LocationPermissionStatus.deniedForever) {
+        await service.openAppSettings();
+      }
+      return status;
+    } catch (_) {
+      state = state.copyWith(isRequesting: false);
+      rethrow;
     }
-    return status;
   }
 }
 

@@ -47,6 +47,13 @@ public class SharingAuthorizationService : ISharingAuthorizationService
 
         foreach (var member in candidateMembers)
         {
+            if (member.UserId == ownerUserId)
+            {
+                // Owners always see/receive their own data, mirroring CanView's self-bypass.
+                allowed.Add(member.UserId);
+                continue;
+            }
+
             var preference = explicitPreferences.TryGetValue(member.Id, out var explicitPreference)
                 ? explicitPreference
                 : defaultPreference;

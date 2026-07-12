@@ -71,7 +71,7 @@ final positionStreamProvider = Provider<Stream<Position>>((ref) {
   );
 });
 
-final batteryLevelProvider = FutureProvider<int?>((ref) async {
+final batteryLevelProvider = FutureProvider.autoDispose<int?>((ref) async {
   return Battery().batteryLevel;
 });
 
@@ -287,6 +287,7 @@ class LocationController extends AsyncNotifier<LocationState> {
 
     int? batteryPercent;
     try {
+      ref.invalidate(batteryLevelProvider);
       batteryPercent = await ref.read(batteryLevelProvider.future);
     } catch (_) {
       batteryPercent = null;

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/application/auth_state.dart';
 import '../../family/application/family_controller.dart';
+import '../../location/application/history_controller.dart';
+import '../../location/application/location_controller.dart';
 import '../data/privacy_api.dart';
 import '../data/privacy_models.dart';
 
@@ -116,6 +118,10 @@ class PrivacyController extends AsyncNotifier<PrivacyState> {
       state = AsyncData(
         _current.copyWith(isLoading: false, error: error.message),
       );
+    } catch (_) {
+      state = AsyncData(
+        _current.copyWith(isLoading: false, error: 'Something went wrong. Try again.'),
+      );
     }
   }
 
@@ -166,11 +172,32 @@ class PrivacyController extends AsyncNotifier<PrivacyState> {
       );
     } on PrivacyApiException catch (error) {
       state = AsyncData(
-        before.copyWith(error: error.message ?? _saveSettingError),
+        _current.copyWith(
+          matrix: _revertedMatrix(recipientId, dataType, previousCell),
+          error: error.message ?? _saveSettingError,
+        ),
       );
     } catch (_) {
-      state = AsyncData(before.copyWith(error: _saveSettingError));
+      state = AsyncData(
+        _current.copyWith(
+          matrix: _revertedMatrix(recipientId, dataType, previousCell),
+          error: _saveSettingError,
+        ),
+      );
     }
+  }
+
+  /// Reverts only the cell this toggle touched, against the *current* matrix —
+  /// not a full snapshot rollback, so a different cell that already succeeded
+  /// concurrently (e.g. a second rapid toggle) isn't discarded.
+  SharingMatrix _revertedMatrix(
+    String? recipientId,
+    SharedDataType dataType,
+    SharingCell? previousCell,
+  ) {
+    return previousCell == null
+        ? _current.matrix.removeCell(recipientId, dataType)
+        : _current.matrix.upsert(previousCell);
   }
 
   Future<void> startTemporaryShare({
@@ -221,10 +248,16 @@ class PrivacyController extends AsyncNotifier<PrivacyState> {
     state = AsyncData(_current.copyWith(isDeleting: true, clearError: true));
     try {
       await api.deleteMyData();
+      ref.invalidate(locationControllerProvider);
+      ref.invalidate(historyControllerProvider);
       state = AsyncData(_current.copyWith(isDeleting: false, clearError: true));
     } on PrivacyApiException catch (error) {
       state = AsyncData(
         _current.copyWith(isDeleting: false, error: error.message),
+      );
+    } catch (_) {
+      state = AsyncData(
+        _current.copyWith(isDeleting: false, error: 'Something went wrong. Try again.'),
       );
     }
   }

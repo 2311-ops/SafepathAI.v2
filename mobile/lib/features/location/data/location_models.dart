@@ -221,8 +221,9 @@ class LowBatteryAlert {
           (json['name'] as String?) ??
           (json['displayName'] as String?) ??
           'A family member',
-      batteryPercent: ((json['batteryPercent'] as num?) ?? (json['pct'] as num))
-          .toInt(),
+      batteryPercent:
+          ((json['batteryPercent'] as num?) ?? (json['pct'] as num?) ?? 0)
+              .toInt(),
     );
   }
 }

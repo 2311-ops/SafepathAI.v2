@@ -78,8 +78,7 @@ class HistoryTimelineScreen extends ConsumerWidget {
             children: [
               _HistoryHeader(
                 members: members,
-                selectedUserId:
-                    historyState.selectedTargetUserId ?? selectedMember?.userId,
+                selectedUserId: selectedMember?.userId,
                 selectedDate: historyState.fromUtc ?? DateTime.now().toUtc(),
                 onMemberChanged: (userId) {
                   final range = _dayRange(

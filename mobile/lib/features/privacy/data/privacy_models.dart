@@ -116,6 +116,16 @@ class SharingMatrix {
     if (!replaced) nextEntries.add(cell);
     return SharingMatrix(entries: nextEntries);
   }
+
+  SharingMatrix removeCell(String? recipientId, SharedDataType dataType) {
+    return SharingMatrix(
+      entries: [
+        for (final entry in entries)
+          if (entry.recipientId != recipientId || entry.dataType != dataType)
+            entry,
+      ],
+    );
+  }
 }
 
 class PrivacyPolicy {

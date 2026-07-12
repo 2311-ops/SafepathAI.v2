@@ -113,6 +113,15 @@ class HistoryController extends AsyncNotifier<HistoryState> {
           error: error.message,
         ),
       );
+    } catch (_) {
+      state = AsyncData(
+        _current.copyWith(
+          history: const LocationHistory(),
+          stats: const TravelStats(),
+          isLoading: false,
+          error: 'Something went wrong. Try again.',
+        ),
+      );
     }
   }
 }

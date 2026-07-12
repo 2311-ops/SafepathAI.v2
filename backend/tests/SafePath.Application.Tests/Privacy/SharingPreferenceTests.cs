@@ -119,7 +119,9 @@ public class SharingPreferenceTests : IDisposable
             [seed.OwnerUserId, seed.RecipientUserId],
             CancellationToken.None);
 
-        Assert.DoesNotContain(seed.OwnerUserId, result);
+        // Owners always receive their own data, mirroring CanView's self-bypass —
+        // a disabled default preference must not cut off a user's own live feed.
+        Assert.Contains(seed.OwnerUserId, result);
         Assert.Contains(seed.RecipientUserId, result);
     }
 

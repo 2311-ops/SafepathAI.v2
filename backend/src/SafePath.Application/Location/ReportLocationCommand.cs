@@ -81,12 +81,11 @@ public class ReportLocationCommandHandler : ICommandHandler<ReportLocationComman
             eligibleRecipients,
             cancellationToken);
 
-        var alreadyAlerted = _lowBatteryAlerts.GetAlerted(command.CallerUserId);
-        var shouldAlert = LowBatteryEvaluator.ShouldAlert(
-            alreadyAlerted,
-            command.BatteryPercent,
-            out var nextAlertedState);
-        _lowBatteryAlerts.SetAlerted(command.CallerUserId, nextAlertedState);
+        var shouldAlert = _lowBatteryAlerts.TransitionAlerted(command.CallerUserId, alreadyAlerted =>
+        {
+            var alert = LowBatteryEvaluator.ShouldAlert(alreadyAlerted, command.BatteryPercent, out var nextAlertedState);
+            return (alert, nextAlertedState);
+        });
 
         if (shouldAlert && command.BatteryPercent is { } batteryPercent)
         {
@@ -107,19 +106,19 @@ public class ReportLocationCommandHandler : ICommandHandler<ReportLocationComman
 
     private static void Validate(ReportLocationCommand command)
     {
-        if (command.Latitude is < -90 or > 90)
+        if (double.IsNaN(command.Latitude) || command.Latitude is < -90 or > 90)
         {
-            throw new ArgumentException("Latitude must be between -90 and 90.", nameof(command));
+            throw new ArgumentException("Latitude must be a finite number between -90 and 90.", nameof(command));
         }
 
-        if (command.Longitude is < -180 or > 180)
+        if (double.IsNaN(command.Longitude) || command.Longitude is < -180 or > 180)
         {
-            throw new ArgumentException("Longitude must be between -180 and 180.", nameof(command));
+            throw new ArgumentException("Longitude must be a finite number between -180 and 180.", nameof(command));
         }
 
-        if (command.AccuracyMeters < 0)
+        if (double.IsNaN(command.AccuracyMeters) || command.AccuracyMeters < 0)
         {
-            throw new ArgumentException("Accuracy must be zero or greater.", nameof(command));
+            throw new ArgumentException("Accuracy must be a finite number zero or greater.", nameof(command));
         }
 
         if (command.BatteryPercent is < 0 or > 100)

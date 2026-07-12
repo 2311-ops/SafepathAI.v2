@@ -20,4 +20,18 @@ public class LowBatteryAlertTracker : ILowBatteryAlertTracker
 
         _alertedUsers.TryRemove(userId, out _);
     }
+
+    public bool TransitionAlerted(Guid userId, Func<bool, (bool ShouldAlert, bool NextState)> transition)
+    {
+        var userLock = _userLocks.GetOrAdd(userId, _ => new object());
+        lock (userLock)
+        {
+            var current = GetAlerted(userId);
+            var (shouldAlert, nextState) = transition(current);
+            SetAlerted(userId, nextState);
+            return shouldAlert;
+        }
+    }
+
+    private readonly ConcurrentDictionary<Guid, object> _userLocks = new();
 }

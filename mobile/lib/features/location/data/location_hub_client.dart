@@ -58,6 +58,7 @@ class SignalRLocationHubClient implements LocationHubClient {
   signalr.HubConnection? _connection;
   StreamSubscription<signalr.HubConnectionState>? _stateSubscription;
   LocationHubConnectionState _state = LocationHubConnectionState.disconnected;
+  int _generation = 0;
 
   @override
   Stream<LiveLocation> get locationUpdates => _locationUpdates.stream;
@@ -77,6 +78,10 @@ class SignalRLocationHubClient implements LocationHubClient {
   @override
   Future<void> connect(String familyId) async {
     await disconnect();
+    // Claim this connection attempt's generation *after* disconnect() (which bumps
+    // the generation for any connection it tears down) so a concurrent disconnect()
+    // fired while we were awaiting the teardown above can't later invalidate us too.
+    final generation = ++_generation;
     _setState(LocationHubConnectionState.connecting);
 
     final connection = signalr.HubConnectionBuilder()
@@ -94,34 +99,51 @@ class SignalRLocationHubClient implements LocationHubClient {
     connection.on('PresenceChanged', _handlePresenceChanged);
     connection.on('LowBattery', _handleLowBattery);
     connection.onreconnecting(
-      ({Exception? error}) =>
-          _setState(LocationHubConnectionState.reconnecting),
+      ({Exception? error}) => _setStateIfCurrent(
+        generation,
+        LocationHubConnectionState.reconnecting,
+      ),
     );
     connection.onreconnected(
-      ({String? connectionId}) =>
-          _setState(LocationHubConnectionState.connected),
+      ({String? connectionId}) => _setStateIfCurrent(
+        generation,
+        LocationHubConnectionState.connected,
+      ),
     );
     connection.onclose(
-      ({Exception? error}) =>
-          _setState(LocationHubConnectionState.disconnected),
+      ({Exception? error}) => _setStateIfCurrent(
+        generation,
+        LocationHubConnectionState.disconnected,
+      ),
     );
 
-    _stateSubscription = connection.stateStream.listen(
-      (next) => _setState(_mapSignalRState(next)),
+    if (generation != _generation) return;
+
+    final stateSubscription = connection.stateStream.listen(
+      (next) => _setStateIfCurrent(generation, _mapSignalRState(next)),
     );
+
+    if (generation != _generation) {
+      await stateSubscription.cancel();
+      await connection.stop();
+      return;
+    }
+
+    _stateSubscription = stateSubscription;
     _connection = connection;
 
     try {
       await connection.start();
-      _setState(LocationHubConnectionState.connected);
+      _setStateIfCurrent(generation, LocationHubConnectionState.connected);
     } catch (_) {
-      _setState(LocationHubConnectionState.disconnected);
+      _setStateIfCurrent(generation, LocationHubConnectionState.disconnected);
       rethrow;
     }
   }
 
   @override
   Future<void> disconnect() async {
+    _generation++;
     final connection = _connection;
     _connection = null;
     await _stateSubscription?.cancel();
@@ -136,6 +158,12 @@ class SignalRLocationHubClient implements LocationHubClient {
     _setState(LocationHubConnectionState.disconnecting);
     await connection.stop();
     _setState(LocationHubConnectionState.disconnected);
+  }
+
+  void _setStateIfCurrent(int generation, LocationHubConnectionState next) {
+    if (generation == _generation) {
+      _setState(next);
+    }
   }
 
   @override
@@ -165,19 +193,31 @@ class SignalRLocationHubClient implements LocationHubClient {
   void _handleLocationUpdated(List<Object?>? arguments) {
     final json = _firstJsonArgument(arguments);
     if (json == null) return;
-    _locationUpdates.add(LiveLocation.fromJson(json));
+    try {
+      _locationUpdates.add(LiveLocation.fromJson(json));
+    } catch (_) {
+      // A malformed push must not take down the hub connection's event delivery.
+    }
   }
 
   void _handlePresenceChanged(List<Object?>? arguments) {
     final json = _firstJsonArgument(arguments);
     if (json == null) return;
-    _presenceChanges.add(PresenceChange.fromJson(json));
+    try {
+      _presenceChanges.add(PresenceChange.fromJson(json));
+    } catch (_) {
+      // A malformed push must not take down the hub connection's event delivery.
+    }
   }
 
   void _handleLowBattery(List<Object?>? arguments) {
     final json = _firstJsonArgument(arguments);
     if (json == null) return;
-    _lowBatteryAlerts.add(LowBatteryAlert.fromJson(json));
+    try {
+      _lowBatteryAlerts.add(LowBatteryAlert.fromJson(json));
+    } catch (_) {
+      // A malformed push must not take down the hub connection's event delivery.
+    }
   }
 
   Map<String, dynamic>? _firstJsonArgument(List<Object?>? arguments) {
