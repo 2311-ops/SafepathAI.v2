@@ -99,6 +99,19 @@ class _FakeLocationPermissionService implements LocationPermissionService {
   }
 }
 
+class _DelayedLiveLocationApi extends FakeLocationApi {
+  _DelayedLiveLocationApi(this.completer);
+
+  final Completer<List<LiveLocation>> completer;
+
+  @override
+  Future<List<LiveLocation>> getLiveLocations(String familyId) {
+    getLiveLocationsCallCount++;
+    lastFamilyId = familyId;
+    return completer.future;
+  }
+}
+
 Position _position({
   required double lat,
   required double lng,
@@ -139,6 +152,7 @@ ProviderContainer _container({
   required FakeLocationHubClient hubClient,
   required Stream<Position> positionStream,
   required _FakeLocationPermissionService permissionService,
+  Future<int?>? batteryLevelFuture,
 }) {
   return ProviderContainer(
     overrides: [
@@ -148,7 +162,9 @@ ProviderContainer _container({
       locationHubClientProvider.overrideWithValue(hubClient),
       positionStreamProvider.overrideWithValue(positionStream),
       locationPermissionServiceProvider.overrideWithValue(permissionService),
-      batteryLevelProvider.overrideWith((ref) async => 72),
+      batteryLevelProvider.overrideWith(
+        (ref) => batteryLevelFuture ?? Future.value(72),
+      ),
     ],
   );
 }
@@ -296,6 +312,74 @@ void main() {
 
       expect(hubClient.reportLocationCallCount, 1);
       expect(hubClient.lastReportedLocation?.latitude, 30.06);
+    },
+  );
+
+  test(
+    'does not connect if auth changes while live locations load',
+    () async {
+      final liveLocationsCompleter = Completer<List<LiveLocation>>();
+      locationApi = _DelayedLiveLocationApi(liveLocationsCompleter);
+      container.dispose();
+      container = _container(
+        authApi: authApi,
+        familyApi: familyApi,
+        locationApi: locationApi,
+        hubClient: hubClient,
+        positionStream: positions.stream,
+        permissionService: permissionService,
+      );
+
+      container.read(permissionControllerProvider);
+      container.read(locationControllerProvider);
+      await pumpEventQueue();
+
+      expect(locationApi.getLiveLocationsCallCount, 1);
+
+      authApi.signOut();
+      liveLocationsCompleter.complete(const []);
+      await pumpEventQueue();
+
+      expect(hubClient.connectCallCount, 0);
+      expect(hubClient.reportLocationCallCount, 0);
+      expect(container.read(locationControllerProvider).value?.members, isEmpty);
+    },
+  );
+
+  test(
+    'does not report an in-flight position after sign-out',
+    () async {
+      final batteryCompleter = Completer<int?>();
+      container.dispose();
+      container = _container(
+        authApi: authApi,
+        familyApi: familyApi,
+        locationApi: locationApi,
+        hubClient: hubClient,
+        positionStream: positions.stream,
+        permissionService: permissionService,
+        batteryLevelFuture: batteryCompleter.future,
+      );
+
+      container.read(locationControllerProvider);
+      await pumpEventQueue();
+
+      expect(hubClient.connectCallCount, 1);
+
+      positions.add(
+        _position(
+          lat: 30.07,
+          lng: 31.26,
+          timestamp: DateTime.utc(2026, 7, 12, 12, 10),
+        ),
+      );
+      await pumpEventQueue();
+
+      authApi.signOut();
+      batteryCompleter.complete(44);
+      await pumpEventQueue();
+
+      expect(hubClient.reportLocationCallCount, 0);
     },
   );
 }

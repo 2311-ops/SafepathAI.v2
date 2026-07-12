@@ -82,6 +82,7 @@ class LocationController extends AsyncNotifier<LocationState> {
   StreamSubscription<LowBatteryAlert>? _lowBatterySubscription;
   LocationHubClient? _hubClient;
   String? _connectedFamilyId;
+  int _generation = 0;
 
   @override
   LocationState build() {
@@ -145,6 +146,7 @@ class LocationController extends AsyncNotifier<LocationState> {
     if (_connectedFamilyId == familyId) return;
 
     await _stop(clearState: false);
+    final generation = _generation;
     _connectedFamilyId = familyId;
     state = AsyncData(_current.copyWith(isLoading: true, clearError: true));
 
@@ -152,6 +154,8 @@ class LocationController extends AsyncNotifier<LocationState> {
       final initialLocations = await ref
           .read(locationApiProvider)
           .getLiveLocations(familyId);
+      if (!_canStream(familyId, generation)) return;
+
       final currentUserId = ref.read(authApiProvider).currentSession?.user.id;
       final initialMembers = {
         for (final location in initialLocations) location.userId: location,
@@ -175,6 +179,14 @@ class LocationController extends AsyncNotifier<LocationState> {
       final hubClient = ref.read(locationHubClientProvider);
       _hubClient = hubClient;
       await hubClient.connect(familyId);
+      if (!_canStream(familyId, generation)) {
+        await hubClient.disconnect();
+        if (_hubClient == hubClient) {
+          _hubClient = null;
+        }
+        return;
+      }
+
       _locationSubscription = hubClient.locationUpdates.listen(_applyLocation);
       _presenceSubscription = hubClient.presenceChanges.listen(_applyPresence);
       _lowBatterySubscription = hubClient.lowBatteryAlerts.listen(
@@ -198,6 +210,7 @@ class LocationController extends AsyncNotifier<LocationState> {
   }
 
   Future<void> _stop({bool clearState = true}) async {
+    _generation++;
     _connectedFamilyId = null;
     await _positionSubscription?.cancel();
     await _locationSubscription?.cancel();
@@ -215,8 +228,13 @@ class LocationController extends AsyncNotifier<LocationState> {
   }
 
   Future<void> _reportPosition(Position position) async {
+    final familyId = _connectedFamilyId;
     final currentUserId = ref.read(authApiProvider).currentSession?.user.id;
-    if (currentUserId == null) return;
+    if (familyId == null ||
+        currentUserId == null ||
+        !_canReport(familyId, currentUserId)) {
+      return;
+    }
 
     int? batteryPercent;
     try {
@@ -225,6 +243,8 @@ class LocationController extends AsyncNotifier<LocationState> {
       batteryPercent = null;
     }
 
+    if (!_canReport(familyId, currentUserId)) return;
+
     final payload = ReportLocationPayload(
       latitude: position.latitude,
       longitude: position.longitude,
@@ -232,7 +252,11 @@ class LocationController extends AsyncNotifier<LocationState> {
       batteryPercent: batteryPercent,
       recordedAtUtc: position.timestamp.toUtc(),
     );
-    await ref.read(locationHubClientProvider).reportLocation(payload);
+    final hubClient = _hubClient;
+    if (hubClient == null) return;
+
+    await hubClient.reportLocation(payload);
+    if (!_canReport(familyId, currentUserId)) return;
 
     _applyLocation(
       LiveLocation(
@@ -244,6 +268,24 @@ class LocationController extends AsyncNotifier<LocationState> {
         recordedAtUtc: position.timestamp.toUtc(),
       ),
     );
+  }
+
+  bool _canStream(String familyId, int generation) {
+    return generation == _generation && _canUseLocationPipeline(familyId);
+  }
+
+  bool _canReport(String familyId, String userId) {
+    return ref.read(authApiProvider).currentSession?.user.id == userId &&
+        _connectedFamilyId == familyId &&
+        _canUseLocationPipeline(familyId);
+  }
+
+  bool _canUseLocationPipeline(String familyId) {
+    final authState = ref.read(authControllerProvider);
+    final currentFamilyId = ref.read(familyControllerProvider).value?.family?.id;
+    return ref.read(permissionControllerProvider).isGranted &&
+        authState is AuthAuthenticated &&
+        currentFamilyId == familyId;
   }
 
   void _applyLocation(LiveLocation location) {
