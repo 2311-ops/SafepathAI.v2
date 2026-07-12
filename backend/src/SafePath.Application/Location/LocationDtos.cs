@@ -25,3 +25,9 @@ public record LocationHistoryPointDto(double Lat, double Lng, DateTime RecordedA
 public record LocationHistoryDto(
     IReadOnlyList<LocationHistoryPointDto> PolylinePoints,
     IReadOnlyList<Stop> Stops);
+
+/// <summary>
+/// Travel summary for a bounded history range. TimeAway is defined as the elapsed time
+/// between the first and last ping in the range, or zero when fewer than two pings exist.
+/// </summary>
+public record TravelStatsDto(double TotalDistanceMeters, TimeSpan TimeAway, int StopCount);

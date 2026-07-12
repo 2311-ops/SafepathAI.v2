@@ -25,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<ReportLocationCommand, ReportLocationResult>, ReportLocationCommandHandler>();
         services.AddScoped<ICommandHandler<GetLiveLocationsQuery, IReadOnlyList<MemberLiveLocationDto>>, GetLiveLocationsQueryHandler>();
         services.AddScoped<ICommandHandler<GetLocationHistoryQuery, LocationHistoryDto>, GetLocationHistoryQueryHandler>();
+        services.AddScoped<ICommandHandler<GetTravelStatsQuery, TravelStatsDto>, GetTravelStatsQueryHandler>();
         services.AddScoped<ICommandHandler<UpdateSharingPreferenceCommand, SharingPreferenceDto>, UpdateSharingPreferenceCommandHandler>();
         services.AddScoped<ICommandHandler<GetSharingMatrixQuery, SharingMatrixDto>, GetSharingMatrixQueryHandler>();
 
