@@ -102,6 +102,28 @@ void main() {
     },
   );
 
+  testWidgets(
+    'cold signed-in /home with deniedForever permission reaches priming before MainShell',
+    (tester) async {
+      final permissionService = _FakeLocationPermissionService(
+        status: LocationPermissionStatus.deniedForever,
+      );
+      final harness = _RouterHarness(permissionService: permissionService);
+      addTearDown(harness.dispose);
+
+      await harness.pump(tester);
+      harness.router.go('/home');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Let your family see you are safe'), findsOneWidget);
+      expect(find.text('Map'), findsNothing);
+      expect(find.text('Your family, live'), findsNothing);
+      expect(permissionService.requestCallCount, 0);
+      expect(harness.hubClient.connectCallCount, 0);
+      expect(harness.locationApi.getLiveLocationsCallCount, 0);
+    },
+  );
+
   testWidgets('cold signed-in /home with granted permission renders MainShell', (
     tester,
   ) async {

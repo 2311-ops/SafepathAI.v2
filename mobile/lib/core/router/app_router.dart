@@ -19,7 +19,9 @@ import '../../features/family/presentation/create_circle_screen.dart';
 import '../../features/family/presentation/invite_member_screen.dart';
 import '../../features/family/presentation/manage_permissions_screen.dart';
 import '../../features/home/presentation/main_shell.dart';
+import '../../features/location/application/permission_controller.dart';
 import '../../features/location/presentation/battery_transparency_screen.dart';
+import '../../features/location/presentation/location_permission_gate.dart';
 import '../../features/location/presentation/permission_priming_screen.dart';
 import '../../features/privacy/presentation/privacy_policy_screen.dart';
 import '../../features/profile/application/profile_controller.dart';
@@ -69,6 +71,10 @@ class _AuthRefreshListenable extends ChangeNotifier {
     );
     ref.listen<AsyncValue<ProfileState>>(
       profileControllerProvider,
+      (previous, next) => notifyListeners(),
+    );
+    ref.listen<PermissionPrimingState>(
+      permissionControllerProvider,
       (previous, next) => notifyListeners(),
     );
   }
@@ -211,7 +217,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/home',
         name: 'home',
-        builder: (context, state) => const MainShell(),
+        builder: (context, state) =>
+            const LocationPermissionGate(child: MainShell()),
       ),
       GoRoute(
         path: '/permission-priming',

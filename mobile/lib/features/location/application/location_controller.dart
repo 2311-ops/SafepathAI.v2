@@ -8,6 +8,7 @@ import '../../auth/application/auth_controller.dart';
 import '../../auth/application/auth_state.dart';
 import '../../auth/data/auth_api.dart';
 import '../../family/application/family_controller.dart';
+import 'permission_controller.dart';
 import '../data/location_api.dart';
 import '../data/location_hub_client.dart';
 import '../data/location_models.dart';
@@ -101,6 +102,16 @@ class LocationController extends AsyncNotifier<LocationState> {
         unawaited(_stop(clearState: true));
       }
     });
+    ref.listen<PermissionPrimingState>(permissionControllerProvider, (
+      previous,
+      next,
+    ) {
+      if (next.isGranted) {
+        _bootstrap();
+      } else {
+        unawaited(_stop(clearState: true));
+      }
+    });
     ref.onDispose(() {
       unawaited(_stop(clearState: false));
     });
@@ -112,6 +123,12 @@ class LocationController extends AsyncNotifier<LocationState> {
   LocationState get _current => state.value ?? const LocationState();
 
   Future<void> _bootstrap() async {
+    final permission = ref.read(permissionControllerProvider);
+    if (!permission.isGranted) {
+      await _stop(clearState: true);
+      return;
+    }
+
     final authState = ref.read(authControllerProvider);
     if (authState is! AuthAuthenticated) {
       await _stop();
