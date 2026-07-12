@@ -19,3 +19,9 @@ public record MemberLiveLocationDto(
     int? BatteryPercent,
     DateTime? RecordedAtUtc,
     bool IsOnline);
+
+public record LocationHistoryPointDto(double Lat, double Lng, DateTime RecordedAtUtc);
+
+public record LocationHistoryDto(
+    IReadOnlyList<LocationHistoryPointDto> PolylinePoints,
+    IReadOnlyList<Stop> Stops);
