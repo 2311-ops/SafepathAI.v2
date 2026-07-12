@@ -23,6 +23,7 @@ class LocationState {
     this.selfPosition,
     this.members = const {},
     this.memberPresence = const {},
+    this.lowBatteryAlert,
     this.isLoading = false,
     this.error,
   });
@@ -30,6 +31,7 @@ class LocationState {
   final LiveLocation? selfPosition;
   final Map<String, LiveLocation> members;
   final Map<String, MemberPresence> memberPresence;
+  final LowBatteryAlert? lowBatteryAlert;
   final bool isLoading;
   final String? error;
 
@@ -37,6 +39,8 @@ class LocationState {
     LiveLocation? selfPosition,
     Map<String, LiveLocation>? members,
     Map<String, MemberPresence>? memberPresence,
+    LowBatteryAlert? lowBatteryAlert,
+    bool clearLowBatteryAlert = false,
     bool? isLoading,
     String? error,
     bool clearError = false,
@@ -45,6 +49,9 @@ class LocationState {
       selfPosition: selfPosition ?? this.selfPosition,
       members: members ?? this.members,
       memberPresence: memberPresence ?? this.memberPresence,
+      lowBatteryAlert: clearLowBatteryAlert
+          ? null
+          : (lowBatteryAlert ?? this.lowBatteryAlert),
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
     );
@@ -71,6 +78,7 @@ class LocationController extends AsyncNotifier<LocationState> {
   StreamSubscription<Position>? _positionSubscription;
   StreamSubscription<LiveLocation>? _locationSubscription;
   StreamSubscription<PresenceChange>? _presenceSubscription;
+  StreamSubscription<LowBatteryAlert>? _lowBatterySubscription;
   LocationHubClient? _hubClient;
   String? _connectedFamilyId;
 
@@ -152,6 +160,9 @@ class LocationController extends AsyncNotifier<LocationState> {
       await hubClient.connect(familyId);
       _locationSubscription = hubClient.locationUpdates.listen(_applyLocation);
       _presenceSubscription = hubClient.presenceChanges.listen(_applyPresence);
+      _lowBatterySubscription = hubClient.lowBatteryAlerts.listen(
+        _applyLowBatteryAlert,
+      );
       _positionSubscription = ref
           .read(positionStreamProvider)
           .listen(_reportPosition, onError: (_) {});
@@ -174,9 +185,11 @@ class LocationController extends AsyncNotifier<LocationState> {
     await _positionSubscription?.cancel();
     await _locationSubscription?.cancel();
     await _presenceSubscription?.cancel();
+    await _lowBatterySubscription?.cancel();
     _positionSubscription = null;
     _locationSubscription = null;
     _presenceSubscription = null;
+    _lowBatterySubscription = null;
     await _hubClient?.disconnect();
     _hubClient = null;
     if (clearState) {
@@ -254,6 +267,16 @@ class LocationController extends AsyncNotifier<LocationState> {
     state = AsyncData(
       _current.copyWith(memberPresence: nextPresence, clearError: true),
     );
+  }
+
+  void _applyLowBatteryAlert(LowBatteryAlert alert) {
+    state = AsyncData(
+      _current.copyWith(lowBatteryAlert: alert, clearError: true),
+    );
+  }
+
+  void dismissLowBatteryAlert() {
+    state = AsyncData(_current.copyWith(clearLowBatteryAlert: true));
   }
 }
 

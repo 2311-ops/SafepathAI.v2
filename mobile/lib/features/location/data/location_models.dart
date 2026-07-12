@@ -68,6 +68,30 @@ class PresenceChange {
   }
 }
 
+class LowBatteryAlert {
+  const LowBatteryAlert({
+    required this.userId,
+    required this.name,
+    required this.batteryPercent,
+  });
+
+  final String userId;
+  final String name;
+  final int batteryPercent;
+
+  factory LowBatteryAlert.fromJson(Map<String, dynamic> json) {
+    return LowBatteryAlert(
+      userId: json['userId'] as String? ?? '',
+      name:
+          (json['name'] as String?) ??
+          (json['displayName'] as String?) ??
+          'A family member',
+      batteryPercent: ((json['batteryPercent'] as num?) ?? (json['pct'] as num))
+          .toInt(),
+    );
+  }
+}
+
 class ReportLocationPayload {
   const ReportLocationPayload({
     required this.latitude,

@@ -10,6 +10,7 @@ import '../../../shared_widgets/primary_button.dart';
 import '../application/location_controller.dart';
 import '../application/staleness.dart';
 import '../data/location_models.dart';
+import 'low_battery_banner.dart';
 import 'member_detail_sheet.dart';
 
 class LiveMapScreen extends ConsumerWidget {
@@ -102,48 +103,62 @@ class LiveMapScreen extends ConsumerWidget {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x180C3A3F),
-                      blurRadius: 16,
-                      offset: Offset(0, 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x180C3A3F),
+                          blurRadius: 16,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Row(
+                        children: [
+                          const MemberMapPin(
+                            label: 'You',
+                            identityColor: AppColors.primaryTeal,
+                            isSelf: true,
+                            size: 36,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Your family, live',
+                                  style: AppTypography.title,
+                                ),
+                                Text(
+                                  '${locations.length} visible location${locations.length == 1 ? '' : 's'}',
+                                  style: AppTypography.bodySecondary,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (state?.lowBatteryAlert != null) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    LowBatteryBanner(
+                      alert: state!.lowBatteryAlert!,
+                      onDismissed: () => ref
+                          .read(locationControllerProvider.notifier)
+                          .dismissLowBatteryAlert(),
                     ),
                   ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Row(
-                    children: [
-                      const MemberMapPin(
-                        label: 'You',
-                        identityColor: AppColors.primaryTeal,
-                        isSelf: true,
-                        size: 36,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Your family, live',
-                              style: AppTypography.title,
-                            ),
-                            Text(
-                              '${locations.length} visible location${locations.length == 1 ? '' : 's'}',
-                              style: AppTypography.bodySecondary,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                ],
               ),
             ),
           ),

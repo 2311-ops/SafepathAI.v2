@@ -27,6 +27,8 @@ abstract class LocationHubClient {
 
   Stream<PresenceChange> get presenceChanges;
 
+  Stream<LowBatteryAlert> get lowBatteryAlerts;
+
   LocationHubConnectionState get state;
 
   Stream<LocationHubConnectionState> get stateChanges;
@@ -48,6 +50,8 @@ class SignalRLocationHubClient implements LocationHubClient {
       StreamController<LiveLocation>.broadcast();
   final StreamController<PresenceChange> _presenceChanges =
       StreamController<PresenceChange>.broadcast();
+  final StreamController<LowBatteryAlert> _lowBatteryAlerts =
+      StreamController<LowBatteryAlert>.broadcast();
   final StreamController<LocationHubConnectionState> _stateChanges =
       StreamController<LocationHubConnectionState>.broadcast();
 
@@ -60,6 +64,9 @@ class SignalRLocationHubClient implements LocationHubClient {
 
   @override
   Stream<PresenceChange> get presenceChanges => _presenceChanges.stream;
+
+  @override
+  Stream<LowBatteryAlert> get lowBatteryAlerts => _lowBatteryAlerts.stream;
 
   @override
   LocationHubConnectionState get state => _state;
@@ -85,6 +92,7 @@ class SignalRLocationHubClient implements LocationHubClient {
 
     connection.on('LocationUpdated', _handleLocationUpdated);
     connection.on('PresenceChanged', _handlePresenceChanged);
+    connection.on('LowBattery', _handleLowBattery);
     connection.onreconnecting(
       ({Exception? error}) =>
           _setState(LocationHubConnectionState.reconnecting),
@@ -145,6 +153,7 @@ class SignalRLocationHubClient implements LocationHubClient {
     unawaited(disconnect());
     unawaited(_locationUpdates.close());
     unawaited(_presenceChanges.close());
+    unawaited(_lowBatteryAlerts.close());
     unawaited(_stateChanges.close());
   }
 
@@ -163,6 +172,12 @@ class SignalRLocationHubClient implements LocationHubClient {
     final json = _firstJsonArgument(arguments);
     if (json == null) return;
     _presenceChanges.add(PresenceChange.fromJson(json));
+  }
+
+  void _handleLowBattery(List<Object?>? arguments) {
+    final json = _firstJsonArgument(arguments);
+    if (json == null) return;
+    _lowBatteryAlerts.add(LowBatteryAlert.fromJson(json));
   }
 
   Map<String, dynamic>? _firstJsonArgument(List<Object?>? arguments) {
