@@ -24,7 +24,7 @@ dependency is satisfied with seeded/synthetic data.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Backend & Auth Foundation** - Auth, roles, and family circles on a Clean Architecture backend + Supabase, with the app's design system wired into Flutter.
-- [ ] **Phase 2: Real-Time Location, History & Privacy** - Family members see live and historical location on a shared map, with full privacy controls over what's shared.
+- [x] **Phase 2: Real-Time Location, History & Privacy** - Family members see live and historical location on a shared map, with full privacy controls over what's shared. (completed 2026-07-12)
 - [ ] **Phase 3: SOS Fast Path (Core Value)** - One tap (or covert trigger) reliably alerts guardians with live location within seconds, bypassing every routine and AI pipeline.
 - [ ] **Phase 4: Geofencing** - Safe zones trigger reliable enter/exit alerts without GPS-drift false positives.
 - [ ] **Phase 5: AI Analytics & Family Dashboard** - Explainable anomaly detection, ETA prediction, safety scoring, and family dashboards.
@@ -97,7 +97,7 @@ Plans:
   4. User receives a low-battery alert for themselves or a family member (NOTIF-01)
   5. User can toggle sharing per data type/recipient, enable temporary auto-stopping location sharing, and export or delete their data from a Privacy Center — backed by end-to-end encrypted communication and a documented no-data-resale commitment (PRIV-01, PRIV-02, PRIV-03, PRIV-04, PRIV-05)
 
-**Plans**: 8/9 plans executed
+**Plans**: 9/9 plans complete
 
 Plans:
 
@@ -126,7 +126,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5)*
 
-- [ ] 02-09-PLAN.md — Mobile Privacy Center: sharing matrix + temporary sharing + export/delete + policy (PRIV-02/03/04/05)
+- [x] 02-09-PLAN.md — Mobile Privacy Center: sharing matrix + temporary sharing + export/delete + policy (PRIV-02/03/04/05)
 
 **UI hint**: yes
 
@@ -219,7 +219,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Backend & Auth Foundation | 14/14 | Complete | 2026-07-10 |
-| 2. Real-Time Location, History & Privacy | 8/9 | In Progress | - |
+| 2. Real-Time Location, History & Privacy | 9/9 | Complete   | 2026-07-12 |
 | 3. SOS Fast Path (Core Value) | 0/TBD | Not started | - |
 | 4. Geofencing | 0/TBD | Not started | - |
 | 5. AI Analytics & Family Dashboard | 0/TBD | Not started | - |
