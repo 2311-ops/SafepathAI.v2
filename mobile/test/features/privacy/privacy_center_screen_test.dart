@@ -74,11 +74,12 @@ class _SpyPrivacyController extends PrivacyController {
           dataType: SharedDataType.wellness,
           isEnabled: true,
         ),
-        const SharingCell(
+        SharingCell(
           recipientId: 'mem-second-recipient',
           recipientName: 'Second Recipient',
           dataType: SharedDataType.liveLocation,
           isEnabled: true,
+          expiresAtUtc: DateTime.utc(2026, 7, 12, 14),
         ),
         const SharingCell(
           recipientId: 'mem-second-recipient',
@@ -86,12 +87,11 @@ class _SpyPrivacyController extends PrivacyController {
           dataType: SharedDataType.history,
           isEnabled: false,
         ),
-        SharingCell(
+        const SharingCell(
           recipientId: 'mem-second-recipient',
           recipientName: 'Second Recipient',
           dataType: SharedDataType.wellness,
           isEnabled: true,
-          expiresAtUtc: DateTime.utc(2026, 7, 12, 14),
         ),
       ],
     ),
@@ -160,9 +160,12 @@ void main() {
     expect(find.text('Live location'), findsNWidgets(2));
     expect(find.text('History'), findsNWidgets(2));
     expect(find.text('Wellness'), findsNWidgets(2));
-    await tester.ensureVisible(
-      find.byKey(const ValueKey('temporary-share-mem-first-recipient-custom')),
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('temporary-share-mem-second-recipient-custom')),
+      300,
+      scrollable: find.byType(Scrollable),
     );
+    await tester.pumpAndSettle();
     expect(find.text('1 hour'), findsAtLeastNWidgets(1));
     expect(find.text('4 hours'), findsAtLeastNWidgets(1));
     expect(find.text('8 hours'), findsAtLeastNWidgets(1));
@@ -189,9 +192,12 @@ void main() {
     final controller = _SpyPrivacyController();
 
     await tester.pumpWidget(_app(controller));
-    await tester.ensureVisible(
+    await tester.scrollUntilVisible(
       find.byKey(const ValueKey('temporary-share-mem-second-recipient-4h')),
+      300,
+      scrollable: find.byType(Scrollable),
     );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const ValueKey('temporary-share-mem-second-recipient-4h')),
     );
@@ -207,9 +213,12 @@ void main() {
     final controller = _SpyPrivacyController();
 
     await tester.pumpWidget(_app(controller));
-    await tester.ensureVisible(
+    await tester.scrollUntilVisible(
       find.byKey(const ValueKey('temporary-share-mem-second-recipient-custom')),
+      300,
+      scrollable: find.byType(Scrollable),
     );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const ValueKey('temporary-share-mem-second-recipient-custom')),
     );

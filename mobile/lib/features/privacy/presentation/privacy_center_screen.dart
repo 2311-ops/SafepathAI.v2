@@ -18,7 +18,9 @@ class PrivacyCenterScreen extends ConsumerWidget {
   const PrivacyCenterScreen({super.key});
 
   Future<void> _exportMyData(BuildContext context, WidgetRef ref) async {
-    final json = await ref.read(privacyControllerProvider.notifier).exportMyData();
+    final json = await ref
+        .read(privacyControllerProvider.notifier)
+        .exportMyData();
     if (json == null) return;
     await SharePlus.instance.share(
       ShareParams(subject: 'SafePath data export', text: json),
@@ -56,18 +58,113 @@ class PrivacyCenterScreen extends ConsumerWidget {
     await ref.read(privacyControllerProvider.notifier).deleteMyData();
   }
 
+  Future<void> _startCustomTemporaryShare(
+    BuildContext context,
+    WidgetRef ref, {
+    required String recipientId,
+  }) async {
+    final duration = await _showCustomDurationDialog(context);
+    if (duration == null || !context.mounted) return;
+
+    await ref
+        .read(privacyControllerProvider.notifier)
+        .startTemporaryShare(
+          recipientId: recipientId,
+          dataType: SharedDataType.liveLocation,
+          duration: duration,
+        );
+  }
+
+  Future<Duration?> _showCustomDurationDialog(BuildContext context) async {
+    var durationText = '';
+    var unit = _CustomDurationUnit.hours;
+    String? errorText;
+
+    return showDialog<Duration>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          void submit() {
+            final amount = int.tryParse(durationText.trim());
+            if (amount == null) {
+              setDialogState(() => errorText = 'Enter a whole number.');
+              return;
+            }
+            if (amount <= 0) {
+              setDialogState(() => errorText = 'Duration must be positive.');
+              return;
+            }
+
+            final duration = unit.toDuration(amount);
+            if (duration > const Duration(days: 7)) {
+              setDialogState(() => errorText = 'Choose 7 days or less.');
+              return;
+            }
+
+            Navigator.of(dialogContext).pop(duration);
+          }
+
+          return AlertDialog(
+            title: const Text('Custom duration'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  key: const ValueKey('custom-duration-field'),
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Duration',
+                    errorText: errorText,
+                  ),
+                  onChanged: (value) => durationText = value,
+                  onSubmitted: (_) => submit(),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                DropdownButtonFormField<_CustomDurationUnit>(
+                  key: const ValueKey('custom-duration-unit'),
+                  initialValue: unit,
+                  decoration: const InputDecoration(labelText: 'Unit'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: _CustomDurationUnit.minutes,
+                      child: Text('Minutes'),
+                    ),
+                    DropdownMenuItem(
+                      value: _CustomDurationUnit.hours,
+                      child: Text('Hours'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setDialogState(() => unit = value);
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              TextButton(onPressed: submit, child: const Text('Start sharing')),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final familyState = ref.watch(familyControllerProvider).value;
-    final privacyState = ref.watch(privacyControllerProvider).value ??
-        const PrivacyState();
+    final privacyState =
+        ref.watch(privacyControllerProvider).value ?? const PrivacyState();
     final currentUserId = ref.watch(authApiProvider).currentSession?.user.id;
     final familyId = familyState?.family?.id;
     final recipients = (familyState?.members ?? const <FamilyMemberView>[])
         .where((member) => member.userId != currentUserId)
         .toList();
     final now = ref.watch(privacyNowProvider)();
-    final activeShare = _activeShare(privacyState.matrix, now);
 
     if ((familyState?.isLoading ?? false) || privacyState.isLoading) {
       return const Scaffold(
@@ -89,7 +186,8 @@ class PrivacyCenterScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Privacy Center')),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () => ref.read(privacyControllerProvider.notifier).refresh(),
+          onRefresh: () =>
+              ref.read(privacyControllerProvider.notifier).refresh(),
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.lg,
@@ -128,23 +226,28 @@ class PrivacyCenterScreen extends ConsumerWidget {
                           dataType: dataType,
                           enabled: enabled,
                         ),
+                    activeShare: _activeShare(
+                      privacyState.matrix,
+                      recipient.memberId,
+                      now,
+                    ),
+                    onPresetSelected: (duration) => ref
+                        .read(privacyControllerProvider.notifier)
+                        .startTemporaryShare(
+                          recipientId: recipient.memberId,
+                          dataType: SharedDataType.liveLocation,
+                          duration: duration,
+                        ),
+                    onCustomSelected: () => _startCustomTemporaryShare(
+                      context,
+                      ref,
+                      recipientId: recipient.memberId,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                 ],
               ],
-              _TemporarySharingSection(
-                activeShare: activeShare,
-                onPresetSelected: recipients.isEmpty
-                    ? null
-                    : (duration) => ref
-                        .read(privacyControllerProvider.notifier)
-                        .startTemporaryShare(
-                          recipientId: recipients.first.memberId,
-                          dataType: SharedDataType.liveLocation,
-                          duration: duration,
-                        ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
+              const SizedBox(height: AppSpacing.md),
               _PrivacyActionsSection(
                 isExporting: privacyState.isExporting,
                 isDeleting: privacyState.isDeleting,
@@ -162,17 +265,24 @@ class PrivacyCenterScreen extends ConsumerWidget {
   static bool _hasAnyEnabledShare(SharingMatrix matrix) =>
       matrix.entries.any((entry) => entry.isEnabled);
 
-  static _ActiveShare? _activeShare(SharingMatrix matrix, DateTime now) {
-    for (final entry in matrix.entries) {
-      final expiresAt = entry.expiresAtUtc;
-      if (entry.isEnabled && expiresAt != null && expiresAt.isAfter(now)) {
-        return _ActiveShare(
-          durationLabel: _durationFromNowLabel(expiresAt.difference(now)),
-          remainingLabel: _remainingLabel(expiresAt.difference(now)),
-        );
-      }
+  static _ActiveShare? _activeShare(
+    SharingMatrix matrix,
+    String recipientId,
+    DateTime now,
+  ) {
+    final entry = matrix.cellFor(recipientId, SharedDataType.liveLocation);
+    final expiresAt = entry?.expiresAtUtc;
+    if (entry == null ||
+        !entry.isEnabled ||
+        expiresAt == null ||
+        !expiresAt.isAfter(now)) {
+      return null;
     }
-    return null;
+    final remaining = expiresAt.difference(now);
+    return _ActiveShare(
+      durationLabel: _durationFromNowLabel(remaining),
+      remainingLabel: _remainingLabel(remaining),
+    );
   }
 }
 
@@ -237,11 +347,17 @@ class _RecipientMatrix extends StatelessWidget {
     required this.recipient,
     required this.matrix,
     required this.onChanged,
+    required this.activeShare,
+    required this.onPresetSelected,
+    required this.onCustomSelected,
   });
 
   final FamilyMemberView recipient;
   final SharingMatrix matrix;
   final void Function(SharedDataType dataType, bool enabled) onChanged;
+  final _ActiveShare? activeShare;
+  final ValueChanged<Duration> onPresetSelected;
+  final VoidCallback onCustomSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -260,11 +376,20 @@ class _RecipientMatrix extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
         ],
+        _TemporarySharingSection(
+          recipientId: recipient.memberId,
+          activeShare: activeShare,
+          onPresetSelected: onPresetSelected,
+          onCustomSelected: onCustomSelected,
+        ),
       ],
     );
   }
 
-  static String _recipientLabel(FamilyMemberView recipient, SharingMatrix matrix) {
+  static String _recipientLabel(
+    FamilyMemberView recipient,
+    SharingMatrix matrix,
+  ) {
     for (final entry in matrix.entries) {
       if (entry.recipientId == recipient.memberId &&
           (entry.recipientName?.isNotEmpty ?? false)) {
@@ -275,20 +400,24 @@ class _RecipientMatrix extends StatelessWidget {
   }
 
   static String _subtitle(SharedDataType dataType) => switch (dataType) {
-        SharedDataType.liveLocation => 'Current map pin and last-seen status',
-        SharedDataType.history => 'Timeline, route, and travel stats',
-        SharedDataType.wellness => 'Health and wellness summaries',
-      };
+    SharedDataType.liveLocation => 'Current map pin and last-seen status',
+    SharedDataType.history => 'Timeline, route, and travel stats',
+    SharedDataType.wellness => 'Health and wellness summaries',
+  };
 }
 
 class _TemporarySharingSection extends StatelessWidget {
   const _TemporarySharingSection({
+    required this.recipientId,
     required this.activeShare,
     required this.onPresetSelected,
+    required this.onCustomSelected,
   });
 
+  final String recipientId;
   final _ActiveShare? activeShare;
-  final ValueChanged<Duration>? onPresetSelected;
+  final ValueChanged<Duration> onPresetSelected;
+  final VoidCallback onCustomSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -302,26 +431,28 @@ class _TemporarySharingSection extends StatelessWidget {
           runSpacing: AppSpacing.sm,
           children: [
             _DurationChip(
+              key: ValueKey('temporary-share-$recipientId-1h'),
               label: '1 hour',
               duration: const Duration(hours: 1),
               onSelected: onPresetSelected,
             ),
             _DurationChip(
+              key: ValueKey('temporary-share-$recipientId-4h'),
               label: '4 hours',
               duration: const Duration(hours: 4),
               onSelected: onPresetSelected,
             ),
             _DurationChip(
+              key: ValueKey('temporary-share-$recipientId-8h'),
               label: '8 hours',
               duration: const Duration(hours: 8),
               onSelected: onPresetSelected,
             ),
             ActionChip(
+              key: ValueKey('temporary-share-$recipientId-custom'),
               label: const Text('Custom'),
               backgroundColor: AppColors.primaryTintBg,
-              onPressed: onPresetSelected == null
-                  ? null
-                  : () => onPresetSelected!(const Duration(hours: 1)),
+              onPressed: onCustomSelected,
             ),
           ],
         ),
@@ -347,6 +478,7 @@ class _TemporarySharingSection extends StatelessWidget {
 
 class _DurationChip extends StatelessWidget {
   const _DurationChip({
+    super.key,
     required this.label,
     required this.duration,
     required this.onSelected,
@@ -354,16 +486,26 @@ class _DurationChip extends StatelessWidget {
 
   final String label;
   final Duration duration;
-  final ValueChanged<Duration>? onSelected;
+  final ValueChanged<Duration> onSelected;
 
   @override
   Widget build(BuildContext context) {
     return ActionChip(
       label: Text(label),
       backgroundColor: AppColors.primaryTintBg,
-      onPressed: onSelected == null ? null : () => onSelected!(duration),
+      onPressed: () => onSelected(duration),
     );
   }
+}
+
+enum _CustomDurationUnit {
+  minutes,
+  hours;
+
+  Duration toDuration(int amount) => switch (this) {
+    _CustomDurationUnit.minutes => Duration(minutes: amount),
+    _CustomDurationUnit.hours => Duration(hours: amount),
+  };
 }
 
 class _ErrorCard extends StatelessWidget {
@@ -440,7 +582,10 @@ class _PrivacyMessage extends StatelessWidget {
 }
 
 class _ActiveShare {
-  const _ActiveShare({required this.durationLabel, required this.remainingLabel});
+  const _ActiveShare({
+    required this.durationLabel,
+    required this.remainingLabel,
+  });
 
   final String durationLabel;
   final String remainingLabel;
