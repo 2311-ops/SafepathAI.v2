@@ -5,6 +5,7 @@ using SafePath.Domain.Entities;
 using SafePath.Domain.Enums;
 using SafePath.Infrastructure.Identity;
 using SafePath.Infrastructure.Persistence;
+using SafePath.Infrastructure.RealTime;
 using Xunit;
 
 namespace SafePath.Application.Tests.Location;
@@ -23,7 +24,8 @@ public class ReportLocationCommandHandlerTests : IDisposable
             db,
             new FamilyAuthorizationService(db),
             broadcast,
-            new SharingAuthorizationService(db));
+            new SharingAuthorizationService(db),
+            new LowBatteryAlertTracker());
         var recordedAt = DateTime.UtcNow.AddSeconds(-30);
 
         await handler.Handle(new ReportLocationCommand(
@@ -60,7 +62,8 @@ public class ReportLocationCommandHandlerTests : IDisposable
             db,
             new FamilyAuthorizationService(db),
             new RecordingLocationBroadcastService(),
-            new SharingAuthorizationService(db));
+            new SharingAuthorizationService(db),
+            new LowBatteryAlertTracker());
 
         await Assert.ThrowsAsync<ArgumentException>(() => handler.Handle(new ReportLocationCommand(
             callerId,
@@ -83,7 +86,8 @@ public class ReportLocationCommandHandlerTests : IDisposable
             db,
             new FamilyAuthorizationService(db),
             new RecordingLocationBroadcastService(),
-            new SharingAuthorizationService(db));
+            new SharingAuthorizationService(db),
+            new LowBatteryAlertTracker());
 
         await Assert.ThrowsAsync<ArgumentException>(() => handler.Handle(new ReportLocationCommand(
             callerId,
@@ -106,7 +110,8 @@ public class ReportLocationCommandHandlerTests : IDisposable
             db,
             new FamilyAuthorizationService(db),
             new RecordingLocationBroadcastService(),
-            new SharingAuthorizationService(db));
+            new SharingAuthorizationService(db),
+            new LowBatteryAlertTracker());
 
         await handler.Handle(new ReportLocationCommand(
             callerId,
@@ -180,5 +185,12 @@ internal sealed class RecordingLocationBroadcastService : ILocationBroadcastServ
     }
 
     public Task BroadcastPresence(Guid familyId, PresenceChangeDto change, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+
+    public Task BroadcastLowBattery(
+        Guid familyId,
+        LowBatteryAlertDto alert,
+        IEnumerable<Guid> eligibleRecipientUserIds,
+        CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 }

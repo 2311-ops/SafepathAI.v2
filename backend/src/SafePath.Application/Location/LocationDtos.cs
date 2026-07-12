@@ -10,6 +10,8 @@ public record LocationUpdateDto(
 
 public record PresenceChangeDto(Guid UserId, bool IsOnline);
 
+public record LowBatteryAlertDto(Guid UserId, string? DisplayName, int BatteryPercent);
+
 public record MemberLiveLocationDto(
     Guid UserId,
     string? DisplayName,

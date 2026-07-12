@@ -6,6 +6,7 @@ using SafePath.Domain.Entities;
 using SafePath.Domain.Enums;
 using SafePath.Infrastructure.Identity;
 using SafePath.Infrastructure.Persistence;
+using SafePath.Infrastructure.RealTime;
 
 namespace SafePath.Application.Tests.Privacy;
 
@@ -81,7 +82,12 @@ public class BroadcastGatingTests : IDisposable
         await db.SaveChangesAsync();
         var broadcast = new RecordingLocationBroadcastService();
         var sharing = new SharingAuthorizationService(db);
-        var handler = new ReportLocationCommandHandler(db, new FamilyAuthorizationService(db), broadcast, sharing);
+        var handler = new ReportLocationCommandHandler(
+            db,
+            new FamilyAuthorizationService(db),
+            broadcast,
+            sharing,
+            new LowBatteryAlertTracker());
 
         await handler.Handle(new ReportLocationCommand(
             seed.OwnerUserId,
@@ -216,6 +222,13 @@ internal sealed class RecordingLocationBroadcastService : ILocationBroadcastServ
     }
 
     public Task BroadcastPresence(Guid familyId, PresenceChangeDto change, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+
+    public Task BroadcastLowBattery(
+        Guid familyId,
+        LowBatteryAlertDto alert,
+        IEnumerable<Guid> eligibleRecipientUserIds,
+        CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 }
 

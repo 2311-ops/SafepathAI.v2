@@ -27,6 +27,8 @@ public static class DependencyInjection
         services.AddSingleton<IUserIdProvider, SupabaseUserIdProvider>();
         services.AddSingleton<PresenceTracker>();
         services.AddSingleton<IPresenceQuery>(provider => provider.GetRequiredService<PresenceTracker>());
+        services.AddSingleton<LowBatteryAlertTracker>();
+        services.AddSingleton<ILowBatteryAlertTracker>(provider => provider.GetRequiredService<LowBatteryAlertTracker>());
         services.AddScoped<ILocationBroadcastService, LocationBroadcastService>();
         services.AddHostedService<SharingPreferenceSweepService>();
 

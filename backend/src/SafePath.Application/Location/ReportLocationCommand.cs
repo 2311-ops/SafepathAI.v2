@@ -22,17 +22,20 @@ public class ReportLocationCommandHandler : ICommandHandler<ReportLocationComman
     private readonly IFamilyAuthorizationService _authorization;
     private readonly ILocationBroadcastService _broadcast;
     private readonly ISharingAuthorizationService _sharing;
+    private readonly ILowBatteryAlertTracker _lowBatteryAlerts;
 
     public ReportLocationCommandHandler(
         IApplicationDbContext db,
         IFamilyAuthorizationService authorization,
         ILocationBroadcastService broadcast,
-        ISharingAuthorizationService sharing)
+        ISharingAuthorizationService sharing,
+        ILowBatteryAlertTracker lowBatteryAlerts)
     {
         _db = db;
         _authorization = authorization;
         _broadcast = broadcast;
         _sharing = sharing;
+        _lowBatteryAlerts = lowBatteryAlerts;
     }
 
     public async Task<ReportLocationResult> Handle(ReportLocationCommand command, CancellationToken cancellationToken = default)
@@ -77,6 +80,27 @@ public class ReportLocationCommandHandler : ICommandHandler<ReportLocationComman
                 command.RecordedAtUtc),
             eligibleRecipients,
             cancellationToken);
+
+        var alreadyAlerted = _lowBatteryAlerts.GetAlerted(command.CallerUserId);
+        var shouldAlert = LowBatteryEvaluator.ShouldAlert(
+            alreadyAlerted,
+            command.BatteryPercent,
+            out var nextAlertedState);
+        _lowBatteryAlerts.SetAlerted(command.CallerUserId, nextAlertedState);
+
+        if (shouldAlert && command.BatteryPercent is { } batteryPercent)
+        {
+            var displayName = await _db.Users
+                .Where(u => u.Id == command.CallerUserId)
+                .Select(u => u.FullName)
+                .SingleOrDefaultAsync(cancellationToken);
+
+            await _broadcast.BroadcastLowBattery(
+                command.FamilyId,
+                new LowBatteryAlertDto(command.CallerUserId, displayName, batteryPercent),
+                eligibleRecipients,
+                cancellationToken);
+        }
 
         return new ReportLocationResult(ping.Id);
     }

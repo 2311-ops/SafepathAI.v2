@@ -28,4 +28,14 @@ public class LocationBroadcastService : ILocationBroadcastService
         PresenceChangeDto change,
         CancellationToken cancellationToken = default) =>
         _hubContext.Clients.Group(LocationHub.FamilyGroupName(familyId)).PresenceChanged(change);
+
+    public Task BroadcastLowBattery(
+        Guid familyId,
+        LowBatteryAlertDto alert,
+        IEnumerable<Guid> eligibleRecipientUserIds,
+        CancellationToken cancellationToken = default)
+    {
+        var userIds = eligibleRecipientUserIds.Select(userId => userId.ToString());
+        return _hubContext.Clients.Users(userIds).LowBattery(alert);
+    }
 }
