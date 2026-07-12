@@ -168,6 +168,31 @@ void main() {
     );
   });
 
+  test('successful toggle updates state and PATCHes the server', () async {
+    container.read(familyControllerProvider);
+    await pumpEventQueue();
+    container.read(privacyControllerProvider);
+    await pumpEventQueue();
+
+    await container.read(privacyControllerProvider.notifier).toggle(
+      recipientId: 'mem-recipient',
+      dataType: SharedDataType.liveLocation,
+      enabled: false,
+    );
+
+    final state = container.read(privacyControllerProvider).value!;
+    expect(privacyApi.updateSharingPreferenceCallCount, 1);
+    expect(privacyApi.lastUpdateFamilyId, 'fam-1');
+    expect(privacyApi.lastRecipientMemberId, 'mem-recipient');
+    expect(privacyApi.lastDataType, SharedDataType.liveLocation);
+    expect(privacyApi.lastIsEnabled, isFalse);
+    expect(
+      state.matrix.isEnabled('mem-recipient', SharedDataType.liveLocation),
+      isFalse,
+    );
+    expect(state.error, isNull);
+  });
+
   test('toggle failure reverts optimistic state and surfaces UI copy', () async {
     container.read(familyControllerProvider);
     await pumpEventQueue();
