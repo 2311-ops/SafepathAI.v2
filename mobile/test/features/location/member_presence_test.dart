@@ -144,28 +144,33 @@ void main() {
     hubClient.dispose();
   });
 
-  test('presence changes flip online status without removing the last pin', () async {
-    container.read(locationControllerProvider);
-    await pumpEventQueue();
+  test(
+    'presence changes flip online status without removing the last pin',
+    () async {
+      container.read(locationControllerProvider);
+      await pumpEventQueue();
 
-    final recordedAt = DateTime.utc(2026, 7, 12, 10);
-    hubClient.emitLocation(
-      LiveLocation(
-        userId: 'member-2',
-        displayName: 'Maya',
-        lat: 29.9,
-        lng: 31.1,
-        accuracyMeters: 12,
-        recordedAtUtc: recordedAt,
-      ),
-    );
-    hubClient.emitPresence(const PresenceChange(userId: 'member-2', isOnline: false));
-    await pumpEventQueue();
+      final recordedAt = DateTime.utc(2026, 7, 12, 10);
+      hubClient.emitLocation(
+        LiveLocation(
+          userId: 'member-2',
+          displayName: 'Maya',
+          lat: 29.9,
+          lng: 31.1,
+          accuracyMeters: 12,
+          recordedAtUtc: recordedAt,
+        ),
+      );
+      hubClient.emitPresence(
+        const PresenceChange(userId: 'member-2', isOnline: false),
+      );
+      await pumpEventQueue();
 
-    final state = container.read(locationControllerProvider).value!;
-    expect(state.memberPresence['member-2']?.isOnline, isFalse);
-    expect(state.members['member-2']?.recordedAtUtc, recordedAt);
-  });
+      final state = container.read(locationControllerProvider).value!;
+      expect(state.memberPresence['member-2']?.isOnline, isFalse);
+      expect(state.members['member-2']?.recordedAtUtc, recordedAt);
+    },
+  );
 
   test('last seen text tracks the newest location ping', () async {
     container.read(locationControllerProvider);
@@ -199,7 +204,10 @@ void main() {
         .members['member-2']!;
     expect(location.recordedAtUtc, DateTime.utc(2026, 7, 12, 10, 10));
     expect(
-      lastSeenText(location.recordedAtUtc, now: DateTime.utc(2026, 7, 12, 10, 14)),
+      lastSeenText(
+        location.recordedAtUtc,
+        now: DateTime.utc(2026, 7, 12, 10, 14),
+      ),
       'Last seen 4 min ago',
     );
   });

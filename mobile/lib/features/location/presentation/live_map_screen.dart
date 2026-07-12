@@ -8,6 +8,9 @@ import '../../../core/theme/app_typography.dart';
 import '../../../shared_widgets/member_map_pin.dart';
 import '../../../shared_widgets/primary_button.dart';
 import '../application/location_controller.dart';
+import '../application/staleness.dart';
+import '../data/location_models.dart';
+import 'member_detail_sheet.dart';
 
 class LiveMapScreen extends ConsumerWidget {
   const LiveMapScreen({super.key});
@@ -53,11 +56,33 @@ class LiveMapScreen extends ConsumerWidget {
         Marker(
           markerId: MarkerId(location.userId),
           position: LatLng(location.lat, location.lng),
+          alpha: stalenessFor(
+            DateTime.now().toUtc().difference(location.recordedAtUtc),
+          ).opacity,
           icon: BitmapDescriptor.defaultMarkerWithHue(
             location.userId == state?.selfPosition?.userId
                 ? BitmapDescriptor.hueCyan
                 : _memberHue(location.userId),
           ),
+          onTap: () => showMemberDetailSheet(
+            context,
+            member: MemberDetail(
+              name: _memberName(location, state),
+              isOnline: state?.isMemberOnline(location.userId) ?? false,
+              recordedAtUtc: location.recordedAtUtc,
+            ),
+          ),
+        ),
+    };
+    final circles = {
+      for (final location in locations)
+        Circle(
+          circleId: CircleId('accuracy-${location.userId}'),
+          center: LatLng(location.lat, location.lng),
+          radius: accuracyCircleRadius(location.accuracyMeters),
+          fillColor: _memberColor(location.userId).withValues(alpha: 0.15),
+          strokeColor: _memberColor(location.userId).withValues(alpha: 0.40),
+          strokeWidth: 2,
         ),
     };
 
@@ -70,6 +95,7 @@ class LiveMapScreen extends ConsumerWidget {
               zoom: 15,
             ),
             markers: markers,
+            circles: circles,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
           ),
@@ -94,7 +120,8 @@ class LiveMapScreen extends ConsumerWidget {
                     children: [
                       const MemberMapPin(
                         label: 'You',
-                        color: AppColors.primaryTeal,
+                        identityColor: AppColors.primaryTeal,
+                        isSelf: true,
                         size: 36,
                       ),
                       const SizedBox(width: AppSpacing.sm),
@@ -129,6 +156,19 @@ class LiveMapScreen extends ConsumerWidget {
     return userId.hashCode.isEven
         ? BitmapDescriptor.hueViolet
         : BitmapDescriptor.hueRose;
+  }
+
+  static Color _memberColor(String userId) {
+    return userId.hashCode.isEven
+        ? AppColors.memberViolet
+        : AppColors.memberPink;
+  }
+
+  static String _memberName(LiveLocation location, LocationState? state) {
+    if (location.userId == state?.selfPosition?.userId) return 'You';
+    final displayName = location.displayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) return displayName;
+    return 'Family member';
   }
 }
 

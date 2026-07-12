@@ -5,24 +5,51 @@ class LiveLocation {
     required this.lng,
     required this.accuracyMeters,
     required this.recordedAtUtc,
+    this.displayName,
     this.batteryPercent,
+    this.isOnline = true,
   });
 
   final String userId;
+  final String? displayName;
   final double lat;
   final double lng;
   final double accuracyMeters;
   final int? batteryPercent;
   final DateTime recordedAtUtc;
+  final bool isOnline;
 
   factory LiveLocation.fromJson(Map<String, dynamic> json) {
     return LiveLocation(
       userId: json['userId'] as String,
+      displayName: json['displayName'] as String?,
       lat: (json['lat'] as num).toDouble(),
       lng: (json['lng'] as num).toDouble(),
       accuracyMeters: (json['accuracyMeters'] as num).toDouble(),
       batteryPercent: (json['batteryPercent'] as num?)?.toInt(),
       recordedAtUtc: DateTime.parse(json['recordedAtUtc'] as String).toUtc(),
+      isOnline: json['isOnline'] as bool? ?? true,
+    );
+  }
+
+  LiveLocation copyWith({
+    String? displayName,
+    double? lat,
+    double? lng,
+    double? accuracyMeters,
+    int? batteryPercent,
+    DateTime? recordedAtUtc,
+    bool? isOnline,
+  }) {
+    return LiveLocation(
+      userId: userId,
+      displayName: displayName ?? this.displayName,
+      lat: lat ?? this.lat,
+      lng: lng ?? this.lng,
+      accuracyMeters: accuracyMeters ?? this.accuracyMeters,
+      batteryPercent: batteryPercent ?? this.batteryPercent,
+      recordedAtUtc: recordedAtUtc ?? this.recordedAtUtc,
+      isOnline: isOnline ?? this.isOnline,
     );
   }
 }

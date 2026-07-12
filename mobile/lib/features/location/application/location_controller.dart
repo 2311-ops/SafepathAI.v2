@@ -12,22 +12,31 @@ import '../data/location_api.dart';
 import '../data/location_hub_client.dart';
 import '../data/location_models.dart';
 
+class MemberPresence {
+  const MemberPresence({required this.isOnline});
+
+  final bool isOnline;
+}
+
 class LocationState {
   const LocationState({
     this.selfPosition,
     this.members = const {},
+    this.memberPresence = const {},
     this.isLoading = false,
     this.error,
   });
 
   final LiveLocation? selfPosition;
   final Map<String, LiveLocation> members;
+  final Map<String, MemberPresence> memberPresence;
   final bool isLoading;
   final String? error;
 
   LocationState copyWith({
     LiveLocation? selfPosition,
     Map<String, LiveLocation>? members,
+    Map<String, MemberPresence>? memberPresence,
     bool? isLoading,
     String? error,
     bool clearError = false,
@@ -35,10 +44,14 @@ class LocationState {
     return LocationState(
       selfPosition: selfPosition ?? this.selfPosition,
       members: members ?? this.members,
+      memberPresence: memberPresence ?? this.memberPresence,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
     );
   }
+
+  bool isMemberOnline(String userId) =>
+      memberPresence[userId]?.isOnline ?? members[userId]?.isOnline ?? false;
 }
 
 final positionStreamProvider = Provider<Stream<Position>>((ref) {
@@ -118,6 +131,10 @@ class LocationController extends AsyncNotifier<LocationState> {
       final initialMembers = {
         for (final location in initialLocations) location.userId: location,
       };
+      final initialPresence = {
+        for (final location in initialLocations)
+          location.userId: MemberPresence(isOnline: location.isOnline),
+      };
       final selfPosition = currentUserId == null
           ? null
           : initialMembers[currentUserId];
@@ -125,6 +142,7 @@ class LocationController extends AsyncNotifier<LocationState> {
         LocationState(
           selfPosition: selfPosition,
           members: initialMembers,
+          memberPresence: initialPresence,
           isLoading: false,
         ),
       );
@@ -133,7 +151,7 @@ class LocationController extends AsyncNotifier<LocationState> {
       _hubClient = hubClient;
       await hubClient.connect(familyId);
       _locationSubscription = hubClient.locationUpdates.listen(_applyLocation);
-      _presenceSubscription = hubClient.presenceChanges.listen((change) {});
+      _presenceSubscription = hubClient.presenceChanges.listen(_applyPresence);
       _positionSubscription = ref
           .read(positionStreamProvider)
           .listen(_reportPosition, onError: (_) {});
@@ -200,17 +218,41 @@ class LocationController extends AsyncNotifier<LocationState> {
 
   void _applyLocation(LiveLocation location) {
     final currentUserId = ref.read(authApiProvider).currentSession?.user.id;
+    final existing = _current.members[location.userId];
+    final mergedLocation = existing == null
+        ? location
+        : location.copyWith(
+            displayName: location.displayName ?? existing.displayName,
+            isOnline:
+                _current.memberPresence[location.userId]?.isOnline ??
+                location.isOnline,
+          );
     final nextMembers = Map<String, LiveLocation>.from(_current.members)
-      ..[location.userId] = location;
+      ..[location.userId] = mergedLocation;
+    final nextPresence =
+        Map<String, MemberPresence>.from(_current.memberPresence)..putIfAbsent(
+          location.userId,
+          () => MemberPresence(isOnline: location.isOnline),
+        );
     state = AsyncData(
       _current.copyWith(
         selfPosition: location.userId == currentUserId
-            ? location
+            ? mergedLocation
             : _current.selfPosition,
         members: nextMembers,
+        memberPresence: nextPresence,
         isLoading: false,
         clearError: true,
       ),
+    );
+  }
+
+  void _applyPresence(PresenceChange change) {
+    final nextPresence = Map<String, MemberPresence>.from(
+      _current.memberPresence,
+    )..[change.userId] = MemberPresence(isOnline: change.isOnline);
+    state = AsyncData(
+      _current.copyWith(memberPresence: nextPresence, clearError: true),
     );
   }
 }
