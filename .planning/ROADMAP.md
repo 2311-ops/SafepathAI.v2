@@ -98,7 +98,7 @@ Plans:
   5. User can toggle sharing per data type/recipient, enable temporary auto-stopping location sharing, and export or delete their data from a Privacy Center — backed by end-to-end encrypted communication and a documented no-data-resale commitment (PRIV-01, PRIV-02, PRIV-03, PRIV-04, PRIV-05)
   6. User can upload, replace, and remove their profile picture and edit their display name; every visible family member appears on the live map as a custom marker showing their avatar (or a default avatar), name, online/offline status, and current location, updating in real time — visible only to members of the same Family Circle (PROFILE-01, PROFILE-02, PROFILE-03, PROFILE-04, PROFILE-05, PROFILE-06, PROFILE-07)
 
-**Plans**: 12/12 plans complete
+**Plans**: 16 plans (12/12 original complete; 4 new plans 02-13..02-16 planned 2026-07-13 for the PROFILE-01..07 additive wave)
 **Map SDK retrofit complete (2026-07-13)**: originally shipped on `google_maps_flutter`; project direction changed to OpenStreetMap and executed in `02-12-PLAN.md` (`live_map_screen.dart` + `route_stats_sheet.dart` now on `flutter_map`/`latlong2`, native Google-Maps-key wiring removed from Android/iOS). iOS build is source-verified only (no macOS/CI runner available here) — validate the actual Xcode compile before an iOS release build. Before production traffic, replace the raw `tile.openstreetmap.org` URL with a dedicated tile-hosting provider per OSM's tile usage policy (documented in `02-01-USER-SETUP.md`). See `.planning/phases/02-real-time-location-history-privacy/02-OSM-MIGRATION-IMPACT.md`.
 
 Plans:
@@ -138,6 +138,22 @@ Plans:
 **Wave 8** *(additive OSM map-renderer retrofit — post-close, planned 2026-07-13)*
 
 - [x] 02-12-PLAN.md — migrate map rendering from google_maps_flutter to flutter_map/OpenStreetMap (LOC-01/02/04, HIST-02)
+
+**Wave 9** *(additive User Profile & Map Identity — post-close, planned 2026-07-13)*
+
+- [ ] 02-13-PLAN.md — backend: User profile fields + EF migration + Supabase Storage client + image validation/re-encode (PROFILE-01/02/03)
+
+**Wave 10** *(blocked on Wave 9)*
+
+- [ ] 02-14-PLAN.md — backend: profile endpoints (display-name/upload/delete) + signed profileImageUrl on live-locations + ProfileUpdated SignalR event (PROFILE-01..07)
+
+**Wave 11** *(blocked on Wave 10)*
+
+- [ ] 02-15-PLAN.md — mobile: profile data/controller + view/edit profile screen (upload/replace/remove + display name) (PROFILE-01/02/03/04/05)
+
+**Wave 12** *(blocked on Wave 10 + Wave 11)*
+
+- [ ] 02-16-PLAN.md — mobile: live-map avatar markers + always-visible name labels + real-time ProfileUpdated rendering (PROFILE-06/07)
 
 **UI hint**: yes
 
