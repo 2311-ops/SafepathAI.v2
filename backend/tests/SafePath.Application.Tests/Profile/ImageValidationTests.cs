@@ -74,7 +74,7 @@ public class ImageValidationTests
         var result = _validator.Validate(polyglot);
 
         Assert.Equal("image/jpeg", result.ContentType);
-        Assert.DoesNotContain(trailingPayload, result.JpegBytes);
+        Assert.False(ContainsSequence(result.JpegBytes, trailingPayload));
         AssertImageFormat(result.JpegBytes, "JPEG");
     }
 
@@ -112,5 +112,23 @@ public class ImageValidationTests
 
         Assert.NotNull(metadata);
         Assert.Equal(expectedFormat, metadata.Metadata.DecodedImageFormat?.Name);
+    }
+
+    private static bool ContainsSequence(byte[] haystack, byte[] needle)
+    {
+        if (needle.Length == 0)
+        {
+            return true;
+        }
+
+        for (var index = 0; index <= haystack.Length - needle.Length; index++)
+        {
+            if (haystack.AsSpan(index, needle.Length).SequenceEqual(needle))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
