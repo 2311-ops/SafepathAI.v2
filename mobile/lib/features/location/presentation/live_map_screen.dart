@@ -279,7 +279,14 @@ class _MapMessage extends StatelessWidget {
       backgroundColor: AppColors.appBg,
       appBar: AppBar(
         title: const Text('Live Map'),
-        actions: const [LogoutAction()],
+        actions: [
+          IconButton(
+            tooltip: 'Profile',
+            icon: const Icon(Icons.person_outline),
+            onPressed: () => context.push('/profile'),
+          ),
+          const LogoutAction(),
+        ],
       ),
       body: SafeArea(
         child: Padding(
