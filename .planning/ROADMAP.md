@@ -98,7 +98,7 @@ Plans:
   5. User can toggle sharing per data type/recipient, enable temporary auto-stopping location sharing, and export or delete their data from a Privacy Center — backed by end-to-end encrypted communication and a documented no-data-resale commitment (PRIV-01, PRIV-02, PRIV-03, PRIV-04, PRIV-05)
   6. User can upload, replace, and remove their profile picture and edit their display name; every visible family member appears on the live map as a custom marker showing their avatar (or a default avatar), name, online/offline status, and current location, updating in real time — visible only to members of the same Family Circle (PROFILE-01, PROFILE-02, PROFILE-03, PROFILE-04, PROFILE-05, PROFILE-06, PROFILE-07)
 
-**Plans**: 14/16 plans executed
+**Plans**: 15/16 plans executed
 **Map SDK retrofit complete (2026-07-13)**: originally shipped on `google_maps_flutter`; project direction changed to OpenStreetMap and executed in `02-12-PLAN.md` (`live_map_screen.dart` + `route_stats_sheet.dart` now on `flutter_map`/`latlong2`, native Google-Maps-key wiring removed from Android/iOS). iOS build is source-verified only (no macOS/CI runner available here) — validate the actual Xcode compile before an iOS release build. Before production traffic, replace the raw `tile.openstreetmap.org` URL with a dedicated tile-hosting provider per OSM's tile usage policy (documented in `02-01-USER-SETUP.md`). See `.planning/phases/02-real-time-location-history-privacy/02-OSM-MIGRATION-IMPACT.md`.
 
 Plans:
@@ -149,7 +149,7 @@ Plans:
 
 **Wave 11** *(blocked on Wave 10)*
 
-- [ ] 02-15-PLAN.md — mobile: profile data/controller + view/edit profile screen (upload/replace/remove + display name) (PROFILE-01/02/03/04/05)
+- [x] 02-15-PLAN.md — mobile: profile data/controller + view/edit profile screen (upload/replace/remove + display name) (PROFILE-01/02/03/04/05)
 
 **Wave 12** *(blocked on Wave 10 + Wave 11)*
 
@@ -247,7 +247,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Backend & Auth Foundation | 14/14 | Complete | 2026-07-10 |
-| 2. Real-Time Location, History & Privacy | 14/16 | In Progress | - |
+| 2. Real-Time Location, History & Privacy | 15/16 | In Progress | - |
 | 3. SOS Fast Path (Core Value) | 0/TBD | Not started | - |
 | 4. Geofencing | 0/TBD | Not started | - |
 | 5. AI Analytics & Family Dashboard | 0/TBD | Not started | - |
