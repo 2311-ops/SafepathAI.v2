@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../core/theme/app_colors.dart';
@@ -14,6 +15,9 @@ class MemberMapPin extends StatefulWidget {
     this.accuracyMeters,
     this.isSelf = false,
     this.size = 44,
+    this.userId,
+    this.profileImageUrl,
+    this.profileUpdatedAt,
   }) : identityColor = identityColor ?? color ?? AppColors.memberViolet;
 
   final String label;
@@ -22,6 +26,16 @@ class MemberMapPin extends StatefulWidget {
   final double? accuracyMeters;
   final bool isSelf;
   final double size;
+
+  /// Stable identity for the avatar cache key. Falls back to [label] when
+  /// omitted (existing callers that don't yet pass a userId keep working).
+  final String? userId;
+
+  /// When set, renders a cached network avatar inside the pin's existing
+  /// bordered/shadowed circle instead of the colored-initial fallback
+  /// (D-18) — extends this widget, does not replace it.
+  final String? profileImageUrl;
+  final DateTime? profileUpdatedAt;
 
   @override
   State<MemberMapPin> createState() => _MemberMapPinState();
@@ -48,6 +62,20 @@ class _MemberMapPinState extends State<MemberMapPin>
   void dispose() {
     _pulseController.dispose();
     super.dispose();
+  }
+
+  bool get _hasAvatar =>
+      (widget.profileImageUrl?.trim().isNotEmpty ?? false);
+
+  Widget _initialsText() {
+    return Text(
+      widget.label.isEmpty ? '?' : widget.label.substring(0, 1).toUpperCase(),
+      style: AppTypography.body.copyWith(
+        color: Colors.white,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0,
+      ),
+    );
   }
 
   @override
@@ -102,16 +130,21 @@ class _MemberMapPinState extends State<MemberMapPin>
                       ),
                     ],
                   ),
-                  child: Text(
-                    widget.label.isEmpty
-                        ? '?'
-                        : widget.label.substring(0, 1).toUpperCase(),
-                    style: AppTypography.body.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0,
-                    ),
-                  ),
+                  child: _hasAvatar
+                      ? ClipOval(
+                          child: CachedNetworkImage(
+                            imageUrl: widget.profileImageUrl!,
+                            cacheKey:
+                                '${widget.userId ?? widget.label}-${widget.profileUpdatedAt?.toIso8601String()}',
+                            width: pinSize,
+                            height: pinSize,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => _initialsText(),
+                            errorWidget: (context, url, error) =>
+                                _initialsText(),
+                          ),
+                        )
+                      : _initialsText(),
                 ),
                 if (isLiveSelf)
                   Positioned(
