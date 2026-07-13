@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 02
 current_phase_name: real-time-location-history-privacy
 status: planned
-stopped_at: Completed 02-13-PLAN.md
-last_updated: "2026-07-13T15:40:43.812Z"
+stopped_at: Completed 02-14-PLAN.md
+last_updated: "2026-07-13T15:56:50.091Z"
 last_activity: 2026-07-13
-last_activity_desc: Completed 02-13 backend profile storage foundation; next is 02-14 profile endpoints and SignalR propagation
+last_activity_desc: Completed 02-14 backend profile endpoints and SignalR profile propagation
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 32
-  completed_plans: 29
-  percent: 91
+  completed_plans: 30
+  percent: 94
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 ## Current Position
 
 Phase: 02 (real-time-location-history-privacy) — IN PROGRESS (additive User Profile & Map Identity wave)
-Plan: /gsd-execute-phase 02 next (resume with 02-14-PLAN.md; do not redo 02-13)
-Status: 13/16 plans shipped. 02-13 completed backend profile fields, live EF migration, backend-mediated Supabase Storage client, and ImageSharp validation/re-encode. Remaining: 02-14 profile endpoints + signed URL propagation, 02-15 mobile profile UI, 02-16 map avatar markers.
-Last activity: 2026-07-13 — Completed 02-13 backend profile storage foundation
+Plan: /gsd-execute-phase 02 next (resume with 02-15-PLAN.md; do not redo 02-14)
+Status: 14/16 plans shipped. 02-14 completed backend profile endpoints, signed profileImageUrl projection on /me and live-locations, and ProfileUpdated SignalR propagation. Remaining: 02-15 mobile profile UI and 02-16 map avatar markers.
+Last activity: 2026-07-13 — Completed 02-14 backend profile endpoints and SignalR profile propagation
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -77,6 +77,7 @@ Progress: [█████████░] 91%
 | Phase 02-real-time-location-history-privacy P10 | 17min | 2 tasks | 5 files |
 | Phase 02-real-time-location-history-privacy P11 | 7min | 2 tasks | 3 files |
 | Phase 02-real-time-location-history-privacy P13 | 48min | 3 tasks | 14 files |
+| Phase 02 P14 | 10min | 3 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -133,6 +134,7 @@ Recent decisions affecting current work:
 - [Phase 02]: [Phase 02-11]: Custom temporary sharing defaults to hours, supports minutes/hours, validates non-numeric/non-positive/greater-than-7-day values, and passes the parsed Duration.
 - [Phase 02-13]: Supabase Storage bucket is `avatar` (singular), not the originally planned `avatars`; backend uses configurable `Supabase:AvatarBucket` defaulting to `avatar`, while object paths remain traversal-proof as `avatars/{serverGuid}/avatar.jpg`.
 - [Phase 02-13]: ImageSharp 4.0.0 requires an uncommitted Six Labors license file or `SIXLABORS_LICENSE_KEY` at build time; `.gitignore` excludes `sixlabors.lic`, and no license material is committed.
+- [Phase 02-14]: Profile writes stay `/me`-only and derive `CallerUserId` exclusively from `ICurrentUserService`; signed avatar URLs use a shared 1-hour `ProfileImageUrlFactory`; `ProfileUpdated` broadcasts only on profile changes while `LocationUpdateDto` remains lean.
 
 ### Pending Todos
 
@@ -146,7 +148,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 - Phase 4 (Geofencing): exact dwell-time/hysteresis parameters and Android's April 2026 background-location policy wording need re-verification at build time.
 - Phase 5 (AI): cold-start fallback design (two-tier prediction, synthetic history seeding) needs concrete design during planning.
 - Phase 6 (Duress): security-under-coercion threat modeling for the Silent/Duress secret storage is domain-specific and underspecified beyond the general pattern.
-- Phase 2 (User Profile & Map Identity, 02-14..02-16): continue with profile endpoints/mobile/map identity work. The private Supabase Storage bucket is `avatar` (singular) and `backend/.env` contains `Supabase__ServiceRoleKey`; ImageSharp 4.0.0 builds require local Six Labors license material that must not be committed.
+- Phase 2 (User Profile & Map Identity, 02-15..02-16): continue with mobile profile UI and map identity work. The private Supabase Storage bucket is `avatar` (singular) and `backend/.env` contains `Supabase__ServiceRoleKey`; ImageSharp 4.0.0 builds require local Six Labors license material that must not be committed.
 
 ## Deferred Items
 
@@ -158,6 +160,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T15:40:43.551Z
-Stopped at: Completed 02-13-PLAN.md
+Last session: 2026-07-13T15:56:49.813Z
+Stopped at: Completed 02-14-PLAN.md
 Resume file: None

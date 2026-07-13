@@ -41,10 +41,10 @@
 - [x] **PROFILE-01**: User can upload a profile picture, stored in Supabase Storage (private bucket) with only the image path/URL persisted in the database
 - [x] **PROFILE-02**: User can replace their existing profile picture
 - [x] **PROFILE-03**: User can remove their profile picture, reverting to the default avatar everywhere it's shown
-- [ ] **PROFILE-04**: User can edit their display name, shown on their map marker and profile
-- [ ] **PROFILE-05**: User can view their own profile (display name, profile picture, role)
-- [ ] **PROFILE-06**: Live family map renders every visible family member as a custom marker with a circular avatar (or default avatar), display name above the marker, an online/offline indicator, and current location, updating in real time as they move
-- [ ] **PROFILE-07**: Guardian view shows every family member's avatar, name, live location, and status; Member view shows the guardian and other approved family members' avatars, names, and live locations — scoped to the same Family Circle only
+- [x] **PROFILE-04**: User can edit their display name, shown on their map marker and profile
+- [x] **PROFILE-05**: User can view their own profile (display name, profile picture, role)
+- [x] **PROFILE-06**: Live family map renders every visible family member as a custom marker with a circular avatar (or default avatar), display name above the marker, an online/offline indicator, and current location, updating in real time as they move
+- [x] **PROFILE-07**: Guardian view shows every family member's avatar, name, live location, and status; Member view shows the guardian and other approved family members' avatars, names, and live locations — scoped to the same Family Circle only
 
 ### Geofencing (GEO)
 
@@ -194,10 +194,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROFILE-01 | Phase 2 | Complete |
 | PROFILE-02 | Phase 2 | Complete |
 | PROFILE-03 | Phase 2 | Complete |
-| PROFILE-04 | Phase 2 | Pending |
-| PROFILE-05 | Phase 2 | Pending |
-| PROFILE-06 | Phase 2 | Pending |
-| PROFILE-07 | Phase 2 | Pending |
+| PROFILE-04 | Phase 2 | Complete |
+| PROFILE-05 | Phase 2 | Complete |
+| PROFILE-06 | Phase 2 | Complete |
+| PROFILE-07 | Phase 2 | Complete |
 | SOS-01 | Phase 3 | Pending |
 | SOS-02 | Phase 3 | Pending |
 | SOS-03 | Phase 3 | Pending |
