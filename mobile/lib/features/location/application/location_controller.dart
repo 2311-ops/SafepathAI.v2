@@ -80,6 +80,7 @@ class LocationController extends AsyncNotifier<LocationState> {
   StreamSubscription<LiveLocation>? _locationSubscription;
   StreamSubscription<PresenceChange>? _presenceSubscription;
   StreamSubscription<LowBatteryAlert>? _lowBatterySubscription;
+  StreamSubscription<ProfileUpdate>? _profileUpdatesSubscription;
   LocationHubClient? _hubClient;
   String? _connectedFamilyId;
   int _generation = 0;
@@ -204,6 +205,9 @@ class LocationController extends AsyncNotifier<LocationState> {
       final lowBatterySubscription = hubClient.lowBatteryAlerts.listen(
         _applyLowBatteryAlert,
       );
+      final profileUpdatesSubscription = hubClient.profileUpdates.listen(
+        _applyProfileUpdate,
+      );
       final positionSubscription = ref
           .read(positionStreamProvider)
           .listen(_reportPosition, onError: (_) {});
@@ -211,6 +215,7 @@ class LocationController extends AsyncNotifier<LocationState> {
         await locationSubscription.cancel();
         await presenceSubscription.cancel();
         await lowBatterySubscription.cancel();
+        await profileUpdatesSubscription.cancel();
         await positionSubscription.cancel();
         return;
       }
@@ -219,6 +224,7 @@ class LocationController extends AsyncNotifier<LocationState> {
       _locationSubscription = locationSubscription;
       _presenceSubscription = presenceSubscription;
       _lowBatterySubscription = lowBatterySubscription;
+      _profileUpdatesSubscription = profileUpdatesSubscription;
       _positionSubscription = positionSubscription;
     } on LocationApiException catch (error) {
       if (bootstrapToken != _bootstrapToken || generation != _generation) {
@@ -266,10 +272,12 @@ class LocationController extends AsyncNotifier<LocationState> {
     await _locationSubscription?.cancel();
     await _presenceSubscription?.cancel();
     await _lowBatterySubscription?.cancel();
+    await _profileUpdatesSubscription?.cancel();
     _positionSubscription = null;
     _locationSubscription = null;
     _presenceSubscription = null;
     _lowBatterySubscription = null;
+    _profileUpdatesSubscription = null;
     await hubClient?.disconnect();
     if (clearState) {
       state = const AsyncData(LocationState());
@@ -384,6 +392,44 @@ class LocationController extends AsyncNotifier<LocationState> {
     )..[change.userId] = MemberPresence(isOnline: change.isOnline);
     state = AsyncData(
       _current.copyWith(memberPresence: nextPresence, clearError: true),
+    );
+  }
+
+  void _applyProfileUpdate(ProfileUpdate update) {
+    final existing = _current.members[update.userId];
+    // No location entry yet for this member — nothing to merge into. The
+    // profile fields will already be present once their live-location
+    // snapshot/push arrives (LiveLocation.fromJson parses profileImageUrl).
+    if (existing == null) return;
+
+    // A removed photo (profileImageUrl == null) must clear the marker
+    // avatar, not be treated as "no change" via the usual ?? merge —
+    // clearProfileImage expresses that explicitly (PROFILE-03/06).
+    final updatedLocation = update.profileImageUrl == null
+        ? existing.copyWith(
+            displayName: update.displayName ?? existing.displayName,
+            clearProfileImage: true,
+          )
+        : existing.copyWith(
+            displayName: update.displayName ?? existing.displayName,
+            profileImageUrl: update.profileImageUrl,
+            // Bust the cached-avatar key even though the server doesn't send
+            // profileUpdatedAt on this lightweight event, so a replaced
+            // photo under the same URL host still re-fetches.
+            profileUpdatedAt: DateTime.now().toUtc(),
+          );
+
+    final currentUserId = ref.read(authApiProvider).currentSession?.user.id;
+    final nextMembers = Map<String, LiveLocation>.from(_current.members)
+      ..[update.userId] = updatedLocation;
+    state = AsyncData(
+      _current.copyWith(
+        selfPosition: update.userId == currentUserId
+            ? updatedLocation
+            : _current.selfPosition,
+        members: nextMembers,
+        clearError: true,
+      ),
     );
   }
 

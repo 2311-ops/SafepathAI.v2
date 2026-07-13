@@ -377,6 +377,131 @@ void main() {
     expect(state.members['member-2']?.batteryPercent, 51);
   });
 
+  test('initial live-locations snapshot carries profileImageUrl', () async {
+    locationApi.liveLocationsToReturn = [
+      LiveLocation(
+        userId: 'self-user',
+        lat: 30.0444,
+        lng: 31.2357,
+        accuracyMeters: 10,
+        recordedAtUtc: DateTime.utc(2026, 7, 12, 10),
+        profileImageUrl: 'https://example.com/self.jpg',
+        profileUpdatedAt: DateTime.utc(2026, 7, 12, 9),
+      ),
+    ];
+    container.read(locationControllerProvider);
+    await pumpEventQueue();
+
+    final state = container.read(locationControllerProvider).value!;
+    expect(
+      state.members['self-user']?.profileImageUrl,
+      'https://example.com/self.jpg',
+    );
+    expect(state.selfPosition?.profileImageUrl, 'https://example.com/self.jpg');
+  });
+
+  test(
+    'ProfileUpdated merges name/avatar without disturbing position or presence',
+    () async {
+      container.read(locationControllerProvider);
+      await pumpEventQueue();
+
+      hubClient.emitLocation(
+        LiveLocation(
+          userId: 'member-2',
+          displayName: 'Old Name',
+          lat: 29.9,
+          lng: 31.1,
+          accuracyMeters: 12,
+          recordedAtUtc: DateTime.utc(2026, 7, 12, 11),
+          batteryPercent: 51,
+        ),
+      );
+      hubClient.emitPresence(
+        PresenceChange(userId: 'member-2', isOnline: true),
+      );
+      await pumpEventQueue();
+
+      hubClient.emitProfileUpdate(
+        const ProfileUpdate(
+          userId: 'member-2',
+          displayName: 'New Name',
+          profileImageUrl: 'https://example.com/member-2.jpg',
+        ),
+      );
+      await pumpEventQueue();
+
+      final state = container.read(locationControllerProvider).value!;
+      final member = state.members['member-2']!;
+      expect(member.displayName, 'New Name');
+      expect(member.profileImageUrl, 'https://example.com/member-2.jpg');
+      // Position/presence must be untouched by the profile-only merge.
+      expect(member.lat, 29.9);
+      expect(member.lng, 31.1);
+      expect(state.isMemberOnline('member-2'), isTrue);
+    },
+  );
+
+  test(
+    'ProfileUpdated with a null profileImageUrl clears the avatar',
+    () async {
+      container.read(locationControllerProvider);
+      await pumpEventQueue();
+
+      hubClient.emitLocation(
+        LiveLocation(
+          userId: 'member-2',
+          lat: 29.9,
+          lng: 31.1,
+          accuracyMeters: 12,
+          recordedAtUtc: DateTime.utc(2026, 7, 12, 11),
+          profileImageUrl: 'https://example.com/member-2.jpg',
+          profileUpdatedAt: DateTime.utc(2026, 7, 12, 10),
+        ),
+      );
+      await pumpEventQueue();
+      expect(
+        container
+            .read(locationControllerProvider)
+            .value!
+            .members['member-2']
+            ?.profileImageUrl,
+        isNotNull,
+      );
+
+      hubClient.emitProfileUpdate(
+        const ProfileUpdate(userId: 'member-2', profileImageUrl: null),
+      );
+      await pumpEventQueue();
+
+      final member = container
+          .read(locationControllerProvider)
+          .value!
+          .members['member-2']!;
+      expect(member.profileImageUrl, isNull);
+    },
+  );
+
+  test(
+    'ProfileUpdated for a not-yet-seen member is safely ignored',
+    () async {
+      container.read(locationControllerProvider);
+      await pumpEventQueue();
+
+      hubClient.emitProfileUpdate(
+        const ProfileUpdate(
+          userId: 'unknown-member',
+          displayName: 'Ghost',
+          profileImageUrl: 'https://example.com/ghost.jpg',
+        ),
+      );
+      await pumpEventQueue();
+
+      final state = container.read(locationControllerProvider).value!;
+      expect(state.members.containsKey('unknown-member'), isFalse);
+    },
+  );
+
   test(
     'connects only for auth plus family and disconnects on sign-out',
     () async {
