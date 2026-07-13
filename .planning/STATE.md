@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 02
 current_phase_name: real-time-location-history-privacy
-status: ready_for_next_phase
-stopped_at: Completed 02-12-PLAN.md (OSM map-renderer retrofit)
-last_updated: "2026-07-13T11:05:22.000Z"
+status: planned
+stopped_at: Planned 02-13..02-16-PLAN.md (User Profile & Map Identity additive wave, PROFILE-01..07) — ready for /gsd-execute-phase 02
+last_updated: "2026-07-13T14:52:00.000Z"
 last_activity: 2026-07-13
-last_activity_desc: Completed Phase 02 Plan 12 — OSM map-renderer retrofit (google_maps_flutter to flutter_map/latlong2)
+last_activity_desc: Force-replanned CLOSED Phase 02 with a new additive wave (Waves 9-12, plans 02-13..02-16) covering PROFILE-01..07 — User Profile & Map Identity, integrated with the OSM map migration
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 28
+  total_plans: 32
   completed_plans: 28
-  percent: 100
+  percent: 88
 ---
 
 # Project State
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 
 ## Current Position
 
-Phase: 02 (real-time-location-history-privacy) — COMPLETE
-Plan: Phase 03 planning next
-Status: 02-12 complete; Phase 02 now has 12/12 plan summaries including the OSM map-renderer retrofit
-Last activity: 2026-07-13 — Completed Phase 02 Plan 12 — OSM map-renderer retrofit
+Phase: 02 (real-time-location-history-privacy) — PLANNED (additive wave pending execution)
+Plan: /gsd-execute-phase 02 next (Waves 9-12: 02-13-PLAN.md..02-16-PLAN.md)
+Status: 12/12 original plans shipped + verified; 4 new plans (02-13..02-16) planned 2026-07-13 for the User Profile & Map Identity addendum (PROFILE-01..07), not yet executed. Requires manual user setup before execution: a private Supabase Storage bucket named `avatars` and a `Supabase__ServiceRoleKey` secret (see 02-13-PLAN.md user_setup).
+Last activity: 2026-07-13 — Force-replanned closed Phase 02 with Waves 9-12 (User Profile & Map Identity)
 
-Progress: [##########] 100%
+Progress: [#########-] 88%
 
 ## Performance Metrics
 
@@ -143,6 +143,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 - Phase 4 (Geofencing): exact dwell-time/hysteresis parameters and Android's April 2026 background-location policy wording need re-verification at build time.
 - Phase 5 (AI): cold-start fallback design (two-tier prediction, synthetic history seeding) needs concrete design during planning.
 - Phase 6 (Duress): security-under-coercion threat modeling for the Silent/Duress secret storage is domain-specific and underspecified beyond the general pattern.
+- Phase 2 (User Profile & Map Identity, 02-13..02-16): execution is blocked on manual user setup — a private Supabase Storage bucket named `avatars` (public=false, no RLS policies) and a `Supabase__ServiceRoleKey` secret must be created/obtained from the Supabase dashboard before `/gsd-execute-phase 02` can run 02-13-PLAN.md's storage-client task. Also confirm which service-role key format this project's Supabase instance issues (legacy JWT vs. new `sb_secret_xxx`) — see 02-RESEARCH.md addendum §1.
 
 ## Deferred Items
 
