@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 02
 current_phase_name: real-time-location-history-privacy
 status: planned
-stopped_at: Planned 02-13..02-16-PLAN.md (User Profile & Map Identity additive wave, PROFILE-01..07) — ready for /gsd-execute-phase 02
-last_updated: "2026-07-13T14:52:00.000Z"
+stopped_at: Completed 02-13-PLAN.md
+last_updated: "2026-07-13T15:40:43.812Z"
 last_activity: 2026-07-13
-last_activity_desc: Force-replanned CLOSED Phase 02 with a new additive wave (Waves 9-12, plans 02-13..02-16) covering PROFILE-01..07 — User Profile & Map Identity, integrated with the OSM map migration
+last_activity_desc: Completed 02-13 backend profile storage foundation; next is 02-14 profile endpoints and SignalR propagation
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 2
   total_plans: 32
-  completed_plans: 28
-  percent: 88
+  completed_plans: 29
+  percent: 91
 ---
 
 # Project State
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 
 ## Current Position
 
-Phase: 02 (real-time-location-history-privacy) — PLANNED (additive wave pending execution)
-Plan: /gsd-execute-phase 02 next (Waves 9-12: 02-13-PLAN.md..02-16-PLAN.md)
-Status: 12/12 original plans shipped + verified; 4 new plans (02-13..02-16) planned 2026-07-13 for the User Profile & Map Identity addendum (PROFILE-01..07), not yet executed. Requires manual user setup before execution: a private Supabase Storage bucket named `avatars` and a `Supabase__ServiceRoleKey` secret (see 02-13-PLAN.md user_setup).
-Last activity: 2026-07-13 — Force-replanned closed Phase 02 with Waves 9-12 (User Profile & Map Identity)
+Phase: 02 (real-time-location-history-privacy) — IN PROGRESS (additive User Profile & Map Identity wave)
+Plan: /gsd-execute-phase 02 next (resume with 02-14-PLAN.md; do not redo 02-13)
+Status: 13/16 plans shipped. 02-13 completed backend profile fields, live EF migration, backend-mediated Supabase Storage client, and ImageSharp validation/re-encode. Remaining: 02-14 profile endpoints + signed URL propagation, 02-15 mobile profile UI, 02-16 map avatar markers.
+Last activity: 2026-07-13 — Completed 02-13 backend profile storage foundation
 
-Progress: [#########-] 88%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -76,6 +76,7 @@ Progress: [#########-] 88%
 | Phase 02-real-time-location-history-privacy P09 | 11min | 3 tasks | 12 files |
 | Phase 02-real-time-location-history-privacy P10 | 17min | 2 tasks | 5 files |
 | Phase 02-real-time-location-history-privacy P11 | 7min | 2 tasks | 3 files |
+| Phase 02-real-time-location-history-privacy P13 | 48min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,8 @@ Recent decisions affecting current work:
 - [Phase 02]: [Phase 02-10]: LOC-05 is enforced at both /home routing and LocationController bootstrap; non-granted permission reaches priming before MainShell/LiveMapScreen and before live API, SignalR, or Geolocator streaming.
 - [Phase 02]: [Phase 02-11]: Temporary sharing controls are recipient-scoped inside each Privacy Center recipient row, so presets and Custom pass that row's memberId to PrivacyController.startTemporaryShare.
 - [Phase 02]: [Phase 02-11]: Custom temporary sharing defaults to hours, supports minutes/hours, validates non-numeric/non-positive/greater-than-7-day values, and passes the parsed Duration.
+- [Phase 02-13]: Supabase Storage bucket is `avatar` (singular), not the originally planned `avatars`; backend uses configurable `Supabase:AvatarBucket` defaulting to `avatar`, while object paths remain traversal-proof as `avatars/{serverGuid}/avatar.jpg`.
+- [Phase 02-13]: ImageSharp 4.0.0 requires an uncommitted Six Labors license file or `SIXLABORS_LICENSE_KEY` at build time; `.gitignore` excludes `sixlabors.lic`, and no license material is committed.
 
 ### Pending Todos
 
@@ -143,7 +146,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 - Phase 4 (Geofencing): exact dwell-time/hysteresis parameters and Android's April 2026 background-location policy wording need re-verification at build time.
 - Phase 5 (AI): cold-start fallback design (two-tier prediction, synthetic history seeding) needs concrete design during planning.
 - Phase 6 (Duress): security-under-coercion threat modeling for the Silent/Duress secret storage is domain-specific and underspecified beyond the general pattern.
-- Phase 2 (User Profile & Map Identity, 02-13..02-16): execution is blocked on manual user setup — a private Supabase Storage bucket named `avatars` (public=false, no RLS policies) and a `Supabase__ServiceRoleKey` secret must be created/obtained from the Supabase dashboard before `/gsd-execute-phase 02` can run 02-13-PLAN.md's storage-client task. Also confirm which service-role key format this project's Supabase instance issues (legacy JWT vs. new `sb_secret_xxx`) — see 02-RESEARCH.md addendum §1.
+- Phase 2 (User Profile & Map Identity, 02-14..02-16): continue with profile endpoints/mobile/map identity work. The private Supabase Storage bucket is `avatar` (singular) and `backend/.env` contains `Supabase__ServiceRoleKey`; ImageSharp 4.0.0 builds require local Six Labors license material that must not be committed.
 
 ## Deferred Items
 
@@ -155,6 +158,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T23:00:13.056Z
-Stopped at: Completed 02-11-PLAN.md
+Last session: 2026-07-13T15:40:43.551Z
+Stopped at: Completed 02-13-PLAN.md
 Resume file: None
