@@ -1,6 +1,6 @@
 ---
 phase: 02-real-time-location-history-privacy
-verified: 2026-07-13T20:00:00Z
+verified: 2026-07-13T14:02:00+03:00
 status: passed
 score: 14/14 must-haves verified
 behavior_unverified: 0
@@ -12,9 +12,22 @@ supersedes: 2026-07-12T21:59:24Z (status: gaps_found, score 12/14)
 # Phase 2: Real-Time Location, History & Privacy Verification Report (re-verification)
 
 **Phase Goal:** Family members can see each other's live and past location, with full control over what's shared and with whom.
-**Verified:** 2026-07-13T20:00:00Z
+**Verified:** 2026-07-13T14:02:00+03:00
 **Status:** passed
 **Re-verification:** Yes — closes both gaps from the 2026-07-12T21:59:24Z report.
+
+## Final UAT Refresh - 2026-07-13T14:02:00+03:00
+
+Phase 2 conversational/device UAT is now complete in `02-UAT.md`: 7/7 manual-facing checkpoints passed on the Samsung A30 physical device (`SM_A305F`, `R58M30TGNXV`). The run captured screenshots under `.planning/tmp/phase2-uat-screens/`, verified the live OSM map, five-tab home shell, marker detail sheet, route-history bottom sheet with stats, and privacy controls, and found no app crash or user-blocking issue in sampled `adb logcat`.
+
+Additional regression checks from the same UAT refresh:
+
+- `flutter analyze` - passed with no issues.
+- `flutter test test\features\location test\features\privacy` - passed, 52/52.
+- `dotnet test tests\SafePath.Application.Tests\SafePath.Application.Tests.csproj --no-build --filter "FullyQualifiedName~Location|FullyQualifiedName~Family|FullyQualifiedName~Me"` - passed, 67/67.
+- `dotnet test tests\SafePath.Api.IntegrationTests\SafePath.Api.IntegrationTests.csproj --no-build --filter "FullyQualifiedName~Location|FullyQualifiedName~Family|FullyQualifiedName~Me|FullyQualifiedName~Hub"` - passed, 5/5.
+
+One non-blocking backend resilience issue was diagnosed during UAT: a single recovered Supabase/Postgres transient timeout on `GET /me`. `$gsd-debug` recorded the diagnosis in `.planning/debug/backend-supabase-timeout.md` and classified it as external dependency/transient, not a Phase 2 UAT blocker. Future hardening should add retry/resilience or normalize transient database errors to a retryable 503.
 
 ## What changed since the last verification
 
