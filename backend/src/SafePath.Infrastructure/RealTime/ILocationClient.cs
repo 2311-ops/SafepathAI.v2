@@ -9,4 +9,6 @@ public interface ILocationClient
     Task PresenceChanged(PresenceChangeDto change);
 
     Task LowBattery(LowBatteryAlertDto alert);
+
+    Task ProfileUpdated(ProfileUpdateDto update);
 }

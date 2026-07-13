@@ -14,17 +14,20 @@ public class UploadProfileImageCommandHandler : ICommandHandler<UploadProfileIma
     private readonly IProfileImageValidator _validator;
     private readonly IProfileImageStorage _storage;
     private readonly ProfileImageUrlFactory? _profileImageUrlFactory;
+    private readonly ILocationBroadcastService? _broadcast;
 
     public UploadProfileImageCommandHandler(
         IApplicationDbContext db,
         IProfileImageValidator validator,
         IProfileImageStorage storage,
-        ProfileImageUrlFactory? profileImageUrlFactory = null)
+        ProfileImageUrlFactory? profileImageUrlFactory = null,
+        ILocationBroadcastService? broadcast = null)
     {
         _db = db;
         _validator = validator;
         _storage = storage;
         _profileImageUrlFactory = profileImageUrlFactory;
+        _broadcast = broadcast;
     }
 
     public async Task<GetMeResult> Handle(UploadProfileImageCommand command, CancellationToken cancellationToken = default)
@@ -41,6 +44,13 @@ public class UploadProfileImageCommandHandler : ICommandHandler<UploadProfileIma
         var profileImageUrl = _profileImageUrlFactory is null
             ? await _storage.CreateSignedAvatarUrlAsync(user.ProfileImagePath, ProfileImageUrlFactory.SignedUrlTtl, cancellationToken)
             : await _profileImageUrlFactory.SignAsync(user.ProfileImagePath, cancellationToken);
+        await ProfileProjection.BroadcastUpdatedAsync(
+            _db,
+            _broadcast,
+            _profileImageUrlFactory,
+            user,
+            profileImageUrl,
+            cancellationToken);
 
         return ProfileProjection.FromUser(user, profileImageUrl);
     }

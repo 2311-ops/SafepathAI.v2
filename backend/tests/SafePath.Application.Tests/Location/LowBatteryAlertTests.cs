@@ -171,6 +171,12 @@ internal sealed class RecordingLowBatteryBroadcastService : ILocationBroadcastSe
         LowBatteryAlerts.Add(new RecordedLowBatteryAlert(familyId, alert, eligibleRecipientUserIds.ToList()));
         return Task.CompletedTask;
     }
+
+    public Task BroadcastProfileUpdated(
+        Guid familyId,
+        ProfileUpdateDto update,
+        CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
 }
 
 internal sealed record RecordedLowBatteryAlert(

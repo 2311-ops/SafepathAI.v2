@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SafePath.Application.Common;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Application.Families;
 using SafePath.Domain.Entities;
@@ -12,10 +13,17 @@ public class UpdateDisplayNameCommandHandler : ICommandHandler<UpdateDisplayName
     private const int MaxDisplayNameLength = 80;
 
     private readonly IApplicationDbContext _db;
+    private readonly ILocationBroadcastService? _broadcast;
+    private readonly ProfileImageUrlFactory? _profileImageUrlFactory;
 
-    public UpdateDisplayNameCommandHandler(IApplicationDbContext db)
+    public UpdateDisplayNameCommandHandler(
+        IApplicationDbContext db,
+        ILocationBroadcastService? broadcast = null,
+        ProfileImageUrlFactory? profileImageUrlFactory = null)
     {
         _db = db;
+        _broadcast = broadcast;
+        _profileImageUrlFactory = profileImageUrlFactory;
     }
 
     public async Task<GetMeResult> Handle(UpdateDisplayNameCommand command, CancellationToken cancellationToken = default)
@@ -26,6 +34,13 @@ public class UpdateDisplayNameCommandHandler : ICommandHandler<UpdateDisplayName
         user.DisplayName = displayName;
         user.ProfileUpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
+        await ProfileProjection.BroadcastUpdatedAsync(
+            _db,
+            _broadcast,
+            _profileImageUrlFactory,
+            user,
+            profileImageUrl: null,
+            cancellationToken);
 
         return ProfileProjection.FromUser(user, profileImageUrl: null);
     }

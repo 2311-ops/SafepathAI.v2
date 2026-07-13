@@ -20,4 +20,9 @@ public interface ILocationBroadcastService
         LowBatteryAlertDto alert,
         IEnumerable<Guid> eligibleRecipientUserIds,
         CancellationToken cancellationToken = default);
+
+    Task BroadcastProfileUpdated(
+        Guid familyId,
+        ProfileUpdateDto update,
+        CancellationToken cancellationToken = default);
 }

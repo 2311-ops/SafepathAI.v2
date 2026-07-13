@@ -11,11 +11,16 @@ public class DeleteProfileImageCommandHandler : ICommandHandler<DeleteProfileIma
 {
     private readonly IApplicationDbContext _db;
     private readonly IProfileImageStorage _storage;
+    private readonly ILocationBroadcastService? _broadcast;
 
-    public DeleteProfileImageCommandHandler(IApplicationDbContext db, IProfileImageStorage storage)
+    public DeleteProfileImageCommandHandler(
+        IApplicationDbContext db,
+        IProfileImageStorage storage,
+        ILocationBroadcastService? broadcast = null)
     {
         _db = db;
         _storage = storage;
+        _broadcast = broadcast;
     }
 
     public async Task<GetMeResult> Handle(DeleteProfileImageCommand command, CancellationToken cancellationToken = default)
@@ -26,6 +31,13 @@ public class DeleteProfileImageCommandHandler : ICommandHandler<DeleteProfileIma
         user.ProfileImagePath = null;
         user.ProfileUpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
+        await ProfileProjection.BroadcastUpdatedAsync(
+            _db,
+            _broadcast,
+            profileImageUrlFactory: null,
+            user,
+            profileImageUrl: null,
+            cancellationToken);
 
         return ProfileProjection.FromUser(user, profileImageUrl: null);
     }

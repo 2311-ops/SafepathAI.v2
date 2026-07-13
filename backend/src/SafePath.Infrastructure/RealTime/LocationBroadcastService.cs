@@ -38,4 +38,10 @@ public class LocationBroadcastService : ILocationBroadcastService
         var userIds = eligibleRecipientUserIds.Select(userId => userId.ToString());
         return _hubContext.Clients.Users(userIds).LowBattery(alert);
     }
+
+    public Task BroadcastProfileUpdated(
+        Guid familyId,
+        ProfileUpdateDto update,
+        CancellationToken cancellationToken = default) =>
+        _hubContext.Clients.Group(LocationHub.FamilyGroupName(familyId)).ProfileUpdated(update);
 }

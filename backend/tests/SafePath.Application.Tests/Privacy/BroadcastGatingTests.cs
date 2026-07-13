@@ -230,6 +230,12 @@ internal sealed class RecordingLocationBroadcastService : ILocationBroadcastServ
         IEnumerable<Guid> eligibleRecipientUserIds,
         CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
+
+    public Task BroadcastProfileUpdated(
+        Guid familyId,
+        ProfileUpdateDto update,
+        CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
 }
 
 internal sealed class FakePresenceQuery : IPresenceQuery
