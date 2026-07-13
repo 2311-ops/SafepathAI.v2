@@ -97,7 +97,8 @@ Plans:
   4. User receives a low-battery alert for themselves or a family member (NOTIF-01)
   5. User can toggle sharing per data type/recipient, enable temporary auto-stopping location sharing, and export or delete their data from a Privacy Center — backed by end-to-end encrypted communication and a documented no-data-resale commitment (PRIV-01, PRIV-02, PRIV-03, PRIV-04, PRIV-05)
 
-**Plans**: 11/11 plans complete
+**Plans**: 11/11 original plans complete; +1 additive OSM map retrofit planned (02-12, not yet executed)
+**Map SDK retrofit planned (2026-07-13)**: shipped on `google_maps_flutter`; project direction changed to OpenStreetMap (`flutter_map`). Retrofit is now planned in `02-12-PLAN.md` (presentation-layer swap of `live_map_screen.dart` + `route_stats_sheet.dart` to `flutter_map`/`latlong2`, plus native Google-Maps-key de-wiring) — must execute before Phase 4 begins drawing geofence zones on the map. See `.planning/phases/02-real-time-location-history-privacy/02-OSM-MIGRATION-IMPACT.md`.
 
 Plans:
 
@@ -133,6 +134,10 @@ Plans:
 - [x] 02-10-PLAN.md - /home permission gate + LocationController streaming guard (LOC-05)
 - [x] 02-11-PLAN.md - recipient-scoped temporary sharing + custom duration input (PRIV-03)
 
+**Wave 8** *(additive OSM map-renderer retrofit — post-close, planned 2026-07-13)*
+
+- [ ] 02-12-PLAN.md — migrate map rendering from google_maps_flutter to flutter_map/OpenStreetMap (LOC-01/02/04, HIST-02)
+
 **UI hint**: yes
 
 ### Phase 3: SOS Fast Path (Core Value)
@@ -166,6 +171,7 @@ Plans:
 
 **Plans**: TBD
 **UI hint**: yes
+**Map dependency note**: Zone radius drawing/visualization uses the same map renderer as Phase 2 (OpenStreetMap via `flutter_map`, changed 2026-07-13 from Google Maps — see `.planning/phases/02-real-time-location-history-privacy/02-OSM-MIGRATION-IMPACT.md`). Geofence *detection* itself (`native_geofence`, native OS APIs) is unaffected by the map SDK choice.
 
 ### Phase 5: AI Analytics & Family Dashboard
 
