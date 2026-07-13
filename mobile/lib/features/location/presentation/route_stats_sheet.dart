@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -43,29 +44,15 @@ class RouteStatsSheet extends StatelessWidget {
     final routePoints = [
       for (final point in points) LatLng(point.lat, point.lng),
     ];
-    final polylines = <Polyline>{
-      if (routePoints.length >= 2)
-        Polyline(
-          polylineId: const PolylineId('history-route'),
-          points: routePoints,
-          color: AppColors.primaryTeal,
-          width: 5,
-          startCap: Cap.roundCap,
-          endCap: Cap.roundCap,
-          jointType: JointType.round,
-        ),
-    };
-    final markers = <Marker>{
+    final markers = [
       for (var i = 0; i < history.stops.length; i++)
         Marker(
-          markerId: MarkerId('stop-$i'),
-          position: LatLng(history.stops[i].lat, history.stops[i].lng),
-          infoWindow: InfoWindow(title: 'Stop ${i + 1}'),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueAzure,
-          ),
+          point: LatLng(history.stops[i].lat, history.stops[i].lng),
+          width: 28,
+          height: 28,
+          child: _StopMarker(number: i + 1),
         ),
-    };
+    ];
 
     return DraggableScrollableSheet(
       initialChildSize: 0.88,
@@ -95,15 +82,34 @@ class RouteStatsSheet extends StatelessWidget {
                   children: [
                     SizedBox(
                       height: 360,
-                      child: GoogleMap(
-                        initialCameraPosition: CameraPosition(
-                          target: initial,
-                          zoom: routePoints.length >= 2 ? 13 : 15,
+                      child: FlutterMap(
+                        options: MapOptions(
+                          initialCenter: initial,
+                          initialZoom: routePoints.length >= 2 ? 13 : 15,
                         ),
-                        polylines: polylines,
-                        markers: markers,
-                        myLocationButtonEnabled: false,
-                        zoomControlsEnabled: false,
+                        children: [
+                          TileLayer(
+                            urlTemplate:
+                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'com.safepath.mobile',
+                          ),
+                          if (routePoints.length >= 2)
+                            PolylineLayer(
+                              polylines: [
+                                Polyline(
+                                  points: routePoints,
+                                  color: AppColors.primaryTeal,
+                                  strokeWidth: 5,
+                                  strokeCap: StrokeCap.round,
+                                  strokeJoin: StrokeJoin.round,
+                                ),
+                              ],
+                            ),
+                          MarkerLayer(markers: markers),
+                          const SimpleAttributionWidget(
+                            source: Text('OpenStreetMap contributors'),
+                          ),
+                        ],
                       ),
                     ),
                     Padding(
@@ -152,6 +158,43 @@ class RouteStatsSheet extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// A single numbered stop pin on the route map: an always-visible numbered
+/// azure dot (equivalent stop identity to the pre-migration tap-to-reveal
+/// label, with no hidden popover).
+class _StopMarker extends StatelessWidget {
+  const _StopMarker({required this.number});
+
+  final int number;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 24,
+      height: 24,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.primaryTeal,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.surface, width: 2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x220C3A3F),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Text(
+        '$number',
+        style: AppTypography.caption.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 }
