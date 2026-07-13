@@ -1,7 +1,9 @@
+using SafePath.Application.Common;
 using Microsoft.Extensions.DependencyInjection;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Application.Families;
 using SafePath.Application.Location;
+using SafePath.Application.Profile;
 using SafePath.Application.Privacy;
 
 namespace SafePath.Application;
@@ -22,6 +24,10 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<DeleteFamilyCommand, DeleteFamilyResult>, DeleteFamilyCommandHandler>();
         services.AddScoped<ICommandHandler<GetMeQuery, GetMeResult>, GetMeQueryHandler>();
         services.AddScoped<ICommandHandler<UpdateMyRoleCommand, GetMeResult>, UpdateMyRoleCommandHandler>();
+        services.AddScoped<ProfileImageUrlFactory>();
+        services.AddScoped<ICommandHandler<UpdateDisplayNameCommand, GetMeResult>, UpdateDisplayNameCommandHandler>();
+        services.AddScoped<ICommandHandler<UploadProfileImageCommand, GetMeResult>, UploadProfileImageCommandHandler>();
+        services.AddScoped<ICommandHandler<DeleteProfileImageCommand, GetMeResult>, DeleteProfileImageCommandHandler>();
         services.AddScoped<ICommandHandler<ReportLocationCommand, ReportLocationResult>, ReportLocationCommandHandler>();
         services.AddScoped<ICommandHandler<GetLiveLocationsQuery, IReadOnlyList<MemberLiveLocationDto>>, GetLiveLocationsQueryHandler>();
         services.AddScoped<ICommandHandler<GetLocationHistoryQuery, LocationHistoryDto>, GetLocationHistoryQueryHandler>();

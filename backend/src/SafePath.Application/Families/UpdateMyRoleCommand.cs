@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SafePath.Application.Common.Interfaces;
+using SafePath.Application.Profile;
 using SafePath.Domain.Entities;
 using SafePath.Domain.Enums;
 
@@ -43,6 +44,6 @@ public class UpdateMyRoleCommandHandler : ICommandHandler<UpdateMyRoleCommand, G
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        return new GetMeResult(user.Id, user.Role, user.Email, user.FullName);
+        return ProfileProjection.FromUser(user, profileImageUrl: null);
     }
 }
