@@ -6,6 +6,8 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared_widgets/logout_action.dart';
+import '../../../shared_widgets/no_circle_cta.dart';
 import '../../../shared_widgets/safepath_card.dart';
 import '../../../shared_widgets/toggle_row.dart';
 import '../../auth/data/auth_api.dart';
@@ -178,12 +180,16 @@ class PrivacyCenterScreen extends ConsumerWidget {
         icon: Icons.group_off,
         title: 'No circle yet',
         body: 'Create or join a family circle to manage privacy controls.',
+        action: NoCircleCta(),
       );
     }
 
     return Scaffold(
       backgroundColor: AppColors.appBg,
-      appBar: AppBar(title: const Text('Privacy Center')),
+      appBar: AppBar(
+        title: const Text('Privacy Center'),
+        actions: const [LogoutAction()],
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () =>
@@ -546,16 +552,22 @@ class _PrivacyMessage extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.body,
+    this.action,
   });
 
   final IconData icon;
   final String title;
   final String body;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.appBg,
+      appBar: AppBar(
+        title: const Text('Privacy Center'),
+        actions: const [LogoutAction()],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.lg),
@@ -572,6 +584,10 @@ class _PrivacyMessage extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: AppTypography.bodySecondary,
                 ),
+                if (action != null) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  action!,
+                ],
               ],
             ),
           ),

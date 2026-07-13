@@ -5,8 +5,11 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared_widgets/logout_action.dart';
 import '../../../shared_widgets/member_map_pin.dart';
+import '../../../shared_widgets/no_circle_cta.dart';
 import '../../../shared_widgets/primary_button.dart';
+import '../../family/application/family_controller.dart';
 import '../application/location_controller.dart';
 import '../application/staleness.dart';
 import '../data/location_models.dart';
@@ -20,11 +23,27 @@ class LiveMapScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncState = ref.watch(locationControllerProvider);
     final state = asyncState.value;
+    final familyState = ref.watch(familyControllerProvider).value;
 
-    if (asyncState.isLoading || (state?.isLoading ?? false)) {
+    if (asyncState.isLoading ||
+        (state?.isLoading ?? false) ||
+        (familyState?.isLoading ?? false)) {
       return const Scaffold(
         backgroundColor: AppColors.appBg,
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // No family yet: the map has nothing to show and, more importantly, the
+    // user needs a way to create or join a circle. This branch must precede
+    // the location-based empty state so a family-less user always gets the
+    // role-aware CTA rather than the generic "No one to show yet" copy.
+    if (familyState?.family == null) {
+      return const _MapMessage(
+        icon: Icons.group_off,
+        title: 'No circle yet',
+        body: 'Create or join a family circle to see everyone on the map.',
+        action: NoCircleCta(),
       );
     }
 
@@ -145,6 +164,7 @@ class LiveMapScreen extends ConsumerWidget {
                               ],
                             ),
                           ),
+                          const LogoutAction(),
                         ],
                       ),
                     ),
@@ -204,6 +224,10 @@ class _MapMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.appBg,
+      appBar: AppBar(
+        title: const Text('Live Map'),
+        actions: const [LogoutAction()],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.lg),

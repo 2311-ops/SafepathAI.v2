@@ -11,7 +11,34 @@ import 'package:mobile/features/family/data/family_models.dart';
 import 'package:mobile/features/privacy/application/privacy_controller.dart';
 import 'package:mobile/features/privacy/data/privacy_models.dart';
 import 'package:mobile/features/privacy/presentation/privacy_center_screen.dart';
+import 'package:mobile/features/profile/application/profile_controller.dart';
+import 'package:mobile/features/profile/data/user_profile.dart';
 import '../../helpers/fake_auth_api.dart';
+
+/// A family controller stuck in the "no circle yet" state (family == null,
+/// not loading) — the exact state a freshly-signed-in user lands in.
+class _NoFamilyController extends FamilyController {
+  @override
+  FamilyState build() => const FamilyState();
+}
+
+/// Seeds a profile with a fixed role so [NoCircleCta] can pick the right
+/// Guardian/Member entry point without touching auth or the network.
+class _SeededProfileController extends ProfileController {
+  _SeededProfileController(this.role);
+
+  final Role? role;
+
+  @override
+  ProfileState build() => ProfileState(
+    profile: UserProfile(
+      userId: 'self-user',
+      email: null,
+      fullName: null,
+      role: role,
+    ),
+  );
+}
 
 class _SeededFamilyController extends FamilyController {
   @override
@@ -144,6 +171,23 @@ Widget _app(_SpyPrivacyController controller) {
   );
 }
 
+Widget _noCircleApp(Role? role) {
+  return ProviderScope(
+    overrides: [
+      authApiProvider.overrideWithValue(
+        FakeAuthApi(initialSession: _session(userId: 'self-user')),
+      ),
+      familyControllerProvider.overrideWith(_NoFamilyController.new),
+      profileControllerProvider.overrideWith(() => _SeededProfileController(role)),
+      privacyControllerProvider.overrideWith(_SpyPrivacyController.new),
+      privacyNowProvider.overrideWithValue(
+        () => DateTime.utc(2026, 7, 12, 10, 30),
+      ),
+    ],
+    child: const MaterialApp(home: PrivacyCenterScreen()),
+  );
+}
+
 void main() {
   setUpAll(() {
     GoogleFonts.config.allowRuntimeFetching = false;
@@ -235,6 +279,30 @@ void main() {
     expect(controller.lastRecipientId, 'mem-second-recipient');
     expect(controller.lastDataType, SharedDataType.liveLocation);
     expect(controller.lastDuration, const Duration(hours: 6));
+  });
+
+  testWidgets('no-circle empty state shows the Guardian create-circle CTA', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_noCircleApp(Role.guardian));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No circle yet'), findsOneWidget);
+    expect(find.byKey(const ValueKey('no-circle-create-cta')), findsOneWidget);
+    expect(find.text('Create a circle'), findsOneWidget);
+    expect(find.text('Enter invite code'), findsNothing);
+  });
+
+  testWidgets('no-circle empty state shows the Member join-circle CTA', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_noCircleApp(Role.member));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No circle yet'), findsOneWidget);
+    expect(find.byKey(const ValueKey('no-circle-join-cta')), findsOneWidget);
+    expect(find.text('Enter invite code'), findsOneWidget);
+    expect(find.text('Create a circle'), findsNothing);
   });
 
   testWidgets('delete data is confirmation-gated', (tester) async {

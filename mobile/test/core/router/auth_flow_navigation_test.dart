@@ -253,7 +253,7 @@ void main() {
         fakeApi.emitSignedIn();
         await tester.pumpAndSettle();
 
-        expect(find.text('Your circle'), findsOneWidget);
+        expect(find.text('No circle yet'), findsOneWidget);
         expect(find.text('Check your email'), findsNothing);
       },
     );
@@ -261,7 +261,7 @@ void main() {
 
   group('Login -> Home', () {
     testWidgets(
-      'successful login navigates to the authenticated landing stub',
+      'successful login navigates to Home (no-circle empty state)',
       (tester) async {
         await tester.pumpWidget(buildApp());
         await tester.pumpAndSettle();
@@ -274,8 +274,8 @@ void main() {
         await tester.tap(find.widgetWithText(ElevatedButton, 'Log in'));
         await tester.pumpAndSettle();
 
-        expect(find.text('Your circle'), findsOneWidget);
-        expect(find.text('Create your family circle'), findsOneWidget);
+        expect(find.text('No circle yet'), findsOneWidget);
+        expect(find.text('Create a circle'), findsOneWidget);
         expect(fakeApi.lastLoginEmail, 'ada@family.com');
       },
     );
@@ -313,7 +313,7 @@ void main() {
       await tester.pumpWidget(buildApp());
       await tester.pumpAndSettle();
 
-      expect(find.text('Your circle'), findsOneWidget);
+      expect(find.text('No circle yet'), findsOneWidget);
       expect(find.text('SafePath AI'), findsNothing);
     });
 
@@ -324,13 +324,13 @@ void main() {
 
         await tester.pumpWidget(buildApp());
         await tester.pumpAndSettle();
-        expect(find.text('Your circle'), findsOneWidget);
+        expect(find.text('No circle yet'), findsOneWidget);
 
-        await tester.tap(find.byType(PopupMenuButton<String>));
+        // Logout now lives in each MainShell tab's AppBar via LogoutAction
+        // (an IconButton) rather than the old landing-stub PopupMenu.
+        await tester.tap(find.byTooltip('Log out'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Logout'));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Log out'));
+        await tester.tap(find.widgetWithText(TextButton, 'Log out'));
         await tester.pumpAndSettle();
 
         expect(find.text('SafePath AI'), findsOneWidget);

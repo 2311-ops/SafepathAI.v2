@@ -105,7 +105,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(SplashScreen), findsNothing);
-    expect(find.text('Your circle'), findsOneWidget);
+    // Home is MainShell; a family-less user lands on the Map tab's no-circle
+    // empty state.
+    expect(find.text('No circle yet'), findsOneWidget);
   });
 
   testWidgets('recovery routes to reset-password', (tester) async {

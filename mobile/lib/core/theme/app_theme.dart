@@ -24,9 +24,18 @@ ThemeData buildSafePathTheme() {
     textTheme: AppTypography.textTheme,
     fontFamily: AppTypography.body.fontFamily,
     appBarTheme: AppBarTheme(
-      backgroundColor: AppColors.appBg,
+      // Surface (white), not appBg — an AppBar the same color as the page
+      // body is visually indistinguishable from it, which is why header
+      // icons/actions (e.g. logout) read as "missing." The hairline bottom
+      // border gives a clear, low-contrast seam instead of an elevation
+      // shadow, matching this design system's flat-card language.
+      backgroundColor: AppColors.surface,
       foregroundColor: AppColors.ink,
       elevation: 0,
+      scrolledUnderElevation: 0,
+      shape: const Border(
+        bottom: BorderSide(color: AppColors.hairline, width: 1),
+      ),
       titleTextStyle: AppTypography.title,
     ),
     cardTheme: CardThemeData(
