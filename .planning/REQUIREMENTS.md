@@ -7,11 +7,11 @@
 
 ### Authentication (AUTH)
 
-- [ ] **AUTH-01**: User can register with email and password
-- [ ] **AUTH-02**: User can log in via JWT (access + refresh tokens) and stay logged in across sessions
-- [ ] **AUTH-03**: User can log out
-- [ ] **AUTH-04**: User can reset their password via a one-time, expiring emailed link
-- [ ] **AUTH-05**: User is assigned a role (Guardian, Member, Caregiver, or org-level e.g. School Admin) during setup
+- [x] **AUTH-01**: User can register with email and password
+- [x] **AUTH-02**: User can log in via JWT (access + refresh tokens) and stay logged in across sessions
+- [x] **AUTH-03**: User can log out
+- [x] **AUTH-04**: User can reset their password via a one-time, expiring emailed link
+- [x] **AUTH-05**: User is assigned a role (Guardian, Member, Caregiver, or org-level e.g. School Admin) during setup
 - [x] **AUTH-06**: User can sign in with Google (Supabase-native OAuth) alongside email/password, from Welcome/Login/Register
 
 ### Family Groups (FAM)
@@ -35,6 +35,16 @@
 - [x] **HIST-01**: User can view a historical timeline of a family member's stays and movements
 - [x] **HIST-02**: User can view a route visualization of past travel
 - [x] **HIST-03**: User can view travel statistics (distance, time away, stops)
+
+### User Profile & Map Identity (PROFILE)
+
+- [ ] **PROFILE-01**: User can upload a profile picture, stored in Supabase Storage (private bucket) with only the image path/URL persisted in the database
+- [ ] **PROFILE-02**: User can replace their existing profile picture
+- [ ] **PROFILE-03**: User can remove their profile picture, reverting to the default avatar everywhere it's shown
+- [ ] **PROFILE-04**: User can edit their display name, shown on their map marker and profile
+- [ ] **PROFILE-05**: User can view their own profile (display name, profile picture, role)
+- [ ] **PROFILE-06**: Live family map renders every visible family member as a custom marker with a circular avatar (or default avatar), display name above the marker, an online/offline indicator, and current location, updating in real time as they move
+- [ ] **PROFILE-07**: Guardian view shows every family member's avatar, name, live location, and status; Member view shows the guardian and other approved family members' avatars, names, and live locations — scoped to the same Family Circle only
 
 ### Geofencing (GEO)
 
@@ -181,6 +191,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PRIV-03 | Phase 2 | Complete |
 | PRIV-04 | Phase 2 | Complete |
 | PRIV-05 | Phase 2 | Complete |
+| PROFILE-01 | Phase 2 | Pending |
+| PROFILE-02 | Phase 2 | Pending |
+| PROFILE-03 | Phase 2 | Pending |
+| PROFILE-04 | Phase 2 | Pending |
+| PROFILE-05 | Phase 2 | Pending |
+| PROFILE-06 | Phase 2 | Pending |
+| PROFILE-07 | Phase 2 | Pending |
 | SOS-01 | Phase 3 | Pending |
 | SOS-02 | Phase 3 | Pending |
 | SOS-03 | Phase 3 | Pending |
@@ -223,10 +240,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Coverage:**
 
-- v1 requirements: 64 total
-- Mapped to phases: 64 (100%)
+- v1 requirements: 71 total
+- Mapped to phases: 71 (100%)
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-06*
 *Last updated: 2026-07-06 after roadmap creation (traceability populated; corrected v1 requirement count from 56 to 64 to match the actual requirement list above)*
+*Updated 2026-07-13: added PROFILE-01..07 (User Profile & Map Identity) as an additive post-close wave on Phase 2 — v1 requirement count now 71.*
