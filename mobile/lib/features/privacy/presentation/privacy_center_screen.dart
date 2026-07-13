@@ -271,24 +271,14 @@ class PrivacyCenterScreen extends ConsumerWidget {
   static bool _hasAnyEnabledShare(SharingMatrix matrix) =>
       matrix.entries.any((entry) => entry.isEnabled);
 
-  static _ActiveShare? _activeShare(
+  static ActiveShareView? _activeShare(
     SharingMatrix matrix,
     String recipientId,
     DateTime now,
   ) {
-    final entry = matrix.cellFor(recipientId, SharedDataType.liveLocation);
-    final expiresAt = entry?.expiresAtUtc;
-    if (entry == null ||
-        !entry.isEnabled ||
-        expiresAt == null ||
-        !expiresAt.isAfter(now)) {
-      return null;
-    }
-    final remaining = expiresAt.difference(now);
-    return _ActiveShare(
-      durationLabel: _durationFromNowLabel(remaining),
-      remainingLabel: _remainingLabel(remaining),
-    );
+    return matrix
+        .cellFor(recipientId, SharedDataType.liveLocation)
+        ?.describeActiveShare(now: now);
   }
 }
 
@@ -361,7 +351,7 @@ class _RecipientMatrix extends StatelessWidget {
   final FamilyMemberView recipient;
   final SharingMatrix matrix;
   final void Function(SharedDataType dataType, bool enabled) onChanged;
-  final _ActiveShare? activeShare;
+  final ActiveShareView? activeShare;
   final ValueChanged<Duration> onPresetSelected;
   final VoidCallback onCustomSelected;
 
@@ -421,7 +411,7 @@ class _TemporarySharingSection extends StatelessWidget {
   });
 
   final String recipientId;
-  final _ActiveShare? activeShare;
+  final ActiveShareView? activeShare;
   final ValueChanged<Duration> onPresetSelected;
   final VoidCallback onCustomSelected;
 
@@ -472,7 +462,7 @@ class _TemporarySharingSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
-              'Sharing for ${activeShare!.durationLabel} - ${activeShare!.remainingLabel} left',
+              'Sharing for ${activeShare!.totalLabel} - ${activeShare!.remainingLabel} left',
               style: AppTypography.body.copyWith(color: AppColors.surface),
             ),
           ),
@@ -597,27 +587,3 @@ class _PrivacyMessage extends StatelessWidget {
   }
 }
 
-class _ActiveShare {
-  const _ActiveShare({
-    required this.durationLabel,
-    required this.remainingLabel,
-  });
-
-  final String durationLabel;
-  final String remainingLabel;
-}
-
-String _durationFromNowLabel(Duration duration) {
-  if (duration.inHours >= 8) return '8 hours';
-  if (duration.inHours >= 4) return '4 hours';
-  if (duration.inHours >= 1) return '1 hour';
-  return '${duration.inMinutes} minutes';
-}
-
-String _remainingLabel(Duration duration) {
-  if (duration.inMinutes < 60) return '${duration.inMinutes}m';
-  final hours = duration.inHours;
-  final minutes = duration.inMinutes.remainder(60);
-  if (minutes == 0) return '${hours}h';
-  return '${hours}h ${minutes}m';
-}

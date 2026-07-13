@@ -245,6 +245,85 @@ void main() {
     );
   });
 
+  test(
+    'selecting 4 hours records both the start and a start+4h expiry',
+    () async {
+      container.read(familyControllerProvider);
+      await pumpEventQueue();
+      container.read(privacyControllerProvider);
+      await pumpEventQueue();
+
+      await container
+          .read(privacyControllerProvider.notifier)
+          .startTemporaryShare(
+            recipientId: 'mem-recipient',
+            dataType: SharedDataType.liveLocation,
+            duration: const Duration(hours: 4),
+          );
+
+      // Only the expiry is sent to the server (no contract change); the start is
+      // kept client-side so the banner can show the true total duration.
+      expect(privacyApi.lastExpiresAtUtc, DateTime.utc(2026, 7, 12, 14));
+
+      final state = container.read(privacyControllerProvider).value!;
+      final storedCell = state.matrix.cellFor(
+        'mem-recipient',
+        SharedDataType.liveLocation,
+      )!;
+      // The fake API echoes back the cell WITHOUT startedAtUtc; the controller
+      // must re-attach the locally captured start.
+      expect(storedCell.startedAtUtc, DateTime.utc(2026, 7, 12, 10));
+      expect(storedCell.expiresAtUtc, DateTime.utc(2026, 7, 12, 14));
+
+      // A freshly-started 4h session reads "4 hours" total and "4 hours left".
+      final view = storedCell.describeActiveShare(
+        now: DateTime.utc(2026, 7, 12, 10, 0, 1),
+      );
+      expect(view!.totalLabel, '4 hours');
+      expect(view.remainingLabel, '4 hours');
+    },
+  );
+
+  test(
+    'starting a new session replaces the previous session state entirely',
+    () async {
+      container.read(familyControllerProvider);
+      await pumpEventQueue();
+      container.read(privacyControllerProvider);
+      await pumpEventQueue();
+
+      final notifier = container.read(privacyControllerProvider.notifier);
+
+      // First: an 8-hour session (expires 18:00).
+      await notifier.startTemporaryShare(
+        recipientId: 'mem-recipient',
+        dataType: SharedDataType.liveLocation,
+        duration: const Duration(hours: 8),
+      );
+      // Then: switch it to a 4-hour session (expires 14:00).
+      await notifier.startTemporaryShare(
+        recipientId: 'mem-recipient',
+        dataType: SharedDataType.liveLocation,
+        duration: const Duration(hours: 4),
+      );
+
+      final state = container.read(privacyControllerProvider).value!;
+      final storedCell = state.matrix.cellFor(
+        'mem-recipient',
+        SharedDataType.liveLocation,
+      )!;
+
+      // No leftover 8-hour expiry: the newest session wins.
+      expect(storedCell.expiresAtUtc, DateTime.utc(2026, 7, 12, 14));
+      expect(storedCell.startedAtUtc, DateTime.utc(2026, 7, 12, 10));
+      final view = storedCell.describeActiveShare(
+        now: DateTime.utc(2026, 7, 12, 10, 1),
+      );
+      expect(view!.totalLabel, '4 hours');
+      expect(view.remainingLabel, '4 hours');
+    },
+  );
+
   test('export failure surfaces the exact UI copy', () async {
     container.read(familyControllerProvider);
     await pumpEventQueue();

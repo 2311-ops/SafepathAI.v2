@@ -130,6 +130,7 @@ class PrivacyController extends AsyncNotifier<PrivacyState> {
     required SharedDataType dataType,
     required bool enabled,
     DateTime? expiresAtUtc,
+    DateTime? startedAtUtc,
   }) async {
     final familyId = ref.read(familyControllerProvider).value?.family?.id;
     if (familyId == null) return;
@@ -147,6 +148,9 @@ class PrivacyController extends AsyncNotifier<PrivacyState> {
       isEnabled: enabled,
       expiresAtUtc: expiresAtUtc,
       clearExpiry: expiresAtUtc == null,
+      startedAtUtc: startedAtUtc,
+      // A share with no expiry can't be temporary, so drop any stale start.
+      clearStarted: expiresAtUtc == null,
     );
 
     state = AsyncData(
@@ -166,7 +170,14 @@ class PrivacyController extends AsyncNotifier<PrivacyState> {
       );
       state = AsyncData(
         _current.copyWith(
-          matrix: _current.matrix.upsert(updated),
+          // The server round-trips expiresAtUtc but not startedAtUtc (a
+          // client-only field), so re-attach the start we captured locally.
+          matrix: _current.matrix.upsert(
+            updated.copyWith(
+              startedAtUtc: startedAtUtc,
+              clearStarted: expiresAtUtc == null,
+            ),
+          ),
           clearError: true,
         ),
       );
@@ -205,12 +216,16 @@ class PrivacyController extends AsyncNotifier<PrivacyState> {
     required SharedDataType dataType,
     required Duration duration,
   }) {
-    final expiresAtUtc = ref.read(privacyNowProvider)().add(duration).toUtc();
+    // Capture start and expiry from the same clock read so the total duration
+    // (expiresAtUtc - startedAtUtc) is exactly the selected [duration].
+    final startedAtUtc = ref.read(privacyNowProvider)().toUtc();
+    final expiresAtUtc = startedAtUtc.add(duration);
     return toggle(
       recipientId: recipientId,
       dataType: dataType,
       enabled: true,
       expiresAtUtc: expiresAtUtc,
+      startedAtUtc: startedAtUtc,
     );
   }
 

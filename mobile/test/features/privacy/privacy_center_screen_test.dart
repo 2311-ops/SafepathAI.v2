@@ -106,6 +106,9 @@ class _SpyPrivacyController extends PrivacyController {
           recipientName: 'Second Recipient',
           dataType: SharedDataType.liveLocation,
           isEnabled: true,
+          // A 4-hour session (10:00 -> 14:00). At the fixed test clock of 10:30
+          // there is 3h30m left, which ceiling-rounds to "4 hours left".
+          startedAtUtc: DateTime.utc(2026, 7, 12, 10),
           expiresAtUtc: DateTime.utc(2026, 7, 12, 14),
         ),
         const SharingCell(
@@ -130,6 +133,7 @@ class _SpyPrivacyController extends PrivacyController {
     required SharedDataType dataType,
     required bool enabled,
     DateTime? expiresAtUtc,
+    DateTime? startedAtUtc,
   }) async {
     toggleCallCount++;
     lastRecipientId = recipientId;
@@ -214,7 +218,11 @@ void main() {
     expect(find.text('4 hours'), findsAtLeastNWidgets(1));
     expect(find.text('8 hours'), findsAtLeastNWidgets(1));
     expect(find.text('Custom'), findsAtLeastNWidgets(1));
-    expect(find.text('Sharing for 1 hour - 3h 30m left'), findsOneWidget);
+    // Regression: the banner used to derive the "total" label by bucketing the
+    // *remaining* time, so a 3h30m-left session mislabelled as "Sharing for 1
+    // hour". It now shows the true selected total (4 hours) alongside a
+    // ceiling-rounded remaining ("4 hours left").
+    expect(find.text('Sharing for 4 hours - 4 hours left'), findsOneWidget);
   });
 
   testWidgets('tapping a toggle calls the privacy controller', (tester) async {

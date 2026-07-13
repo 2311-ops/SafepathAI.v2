@@ -21,6 +21,7 @@ class SharingCell {
     required this.dataType,
     required this.isEnabled,
     this.expiresAtUtc,
+    this.startedAtUtc,
   });
 
   final String? recipientId;
@@ -28,6 +29,14 @@ class SharingCell {
   final SharedDataType dataType;
   final bool isEnabled;
   final DateTime? expiresAtUtc;
+
+  /// When this temporary share began, in UTC. Captured client-side at session
+  /// start so the banner can show the *total* selected duration
+  /// (`expiresAtUtc - startedAtUtc`) instead of guessing it from the remaining
+  /// time. The backend neither stores nor returns this field, so it is null for
+  /// sessions restored from the server (e.g. after an app restart); callers
+  /// must fall back to the remaining time in that case.
+  final DateTime? startedAtUtc;
 
   factory SharingCell.fromJson(Map<String, dynamic> json) => SharingCell(
         recipientId: json['recipientMemberId'] as String?,
@@ -37,6 +46,9 @@ class SharingCell {
         expiresAtUtc: json['expiresAtUtc'] == null
             ? null
             : DateTime.parse(json['expiresAtUtc'] as String).toUtc(),
+        startedAtUtc: json['startedAtUtc'] == null
+            ? null
+            : DateTime.parse(json['startedAtUtc'] as String).toUtc(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -45,6 +57,7 @@ class SharingCell {
         'dataType': dataType.wireValue,
         'isEnabled': isEnabled,
         'expiresAtUtc': expiresAtUtc?.toUtc().toIso8601String(),
+        'startedAtUtc': startedAtUtc?.toUtc().toIso8601String(),
       };
 
   SharingCell copyWith({
@@ -53,7 +66,9 @@ class SharingCell {
     SharedDataType? dataType,
     bool? isEnabled,
     DateTime? expiresAtUtc,
+    DateTime? startedAtUtc,
     bool clearExpiry = false,
+    bool clearStarted = false,
   }) {
     return SharingCell(
       recipientId: recipientId ?? this.recipientId,
@@ -61,8 +76,63 @@ class SharingCell {
       dataType: dataType ?? this.dataType,
       isEnabled: isEnabled ?? this.isEnabled,
       expiresAtUtc: clearExpiry ? null : (expiresAtUtc ?? this.expiresAtUtc),
+      startedAtUtc: clearStarted ? null : (startedAtUtc ?? this.startedAtUtc),
     );
   }
+
+  /// Describes an *active* temporary share for the banner, or null when there is
+  /// nothing to show (sharing off, no expiry, or already expired). All timing is
+  /// derived from [expiresAtUtc]/[startedAtUtc] as the single source of truth —
+  /// never from the dropdown/enum the user tapped — so the total and remaining
+  /// labels can never disagree.
+  ActiveShareView? describeActiveShare({required DateTime now}) {
+    final expiresAt = expiresAtUtc;
+    if (!isEnabled || expiresAt == null) return null;
+
+    final nowUtc = now.toUtc();
+    final remaining = expiresAt.difference(nowUtc);
+    if (remaining <= Duration.zero) return null; // expired — clamp, don't show.
+
+    final started = startedAtUtc;
+    final total = started == null ? null : expiresAt.difference(started);
+    // Total is only known when we captured the start locally; otherwise fall
+    // back to the (ceil-rounded) remaining so the banner stays self-consistent.
+    final totalDuration =
+        (total == null || total.isNegative) ? remaining : total;
+
+    return ActiveShareView(
+      totalLabel: formatShareDuration(totalDuration),
+      remainingLabel: formatShareDuration(remaining),
+    );
+  }
+}
+
+/// The two labels the active-sharing banner renders. Both are produced by
+/// [formatShareDuration] so "Sharing for X" can never exceed or contradict the
+/// "Y left" it sits next to.
+class ActiveShareView {
+  const ActiveShareView({
+    required this.totalLabel,
+    required this.remainingLabel,
+  });
+
+  final String totalLabel;
+  final String remainingLabel;
+}
+
+/// Formats a sharing duration for display using **ceiling** rounding, so a
+/// session with 3h59m left reads "4 hours" and one with exactly 3h left reads
+/// "3 hours". Non-positive durations clamp to "0 minutes" (never negative).
+String formatShareDuration(Duration duration) {
+  if (duration <= Duration.zero) return '0 minutes';
+
+  final totalMinutes = (duration.inSeconds / 60).ceil();
+  if (totalMinutes < 60) {
+    return '$totalMinutes ${totalMinutes == 1 ? 'minute' : 'minutes'}';
+  }
+
+  final hours = (totalMinutes / 60).ceil();
+  return '$hours ${hours == 1 ? 'hour' : 'hours'}';
 }
 
 class SharingMatrix {
