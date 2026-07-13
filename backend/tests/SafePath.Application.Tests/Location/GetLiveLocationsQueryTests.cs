@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SafePath.Application.Common;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Application.Location;
 using SafePath.Application.Tests.Common;
@@ -105,6 +106,45 @@ public class GetLiveLocationsQueryTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_SignsProfileImageUrlOnlyWhenViewerCanSeeLocation()
+    {
+        await using var db = _factory.CreateContext();
+        var (familyId, callerId, memberId, _) = await SeedLiveLocationFamily(db);
+        var callerMemberRow = await db.FamilyMembers.SingleAsync(m => m.FamilyId == familyId && m.UserId == callerId);
+        var member = await db.Users.SingleAsync(u => u.Id == memberId);
+        member.ProfileImagePath = $"avatars/{memberId}/avatar.jpg";
+        db.LocationPings.Add(NewPing(memberId, 30.0444, 31.2357, DateTime.UtcNow.AddMinutes(-1)));
+        await db.SaveChangesAsync();
+        var storage = new FakeProfileImageStorage();
+        var handler = new GetLiveLocationsQueryHandler(
+            db,
+            new FamilyAuthorizationService(db),
+            new FakePresenceQuery(),
+            new SharingAuthorizationService(db),
+            new ProfileImageUrlFactory(storage));
+
+        var allowed = await handler.Handle(new GetLiveLocationsQuery(callerId, familyId));
+
+        Assert.Equal("signed://avatar", allowed.Single(location => location.UserId == memberId).ProfileImageUrl);
+
+        db.SharingPreferences.Add(new SharingPreference
+        {
+            Id = Guid.NewGuid(),
+            FamilyId = familyId,
+            OwnerUserId = memberId,
+            RecipientMemberId = callerMemberRow.Id,
+            DataType = SharedDataType.LiveLocation,
+            IsEnabled = false,
+        });
+        await db.SaveChangesAsync();
+
+        var denied = await handler.Handle(new GetLiveLocationsQuery(callerId, familyId));
+
+        Assert.Null(denied.Single(location => location.UserId == memberId).Lat);
+        Assert.Null(denied.Single(location => location.UserId == memberId).ProfileImageUrl);
+    }
+
+    [Fact]
     public async Task Handle_ByNonMember_IsDeniedBeforeReturningLocationRows()
     {
         await using var db = _factory.CreateContext();
@@ -205,4 +245,19 @@ internal sealed class FakePresenceQuery : IPresenceQuery
     }
 
     public bool IsOnline(Guid userId) => _onlineUserIds.Contains(userId);
+}
+
+internal sealed class FakeProfileImageStorage : IProfileImageStorage
+{
+    public Task UploadAvatarAsync(Guid userId, byte[] jpegBytes, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task DeleteAvatarAsync(Guid userId, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task<string> CreateSignedAvatarUrlAsync(string objectPath, TimeSpan ttl, CancellationToken cancellationToken = default)
+    {
+        Assert.Equal(TimeSpan.FromHours(1), ttl);
+        return Task.FromResult("signed://avatar");
+    }
+
+    public string GetAvatarObjectPath(Guid userId) => $"avatars/{userId}/avatar.jpg";
 }
