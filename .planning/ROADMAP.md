@@ -97,8 +97,8 @@ Plans:
   4. User receives a low-battery alert for themselves or a family member (NOTIF-01)
   5. User can toggle sharing per data type/recipient, enable temporary auto-stopping location sharing, and export or delete their data from a Privacy Center — backed by end-to-end encrypted communication and a documented no-data-resale commitment (PRIV-01, PRIV-02, PRIV-03, PRIV-04, PRIV-05)
 
-**Plans**: 11/11 original plans complete; +1 additive OSM map retrofit planned (02-12, not yet executed)
-**Map SDK retrofit planned (2026-07-13)**: shipped on `google_maps_flutter`; project direction changed to OpenStreetMap (`flutter_map`). Retrofit is now planned in `02-12-PLAN.md` (presentation-layer swap of `live_map_screen.dart` + `route_stats_sheet.dart` to `flutter_map`/`latlong2`, plus native Google-Maps-key de-wiring) — must execute before Phase 4 begins drawing geofence zones on the map. See `.planning/phases/02-real-time-location-history-privacy/02-OSM-MIGRATION-IMPACT.md`.
+**Plans**: 12/12 plans complete
+**Map SDK retrofit complete (2026-07-13)**: originally shipped on `google_maps_flutter`; project direction changed to OpenStreetMap and executed in `02-12-PLAN.md` (`live_map_screen.dart` + `route_stats_sheet.dart` now on `flutter_map`/`latlong2`, native Google-Maps-key wiring removed from Android/iOS). iOS build is source-verified only (no macOS/CI runner available here) — validate the actual Xcode compile before an iOS release build. Before production traffic, replace the raw `tile.openstreetmap.org` URL with a dedicated tile-hosting provider per OSM's tile usage policy (documented in `02-01-USER-SETUP.md`). See `.planning/phases/02-real-time-location-history-privacy/02-OSM-MIGRATION-IMPACT.md`.
 
 Plans:
 
@@ -136,7 +136,7 @@ Plans:
 
 **Wave 8** *(additive OSM map-renderer retrofit — post-close, planned 2026-07-13)*
 
-- [ ] 02-12-PLAN.md — migrate map rendering from google_maps_flutter to flutter_map/OpenStreetMap (LOC-01/02/04, HIST-02)
+- [x] 02-12-PLAN.md — migrate map rendering from google_maps_flutter to flutter_map/OpenStreetMap (LOC-01/02/04, HIST-02)
 
 **UI hint**: yes
 
@@ -230,7 +230,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Backend & Auth Foundation | 14/14 | Complete | 2026-07-10 |
-| 2. Real-Time Location, History & Privacy | 11/11 | Complete   | 2026-07-13 |
+| 2. Real-Time Location, History & Privacy | 12/12 | Complete   | 2026-07-13 |
 | 3. SOS Fast Path (Core Value) | 0/TBD | Not started | - |
 | 4. Geofencing | 0/TBD | Not started | - |
 | 5. AI Analytics & Family Dashboard | 0/TBD | Not started | - |
