@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -6,9 +7,11 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mobile/features/auth/data/auth_models.dart';
 import 'package:mobile/features/family/application/family_controller.dart';
+import 'package:mobile/features/family/data/family_models.dart';
 import 'package:mobile/features/family/presentation/accept_invite_screen.dart';
 import 'package:mobile/features/family/presentation/create_circle_screen.dart';
 import 'package:mobile/features/location/application/location_controller.dart';
+import 'package:mobile/features/location/data/location_models.dart';
 import 'package:mobile/features/location/presentation/live_map_screen.dart';
 import 'package:mobile/features/profile/application/profile_controller.dart';
 import 'package:mobile/features/profile/data/user_profile.dart';
@@ -25,6 +28,41 @@ class _NoFamilyController extends FamilyController {
 class _EmptyLocationController extends LocationController {
   @override
   LocationState build() => const LocationState();
+}
+
+/// A loaded family circle, non-null and not loading — the state needed to
+/// reach the populated-map branch instead of the "No circle yet" branch.
+class _PopulatedFamilyController extends FamilyController {
+  @override
+  FamilyState build() => const FamilyState(family: Family(id: 'family-1'));
+}
+
+/// A self position plus one other family member, so `LiveMapScreen` builds
+/// its `FlutterMap` with a marker/accuracy-circle per location.
+class _PopulatedLocationController extends LocationController {
+  @override
+  LocationState build() {
+    final now = DateTime.now().toUtc();
+    final self = LiveLocation(
+      userId: 'self-user',
+      lat: 30.0444,
+      lng: 31.2357,
+      accuracyMeters: 12,
+      recordedAtUtc: now,
+    );
+    final other = LiveLocation(
+      userId: 'other-user',
+      displayName: 'Sam',
+      lat: 30.0500,
+      lng: 31.2400,
+      accuracyMeters: 20,
+      recordedAtUtc: now.subtract(const Duration(minutes: 1)),
+    );
+    return LocationState(
+      selfPosition: self,
+      members: {'self-user': self, 'other-user': other},
+    );
+  }
 }
 
 class _SeededProfileController extends ProfileController {
@@ -149,5 +187,31 @@ void main() {
     // flow (the code field is where the Member types the invite code).
     expect(find.text("You've been invited"), findsOneWidget);
     expect(find.text('Accept & join'), findsOneWidget);
+  });
+
+  testWidgets('populated live locations render on a FlutterMap with OSM attribution', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          familyControllerProvider.overrideWith(_PopulatedFamilyController.new),
+          locationControllerProvider.overrideWith(
+            _PopulatedLocationController.new,
+          ),
+          profileControllerProvider.overrideWith(
+            () => _SeededProfileController(Role.guardian),
+          ),
+        ],
+        child: const MaterialApp(home: LiveMapScreen()),
+      ),
+    );
+    // flutter_map issues real network tile requests that never resolve in the
+    // test harness; pumpAndSettle would hang waiting on them, so build the
+    // tree with a fixed-duration pump instead.
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byType(FlutterMap), findsOneWidget);
+    expect(find.textContaining('OpenStreetMap'), findsWidgets);
   });
 }
