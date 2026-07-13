@@ -192,9 +192,10 @@ void main() {
       profileUpdatedAt: updatedAt,
     );
 
-    await container
-        .read(profileControllerProvider.notifier)
-        .uploadProfileImage([1, 2, 3], 'avatar.jpg');
+    await container.read(profileControllerProvider.notifier).uploadProfileImage(
+      [1, 2, 3],
+      'avatar.jpg',
+    );
 
     final state = container.read(profileControllerProvider).value!;
     expect(fakeApi.lastUploadBytes, [1, 2, 3]);
@@ -217,23 +218,29 @@ void main() {
     expect(state.error, isNull);
   });
 
-  test('profile mutations surface API errors without dropping prior profile', () async {
-    final initial = _profile(displayName: 'Before');
-    fakeApi.profileToReturn = initial;
-    await container.read(profileControllerProvider.notifier).refresh();
+  test(
+    'profile mutations surface API errors without dropping prior profile',
+    () async {
+      final initial = _profile(displayName: 'Before');
+      fakeApi.profileToReturn = initial;
+      await container.read(profileControllerProvider.notifier).refresh();
 
-    fakeApi.exceptionToThrow = ProfileApiException(
-      ProfileApiIssue.network,
-      message: "Couldn't connect. Check your connection and try again.",
-    );
+      fakeApi.exceptionToThrow = ProfileApiException(
+        ProfileApiIssue.network,
+        message: "Couldn't connect. Check your connection and try again.",
+      );
 
-    await container
-        .read(profileControllerProvider.notifier)
-        .updateDisplayName('After');
+      await container
+          .read(profileControllerProvider.notifier)
+          .updateDisplayName('After');
 
-    final state = container.read(profileControllerProvider).value!;
-    expect(state.profile, initial);
-    expect(state.error, "Couldn't connect. Check your connection and try again.");
-    expect(state.isLoading, isFalse);
-  });
+      final state = container.read(profileControllerProvider).value!;
+      expect(state.profile, initial);
+      expect(
+        state.error,
+        "Couldn't connect. Check your connection and try again.",
+      );
+      expect(state.isLoading, isFalse);
+    },
+  );
 }

@@ -104,6 +104,54 @@ class ProfileController extends AsyncNotifier<ProfileState> {
       );
     }
   }
+
+  Future<void> updateDisplayName(String displayName) async {
+    final api = ref.read(profileApiProvider);
+    state = AsyncData(_current.copyWith(isLoading: true, clearError: true));
+    try {
+      final profile = await api.updateDisplayName(displayName);
+      state = AsyncData(ProfileState(profile: profile));
+    } on ProfileApiException catch (error) {
+      state = AsyncData(
+        _current.copyWith(
+          isLoading: false,
+          error: error.message ?? 'Unable to save your display name.',
+        ),
+      );
+    }
+  }
+
+  Future<void> uploadProfileImage(List<int> bytes, String filename) async {
+    final api = ref.read(profileApiProvider);
+    state = AsyncData(_current.copyWith(isLoading: true, clearError: true));
+    try {
+      final profile = await api.uploadProfileImage(bytes, filename);
+      state = AsyncData(ProfileState(profile: profile));
+    } on ProfileApiException catch (error) {
+      state = AsyncData(
+        _current.copyWith(
+          isLoading: false,
+          error: error.message ?? 'Unable to update your profile picture.',
+        ),
+      );
+    }
+  }
+
+  Future<void> deleteProfileImage() async {
+    final api = ref.read(profileApiProvider);
+    state = AsyncData(_current.copyWith(isLoading: true, clearError: true));
+    try {
+      final profile = await api.deleteProfileImage();
+      state = AsyncData(ProfileState(profile: profile));
+    } on ProfileApiException catch (error) {
+      state = AsyncData(
+        _current.copyWith(
+          isLoading: false,
+          error: error.message ?? 'Unable to remove your profile picture.',
+        ),
+      );
+    }
+  }
 }
 
 final profileControllerProvider =
