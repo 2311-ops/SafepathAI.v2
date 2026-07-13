@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -166,6 +167,12 @@ class LiveMapScreen extends ConsumerWidget {
                                 ),
                               ],
                             ),
+                          ),
+                          IconButton(
+                            tooltip: 'Profile',
+                            icon: const Icon(Icons.person_outline),
+                            color: AppColors.ink,
+                            onPressed: () => context.push('/profile'),
                           ),
                           const LogoutAction(),
                         ],

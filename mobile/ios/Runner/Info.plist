@@ -6,6 +6,8 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SafePath uses your location while the app is open so your family can see that you are safe.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SafePath uses your photos to set your profile picture.</string>
 	<!-- safepathai:// deep link — handles both the password-reset email link
 	     and the Google OAuth redirect-back (01-08-PLAN.md D-08-3: this scheme
 	     was previously unregistered on iOS, so neither flow could return into
