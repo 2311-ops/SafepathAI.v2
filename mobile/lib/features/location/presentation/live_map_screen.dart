@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -71,53 +72,55 @@ class LiveMapScreen extends ConsumerWidget {
 
     final self = state?.selfPosition ?? locations.first;
     final cameraTarget = LatLng(self.lat, self.lng);
-    final markers = {
+    final circleMarkers = [
+      for (final location in locations)
+        CircleMarker(
+          point: LatLng(location.lat, location.lng),
+          radius: accuracyCircleRadius(location.accuracyMeters),
+          useRadiusInMeter: true,
+          color: _memberColor(location.userId).withValues(alpha: 0.15),
+          borderColor: _memberColor(location.userId).withValues(alpha: 0.40),
+          borderStrokeWidth: 2,
+        ),
+    ];
+    final markers = [
       for (final location in locations)
         Marker(
-          markerId: MarkerId(location.userId),
-          position: LatLng(location.lat, location.lng),
-          alpha: stalenessFor(
-            DateTime.now().toUtc().difference(location.recordedAtUtc),
-          ).opacity,
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            location.userId == state?.selfPosition?.userId
-                ? BitmapDescriptor.hueCyan
-                : _memberHue(location.userId),
-          ),
-          onTap: () => showMemberDetailSheet(
-            context,
-            member: MemberDetail(
-              name: _memberName(location, state),
-              isOnline: state?.isMemberOnline(location.userId) ?? false,
-              recordedAtUtc: location.recordedAtUtc,
+          point: LatLng(location.lat, location.lng),
+          width: 44,
+          height: 44,
+          child: _LiveMemberMarker(
+            location: location,
+            isSelf: location.userId == state?.selfPosition?.userId,
+            color: _memberColor(location.userId),
+            onTap: () => showMemberDetailSheet(
+              context,
+              member: MemberDetail(
+                name: _memberName(location, state),
+                isOnline: state?.isMemberOnline(location.userId) ?? false,
+                recordedAtUtc: location.recordedAtUtc,
+              ),
             ),
           ),
         ),
-    };
-    final circles = {
-      for (final location in locations)
-        Circle(
-          circleId: CircleId('accuracy-${location.userId}'),
-          center: LatLng(location.lat, location.lng),
-          radius: accuracyCircleRadius(location.accuracyMeters),
-          fillColor: _memberColor(location.userId).withValues(alpha: 0.15),
-          strokeColor: _memberColor(location.userId).withValues(alpha: 0.40),
-          strokeWidth: 2,
-        ),
-    };
+    ];
 
     return Scaffold(
       body: Stack(
         children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: cameraTarget,
-              zoom: 15,
-            ),
-            markers: markers,
-            circles: circles,
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false,
+          FlutterMap(
+            options: MapOptions(initialCenter: cameraTarget, initialZoom: 15),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.safepath.mobile',
+              ),
+              CircleLayer(circles: circleMarkers),
+              MarkerLayer(markers: markers),
+              const SimpleAttributionWidget(
+                source: Text('OpenStreetMap contributors'),
+              ),
+            ],
           ),
           SafeArea(
             child: Padding(
@@ -187,12 +190,6 @@ class LiveMapScreen extends ConsumerWidget {
     );
   }
 
-  static double _memberHue(String userId) {
-    return userId.hashCode.isEven
-        ? BitmapDescriptor.hueViolet
-        : BitmapDescriptor.hueRose;
-  }
-
   static Color _memberColor(String userId) {
     return userId.hashCode.isEven
         ? AppColors.memberViolet
@@ -204,6 +201,55 @@ class LiveMapScreen extends ConsumerWidget {
     final displayName = location.displayName?.trim();
     if (displayName != null && displayName.isNotEmpty) return displayName;
     return 'Family member';
+  }
+}
+
+/// A single family member's OSM map pin: identity color, faded by
+/// [stalenessFor] the way the pre-migration `google_maps_flutter` marker
+/// alpha did, with a tap target opening the member detail sheet. flutter_map
+/// `Marker`s carry no `alpha`/`onTap` of their own, so both live here.
+class _LiveMemberMarker extends StatelessWidget {
+  const _LiveMemberMarker({
+    required this.location,
+    required this.isSelf,
+    required this.color,
+    required this.onTap,
+  });
+
+  final LiveLocation location;
+  final bool isSelf;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final opacity = stalenessFor(
+      DateTime.now().toUtc().difference(location.recordedAtUtc),
+    ).opacity;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Opacity(
+        opacity: opacity,
+        child: Container(
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isSelf ? AppColors.primaryTeal : color,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.surface, width: 3),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x220C3A3F),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
