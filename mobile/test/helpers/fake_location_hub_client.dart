@@ -10,6 +10,8 @@ class FakeLocationHubClient implements LocationHubClient {
       StreamController<PresenceChange>.broadcast();
   final StreamController<LowBatteryAlert> _lowBatteryAlerts =
       StreamController<LowBatteryAlert>.broadcast();
+  final StreamController<ProfileUpdate> _profileUpdates =
+      StreamController<ProfileUpdate>.broadcast();
   final StreamController<LocationHubConnectionState> _stateChanges =
       StreamController<LocationHubConnectionState>.broadcast();
 
@@ -28,6 +30,9 @@ class FakeLocationHubClient implements LocationHubClient {
 
   @override
   Stream<LowBatteryAlert> get lowBatteryAlerts => _lowBatteryAlerts.stream;
+
+  @override
+  Stream<ProfileUpdate> get profileUpdates => _profileUpdates.stream;
 
   @override
   LocationHubConnectionState get state => _state;
@@ -66,6 +71,10 @@ class FakeLocationHubClient implements LocationHubClient {
     _lowBatteryAlerts.add(alert);
   }
 
+  void emitProfileUpdate(ProfileUpdate update) {
+    _profileUpdates.add(update);
+  }
+
   void setState(LocationHubConnectionState state) {
     _state = state;
     if (!_stateChanges.isClosed) {
@@ -78,6 +87,7 @@ class FakeLocationHubClient implements LocationHubClient {
     _locationUpdates.close();
     _presenceChanges.close();
     _lowBatteryAlerts.close();
+    _profileUpdates.close();
     _stateChanges.close();
   }
 }

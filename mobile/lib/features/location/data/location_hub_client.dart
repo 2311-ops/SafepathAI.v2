@@ -29,6 +29,8 @@ abstract class LocationHubClient {
 
   Stream<LowBatteryAlert> get lowBatteryAlerts;
 
+  Stream<ProfileUpdate> get profileUpdates;
+
   LocationHubConnectionState get state;
 
   Stream<LocationHubConnectionState> get stateChanges;
@@ -52,6 +54,8 @@ class SignalRLocationHubClient implements LocationHubClient {
       StreamController<PresenceChange>.broadcast();
   final StreamController<LowBatteryAlert> _lowBatteryAlerts =
       StreamController<LowBatteryAlert>.broadcast();
+  final StreamController<ProfileUpdate> _profileUpdates =
+      StreamController<ProfileUpdate>.broadcast();
   final StreamController<LocationHubConnectionState> _stateChanges =
       StreamController<LocationHubConnectionState>.broadcast();
 
@@ -68,6 +72,9 @@ class SignalRLocationHubClient implements LocationHubClient {
 
   @override
   Stream<LowBatteryAlert> get lowBatteryAlerts => _lowBatteryAlerts.stream;
+
+  @override
+  Stream<ProfileUpdate> get profileUpdates => _profileUpdates.stream;
 
   @override
   LocationHubConnectionState get state => _state;
@@ -98,6 +105,7 @@ class SignalRLocationHubClient implements LocationHubClient {
     connection.on('LocationUpdated', _handleLocationUpdated);
     connection.on('PresenceChanged', _handlePresenceChanged);
     connection.on('LowBattery', _handleLowBattery);
+    connection.on('ProfileUpdated', _handleProfileUpdated);
     connection.onreconnecting(
       ({Exception? error}) => _setStateIfCurrent(
         generation,
@@ -182,6 +190,7 @@ class SignalRLocationHubClient implements LocationHubClient {
     unawaited(_locationUpdates.close());
     unawaited(_presenceChanges.close());
     unawaited(_lowBatteryAlerts.close());
+    unawaited(_profileUpdates.close());
     unawaited(_stateChanges.close());
   }
 
@@ -215,6 +224,16 @@ class SignalRLocationHubClient implements LocationHubClient {
     if (json == null) return;
     try {
       _lowBatteryAlerts.add(LowBatteryAlert.fromJson(json));
+    } catch (_) {
+      // A malformed push must not take down the hub connection's event delivery.
+    }
+  }
+
+  void _handleProfileUpdated(List<Object?>? arguments) {
+    final json = _firstJsonArgument(arguments);
+    if (json == null) return;
+    try {
+      _profileUpdates.add(ProfileUpdate.fromJson(json));
     } catch (_) {
       // A malformed push must not take down the hub connection's event delivery.
     }

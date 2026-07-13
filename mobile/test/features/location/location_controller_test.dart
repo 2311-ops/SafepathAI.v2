@@ -202,6 +202,92 @@ ProviderContainer _container({
 }
 
 void main() {
+  group('LiveLocation profile fields', () {
+    test('fromJson parses profileImageUrl and profileUpdatedAt', () {
+      final location = LiveLocation.fromJson({
+        'userId': 'member-2',
+        'lat': 29.9,
+        'lng': 31.1,
+        'accuracyMeters': 12,
+        'recordedAtUtc': '2026-07-12T11:00:00Z',
+        'profileImageUrl': 'https://example.com/avatar.jpg',
+        'profileUpdatedAt': '2026-07-12T10:00:00Z',
+      });
+
+      expect(location.profileImageUrl, 'https://example.com/avatar.jpg');
+      expect(location.profileUpdatedAt, DateTime.utc(2026, 7, 12, 10));
+    });
+
+    test('fromJson tolerates missing profile fields', () {
+      final location = LiveLocation.fromJson({
+        'userId': 'member-2',
+        'lat': 29.9,
+        'lng': 31.1,
+        'accuracyMeters': 12,
+        'recordedAtUtc': '2026-07-12T11:00:00Z',
+      });
+
+      expect(location.profileImageUrl, isNull);
+      expect(location.profileUpdatedAt, isNull);
+    });
+
+    test('copyWith carries profileImageUrl/profileUpdatedAt forward', () {
+      final base = LiveLocation(
+        userId: 'member-2',
+        lat: 29.9,
+        lng: 31.1,
+        accuracyMeters: 12,
+        recordedAtUtc: DateTime.utc(2026, 7, 12, 11),
+        profileImageUrl: 'https://example.com/avatar.jpg',
+        profileUpdatedAt: DateTime.utc(2026, 7, 12, 10),
+      );
+
+      final moved = base.copyWith(lat: 30.0);
+
+      expect(moved.profileImageUrl, 'https://example.com/avatar.jpg');
+      expect(moved.profileUpdatedAt, DateTime.utc(2026, 7, 12, 10));
+    });
+
+    test('copyWith clearProfileImage clears both avatar fields', () {
+      final base = LiveLocation(
+        userId: 'member-2',
+        lat: 29.9,
+        lng: 31.1,
+        accuracyMeters: 12,
+        recordedAtUtc: DateTime.utc(2026, 7, 12, 11),
+        profileImageUrl: 'https://example.com/avatar.jpg',
+        profileUpdatedAt: DateTime.utc(2026, 7, 12, 10),
+      );
+
+      final cleared = base.copyWith(clearProfileImage: true);
+
+      expect(cleared.profileImageUrl, isNull);
+      expect(cleared.profileUpdatedAt, isNull);
+    });
+  });
+
+  group('ProfileUpdate', () {
+    test('fromJson parses userId/displayName/profileImageUrl', () {
+      final update = ProfileUpdate.fromJson({
+        'userId': 'member-2',
+        'displayName': 'Sam Rivera',
+        'profileImageUrl': 'https://example.com/avatar.jpg',
+      });
+
+      expect(update.userId, 'member-2');
+      expect(update.displayName, 'Sam Rivera');
+      expect(update.profileImageUrl, 'https://example.com/avatar.jpg');
+    });
+
+    test('fromJson tolerates null displayName/profileImageUrl', () {
+      final update = ProfileUpdate.fromJson({'userId': 'member-2'});
+
+      expect(update.userId, 'member-2');
+      expect(update.displayName, isNull);
+      expect(update.profileImageUrl, isNull);
+    });
+  });
+
   late StreamController<Position> positions;
   late _FakeAuthApi authApi;
   late FakeFamilyApi familyApi;

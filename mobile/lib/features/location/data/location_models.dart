@@ -8,6 +8,8 @@ class LiveLocation {
     this.displayName,
     this.batteryPercent,
     this.isOnline = true,
+    this.profileImageUrl,
+    this.profileUpdatedAt,
   });
 
   final String userId;
@@ -18,8 +20,11 @@ class LiveLocation {
   final int? batteryPercent;
   final DateTime recordedAtUtc;
   final bool isOnline;
+  final String? profileImageUrl;
+  final DateTime? profileUpdatedAt;
 
   factory LiveLocation.fromJson(Map<String, dynamic> json) {
+    final profileUpdatedAtValue = json['profileUpdatedAt'] as String?;
     return LiveLocation(
       userId: json['userId'] as String,
       displayName: json['displayName'] as String?,
@@ -29,6 +34,10 @@ class LiveLocation {
       batteryPercent: (json['batteryPercent'] as num?)?.toInt(),
       recordedAtUtc: DateTime.parse(json['recordedAtUtc'] as String).toUtc(),
       isOnline: json['isOnline'] as bool? ?? true,
+      profileImageUrl: json['profileImageUrl'] as String?,
+      profileUpdatedAt: profileUpdatedAtValue == null
+          ? null
+          : DateTime.tryParse(profileUpdatedAtValue)?.toUtc(),
     );
   }
 
@@ -40,6 +49,13 @@ class LiveLocation {
     int? batteryPercent,
     DateTime? recordedAtUtc,
     bool? isOnline,
+    String? profileImageUrl,
+    DateTime? profileUpdatedAt,
+    // Standard nullable-merge (?? this.x) can't express "clear this field to
+    // null" — a removed profile photo (PROFILE-03/06) must actually clear the
+    // marker avatar, not silently keep the previous one. Mirrors this
+    // codebase's clearError/clearLowBatteryAlert boolean-flag convention.
+    bool clearProfileImage = false,
   }) {
     return LiveLocation(
       userId: userId,
@@ -50,6 +66,12 @@ class LiveLocation {
       batteryPercent: batteryPercent ?? this.batteryPercent,
       recordedAtUtc: recordedAtUtc ?? this.recordedAtUtc,
       isOnline: isOnline ?? this.isOnline,
+      profileImageUrl: clearProfileImage
+          ? null
+          : (profileImageUrl ?? this.profileImageUrl),
+      profileUpdatedAt: clearProfileImage
+          ? profileUpdatedAt
+          : (profileUpdatedAt ?? this.profileUpdatedAt),
     );
   }
 }
@@ -199,6 +221,26 @@ class PresenceChange {
     return PresenceChange(
       userId: json['userId'] as String,
       isOnline: json['isOnline'] as bool,
+    );
+  }
+}
+
+class ProfileUpdate {
+  const ProfileUpdate({
+    required this.userId,
+    this.displayName,
+    this.profileImageUrl,
+  });
+
+  final String userId;
+  final String? displayName;
+  final String? profileImageUrl;
+
+  factory ProfileUpdate.fromJson(Map<String, dynamic> json) {
+    return ProfileUpdate(
+      userId: json['userId'] as String,
+      displayName: json['displayName'] as String?,
+      profileImageUrl: json['profileImageUrl'] as String?,
     );
   }
 }
