@@ -14,11 +14,13 @@ import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'package:mobile/app.dart';
 import 'package:mobile/features/auth/data/auth_api.dart';
 import 'package:mobile/features/family/data/family_api.dart';
+import 'package:mobile/features/location/application/permission_controller.dart';
 import 'package:mobile/features/profile/data/profile_api.dart';
 import 'package:mobile/features/splash/presentation/splash_screen.dart';
 
 import '../../helpers/fake_auth_api.dart';
 import '../../helpers/fake_family_api.dart';
+import '../../helpers/fake_location_permission_service.dart';
 import '../../helpers/fake_profile_api.dart';
 
 void main() {
@@ -48,6 +50,9 @@ void main() {
         authApiProvider.overrideWithValue(fakeApi),
         familyApiProvider.overrideWithValue(fakeFamilyApi),
         profileApiProvider.overrideWithValue(fakeProfileApi),
+        locationPermissionServiceProvider.overrideWithValue(
+          FakeLocationPermissionService(),
+        ),
       ],
       child: const SafePathApp(showStartupSplash: false),
     );

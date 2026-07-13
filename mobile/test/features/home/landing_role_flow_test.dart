@@ -8,10 +8,12 @@ import 'package:mobile/app.dart';
 import 'package:mobile/features/auth/data/auth_api.dart';
 import 'package:mobile/features/auth/data/auth_models.dart';
 import 'package:mobile/features/family/data/family_api.dart';
+import 'package:mobile/features/location/application/permission_controller.dart';
 import 'package:mobile/features/profile/data/profile_api.dart';
 
 import '../../helpers/fake_auth_api.dart';
 import '../../helpers/fake_family_api.dart';
+import '../../helpers/fake_location_permission_service.dart';
 import '../../helpers/fake_profile_api.dart';
 
 void main() {
@@ -36,6 +38,9 @@ void main() {
           authApiProvider.overrideWithValue(authApi),
           familyApiProvider.overrideWithValue(familyApi),
           profileApiProvider.overrideWithValue(profileApi),
+          locationPermissionServiceProvider.overrideWithValue(
+            FakeLocationPermissionService(),
+          ),
         ],
         child: const SafePathApp(showStartupSplash: false),
       ),
@@ -64,6 +69,9 @@ void main() {
           authApiProvider.overrideWithValue(authApi),
           familyApiProvider.overrideWithValue(familyApi),
           profileApiProvider.overrideWithValue(profileApi),
+          locationPermissionServiceProvider.overrideWithValue(
+            FakeLocationPermissionService(),
+          ),
         ],
         child: const SafePathApp(showStartupSplash: false),
       ),
@@ -90,6 +98,9 @@ void main() {
             authApiProvider.overrideWithValue(authApi),
             familyApiProvider.overrideWithValue(familyApi),
             profileApiProvider.overrideWithValue(profileApi),
+            locationPermissionServiceProvider.overrideWithValue(
+              FakeLocationPermissionService(),
+            ),
           ],
           child: const SafePathApp(showStartupSplash: false),
         ),
@@ -131,6 +142,9 @@ void main() {
             authApiProvider.overrideWithValue(authApi),
             familyApiProvider.overrideWithValue(familyApi),
             profileApiProvider.overrideWithValue(profileApi),
+            locationPermissionServiceProvider.overrideWithValue(
+              FakeLocationPermissionService(),
+            ),
           ],
           child: const SafePathApp(showStartupSplash: false),
         ),
