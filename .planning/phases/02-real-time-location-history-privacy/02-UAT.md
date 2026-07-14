@@ -1,14 +1,21 @@
 ---
-status: resolved
+status: testing
 phase: 02-real-time-location-history-privacy
-source: [02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 02-04-SUMMARY.md, 02-05-SUMMARY.md, 02-06-SUMMARY.md, 02-07-SUMMARY.md, 02-08-SUMMARY.md, 02-09-SUMMARY.md, 02-10-SUMMARY.md, 02-11-SUMMARY.md, 02-12-SUMMARY.md, 02-13-SUMMARY.md, 02-14-SUMMARY.md, 02-15-SUMMARY.md, 02-16-SUMMARY.md]
+source: [02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 02-04-SUMMARY.md, 02-05-SUMMARY.md, 02-06-SUMMARY.md, 02-07-SUMMARY.md, 02-08-SUMMARY.md, 02-09-SUMMARY.md, 02-10-SUMMARY.md, 02-11-SUMMARY.md, 02-12-SUMMARY.md, 02-13-SUMMARY.md, 02-14-SUMMARY.md, 02-15-SUMMARY.md, 02-16-SUMMARY.md, 02-17-SUMMARY.md]
 started: 2026-07-14T00:46:32.923Z
-updated: 2026-07-14T01:30:00.000Z
+updated: 2026-07-14T05:30:00.000Z
 ---
 
 ## Current Test
 
-[testing complete]
+number: 73
+name: Live Map header avatar live-updates on profile photo change (UAT test 72 closure)
+expected: |
+  The header avatar updates to the new photo after upload, updates again after
+  replace, and reverts to the default initial after remove — all without an
+  app reload, matching how the family member markers already behave (per UAT
+  test 71).
+awaiting: user response
 
 ## Tests
 
@@ -443,13 +450,24 @@ expected: When a user updates their display name or profile photo, the change is
 result: issue
 reported: "when updating name or photo it also display on the header it already displays in the map but not the header up their"
 severity: minor
+resolution: "Fixed in plan 02-17 (gap_closure): header MemberMapPin de-const'd and wired to state?.selfPosition. See test 73 for post-fix device confirmation."
+
+### 73. [02-17] Live Map header avatar live-updates on profile photo change (UAT test 72 closure)
+expected: |
+  The header avatar updates to the new photo after upload, updates again after
+  replace, and reverts to the default initial after remove — all without an
+  app reload, matching how the family member markers already behave (per UAT
+  test 71).
+result: pending
+source: 02-VERIFICATION.md human_verification (re-verification after gap closure)
+note: "Code fix verified correct by static analysis (const removed, avatar fields sourced from state?.selfPosition) and the new regression test passes, but the test only asserts first-build state — it does not mutate selfPosition mid-test and re-assert (WR-01 in 02-REVIEW.md). Needs one physical-device pass, same as test 71."
 
 ## Summary
 
-total: 72
+total: 73
 passed: 71
-issues: 1
-pending: 0
+issues: 0
+pending: 1
 skipped: 0
 
 ## Gaps
