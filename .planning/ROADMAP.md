@@ -98,7 +98,7 @@ Plans:
   5. User can toggle sharing per data type/recipient, enable temporary auto-stopping location sharing, and export or delete their data from a Privacy Center — backed by end-to-end encrypted communication and a documented no-data-resale commitment (PRIV-01, PRIV-02, PRIV-03, PRIV-04, PRIV-05)
   6. User can upload, replace, and remove their profile picture and edit their display name; every visible family member appears on the live map as a custom marker showing their avatar (or a default avatar), name, online/offline status, and current location, updating in real time — visible only to members of the same Family Circle (PROFILE-01, PROFILE-02, PROFILE-03, PROFILE-04, PROFILE-05, PROFILE-06, PROFILE-07)
 
-**Plans**: 16/16 plans complete
+**Plans**: 17 plans (16 complete + 1 gap-closure pending)
 **Map SDK retrofit complete (2026-07-13)**: originally shipped on `google_maps_flutter`; project direction changed to OpenStreetMap and executed in `02-12-PLAN.md` (`live_map_screen.dart` + `route_stats_sheet.dart` now on `flutter_map`/`latlong2`, native Google-Maps-key wiring removed from Android/iOS). iOS build is source-verified only (no macOS/CI runner available here) — validate the actual Xcode compile before an iOS release build. Before production traffic, replace the raw `tile.openstreetmap.org` URL with a dedicated tile-hosting provider per OSM's tile usage policy (documented in `02-01-USER-SETUP.md`). See `.planning/phases/02-real-time-location-history-privacy/02-OSM-MIGRATION-IMPACT.md`.
 
 Plans:
@@ -154,6 +154,10 @@ Plans:
 **Wave 12** *(blocked on Wave 10 + Wave 11)*
 
 - [x] 02-16-PLAN.md — mobile: live-map avatar markers + always-visible name labels + real-time ProfileUpdated rendering (PROFILE-06/07)
+
+**Wave 13** *(gap closure — UAT test 72, planned 2026-07-14)*
+
+- [ ] 02-17-PLAN.md — mobile: wire Live Map header identity pin to selfPosition so the header avatar live-updates on profile-photo change (PROFILE-03/06)
 
 **UI hint**: yes
 
