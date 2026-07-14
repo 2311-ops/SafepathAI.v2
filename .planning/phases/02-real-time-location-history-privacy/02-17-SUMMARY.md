@@ -117,3 +117,11 @@ None - no external service configuration required.
 ---
 *Phase: 02-real-time-location-history-privacy*
 *Completed: 2026-07-14*
+
+## Self-Check: PASSED
+
+- FOUND: mobile/lib/features/location/presentation/live_map_screen.dart
+- FOUND: mobile/test/features/location/live_map_screen_test.dart
+- FOUND: commit c522e4c (test)
+- FOUND: commit b59b567 (fix)
+- FOUND: commit 81cf2fc (docs: summary)
