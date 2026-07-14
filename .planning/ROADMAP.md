@@ -24,7 +24,7 @@ dependency is satisfied with seeded/synthetic data.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Backend & Auth Foundation** - Auth, roles, and family circles on a Clean Architecture backend + Supabase, with the app's design system wired into Flutter.
-- [x] **Phase 2: Real-Time Location, History & Privacy** - Family members see live and historical location on a shared map, with full privacy controls over what's shared. (reopened 2026-07-13 for additive User Profile & Map Identity wave; 16/16 plans complete, phase closeout pending) (completed 2026-07-14)
+- [ ] **Phase 2: Real-Time Location, History & Privacy** - Family members see live and historical location on a shared map, with full privacy controls over what's shared. (17/17 plans complete; re-verification 2026-07-14 scored 20/21 must-haves — 1 pending human device confirmation of the UAT-72 header-avatar fix, see 02-UAT.md test 73)
 - [ ] **Phase 3: SOS Fast Path (Core Value)** - One tap (or covert trigger) reliably alerts guardians with live location within seconds, bypassing every routine and AI pipeline.
 - [ ] **Phase 4: Geofencing** - Safe zones trigger reliable enter/exit alerts without GPS-drift false positives.
 - [ ] **Phase 5: AI Analytics & Family Dashboard** - Explainable anomaly detection, ETA prediction, safety scoring, and family dashboards.
