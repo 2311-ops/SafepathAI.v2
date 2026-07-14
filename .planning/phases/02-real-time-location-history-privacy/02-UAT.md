@@ -465,10 +465,31 @@ source: 02-VERIFICATION.md human_verification (re-verification after gap closure
 note: "In-session live-update (the original UAT-72 bug) is confirmed FIXED — header avatar updates correctly while the app stays open. New distinct issue found: after closing and reopening the app, the header reverts to showing the wrong (stale/incorrect) avatar, i.e. the cold-start initial render path does not use the same up-to-date profile data as the live in-session update."
 resolution: "Automated data-path fixes are complete in 02-18 and 02-19. Awaiting physical-device close/reopen retest to confirm persistent image-cache behavior."
 
+### 74. Live Map markers display explicit ONLINE/OFFLINE status labels
+expected: |
+  Each visible live-map marker renders the member avatar/initial, name, and an
+  explicit ONLINE or OFFLINE status label on the map surface, using
+  LocationState.memberPresence when available so the marker matches the
+  member-detail sheet.
+result: pass
+reported: "now i need you now to correctly display the online offline status in the ui"
+source: automated
+coverage_id: D4
+evidence: |
+  Added a regression in mobile/test/features/location/live_map_screen_test.dart
+  with self-user online and other-user offline. The test failed before the UI
+  patch because no ONLINE label existed on the map surface, then passed after
+  LiveMemberMarker received isOnline and rendered explicit ONLINE/OFFLINE
+  badges. Focused checks passed: flutter test
+  test/features/location/live_map_screen_test.dart; flutter test
+  test/features/location/member_presence_test.dart; flutter analyze
+  lib/features/location/presentation/live_map_screen.dart
+  test/features/location/live_map_screen_test.dart.
+
 ## Summary
 
-total: 73
-passed: 72
+total: 74
+passed: 73
 issues: 0
 pending: 1
 skipped: 0

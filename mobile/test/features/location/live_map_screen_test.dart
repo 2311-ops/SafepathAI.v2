@@ -62,6 +62,10 @@ class _PopulatedLocationController extends LocationController {
     return LocationState(
       selfPosition: self,
       members: {'self-user': self, 'other-user': other},
+      memberPresence: {
+        'self-user': const MemberPresence(isOnline: true),
+        'other-user': const MemberPresence(isOnline: false),
+      },
     );
   }
 }
@@ -221,31 +225,36 @@ void main() {
     expect(find.text('Accept & join'), findsOneWidget);
   });
 
-  testWidgets('populated live locations render on a FlutterMap with OSM attribution', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          familyControllerProvider.overrideWith(_PopulatedFamilyController.new),
-          locationControllerProvider.overrideWith(
-            _PopulatedLocationController.new,
-          ),
-          profileControllerProvider.overrideWith(
-            () => _SeededProfileController(Role.guardian),
-          ),
-        ],
-        child: const MaterialApp(home: LiveMapScreen()),
-      ),
-    );
-    // flutter_map issues real network tile requests that never resolve in the
-    // test harness; pumpAndSettle would hang waiting on them, so build the
-    // tree with a fixed-duration pump instead.
-    await tester.pump(const Duration(milliseconds: 100));
+  testWidgets(
+    'populated live locations render on a FlutterMap with OSM attribution',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            familyControllerProvider.overrideWith(
+              _PopulatedFamilyController.new,
+            ),
+            locationControllerProvider.overrideWith(
+              _PopulatedLocationController.new,
+            ),
+            profileControllerProvider.overrideWith(
+              () => _SeededProfileController(Role.guardian),
+            ),
+          ],
+          child: const MaterialApp(home: LiveMapScreen()),
+        ),
+      );
+      // flutter_map issues real network tile requests that never resolve in the
+      // test harness; pumpAndSettle would hang waiting on them, so build the
+      // tree with a fixed-duration pump instead.
+      await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.byType(FlutterMap), findsOneWidget);
-    expect(find.textContaining('OpenStreetMap'), findsWidgets);
-  });
+      expect(find.byType(FlutterMap), findsOneWidget);
+      expect(find.textContaining('OpenStreetMap'), findsWidgets);
+      expect(find.text('ONLINE'), findsOneWidget);
+      expect(find.text('OFFLINE'), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'header identity pin live-updates from LocationState.selfPosition (UAT 72)',

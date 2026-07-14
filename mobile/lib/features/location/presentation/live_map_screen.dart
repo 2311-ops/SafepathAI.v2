@@ -90,22 +90,25 @@ class LiveMapScreen extends ConsumerWidget {
         Marker(
           point: LatLng(location.lat, location.lng),
           // Widened from the 44x44 tap-target-only box so the always-visible
-          // name label (PROFILE-06) has room beneath the avatar — flutter_map
-          // has no overflow anchor, so the declared box must contain the
-          // whole Column[avatar, label] (research §5).
-          width: 88,
-          height: 72,
+          // name and online/offline labels have room beneath the avatar;
+          // flutter_map has no overflow anchor, so the declared box must
+          // contain the whole Column[avatar, labels] (research §5).
+          width: 104,
+          height: 88,
           alignment: Alignment.center,
           child: LiveMemberMarker(
             location: location,
             name: _memberName(location, state),
+            isOnline:
+                state?.isMemberOnline(location.userId) ?? location.isOnline,
             isSelf: location.userId == state?.selfPosition?.userId,
             color: _memberColor(location.userId),
             onTap: () => showMemberDetailSheet(
               context,
               member: MemberDetail(
                 name: _memberName(location, state),
-                isOnline: state?.isMemberOnline(location.userId) ?? false,
+                isOnline:
+                    state?.isMemberOnline(location.userId) ?? location.isOnline,
                 recordedAtUtc: location.recordedAtUtc,
               ),
             ),
@@ -158,8 +161,10 @@ class LiveMapScreen extends ConsumerWidget {
                             isSelf: true,
                             size: 36,
                             userId: state?.selfPosition?.userId,
-                            profileImageUrl: state?.selfPosition?.profileImageUrl,
-                            profileUpdatedAt: state?.selfPosition?.profileUpdatedAt,
+                            profileImageUrl:
+                                state?.selfPosition?.profileImageUrl,
+                            profileUpdatedAt:
+                                state?.selfPosition?.profileUpdatedAt,
                           ),
                           const SizedBox(width: AppSpacing.sm),
                           Expanded(
@@ -237,6 +242,7 @@ class LiveMemberMarker extends StatelessWidget {
     super.key,
     required this.location,
     required this.name,
+    required this.isOnline,
     required this.isSelf,
     required this.color,
     required this.onTap,
@@ -244,6 +250,7 @@ class LiveMemberMarker extends StatelessWidget {
 
   final LiveLocation location;
   final String name;
+  final bool isOnline;
   final bool isSelf;
   final Color color;
   final VoidCallback onTap;
@@ -296,6 +303,8 @@ class LiveMemberMarker extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             _MarkerNameLabel(name: name),
+            const SizedBox(height: 2),
+            _MarkerPresenceLabel(isOnline: isOnline),
           ],
         ),
       ),
@@ -309,6 +318,60 @@ class LiveMemberMarker extends StatelessWidget {
         color: Colors.white,
         fontWeight: FontWeight.w800,
         letterSpacing: 0,
+      ),
+    );
+  }
+}
+
+/// Explicit always-visible status badge for map markers. The member detail
+/// sheet already shows this state on tap; keeping it here prevents the map
+/// surface from relying on color-only interpretation.
+class _MarkerPresenceLabel extends StatelessWidget {
+  const _MarkerPresenceLabel({required this.isOnline});
+
+  final bool isOnline;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = isOnline ? AppColors.safe : AppColors.bodySecondary;
+    final background = isOnline ? AppColors.safeBg : AppColors.hairlineSoft;
+    final border = isOnline ? AppColors.safeBgBorder : AppColors.hairline;
+    final label = isOnline ? 'ONLINE' : 'OFFLINE';
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 5,
+              height: 5,
+              decoration: BoxDecoration(
+                color: foreground,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 3),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.clip,
+              style: AppTypography.caption.copyWith(
+                fontSize: 8,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0,
+                color: foreground,
+                height: 1.1,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
