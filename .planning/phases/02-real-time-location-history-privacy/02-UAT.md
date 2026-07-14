@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 02-real-time-location-history-privacy
 source: [02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 02-04-SUMMARY.md, 02-05-SUMMARY.md, 02-06-SUMMARY.md, 02-07-SUMMARY.md, 02-08-SUMMARY.md, 02-09-SUMMARY.md, 02-10-SUMMARY.md, 02-11-SUMMARY.md, 02-12-SUMMARY.md, 02-13-SUMMARY.md, 02-14-SUMMARY.md, 02-15-SUMMARY.md, 02-16-SUMMARY.md]
 started: 2026-07-14T00:46:32.923Z
@@ -459,6 +459,12 @@ skipped: 0
   reason: "User reported: when updating name or photo it also display on the header it already displays in the map but not the header up their"
   severity: minor
   test: 72
-  artifacts: []
-  missing: []
+  root_cause: "mobile/lib/features/location/presentation/live_map_screen.dart (~line 155): the Live Map header's identity indicator is a hardcoded `const MemberMapPin(label: 'You', ...)` never wired to LocationState.selfPosition. Being `const` makes it structurally immune to rebuilds, and no userId/profileImageUrl/profileUpdatedAt are passed. LocationController._applyProfileUpdate already keeps selfPosition live via the same ProfileUpdated stream that correctly drives the family member markers (LiveMemberMarker) in the same file — this was a call-site omission in plan 02-16's Task 3, not a missing capability."
+  artifacts:
+    - path: "mobile/lib/features/location/presentation/live_map_screen.dart"
+      issue: "Header MemberMapPin instantiation is const and hardcoded to label: 'You', never reads state?.selfPosition"
+  missing:
+    - "Remove const from the header's MemberMapPin instantiation"
+    - "Pass userId, profileImageUrl, and profileUpdatedAt from state?.selfPosition, mirroring how LiveMemberMarker is fed in the same file"
+  debug_session: .planning/debug/header-avatar-not-live-update.md
 
