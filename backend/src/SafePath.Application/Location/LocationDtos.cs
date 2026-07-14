@@ -23,7 +23,8 @@ public record MemberLiveLocationDto(
     int? BatteryPercent,
     DateTime? RecordedAtUtc,
     bool IsOnline,
-    string? ProfileImageUrl);
+    string? ProfileImageUrl,
+    DateTime? ProfileUpdatedAt);
 
 public record LocationHistoryPointDto(double Lat, double Lng, DateTime RecordedAtUtc);
 

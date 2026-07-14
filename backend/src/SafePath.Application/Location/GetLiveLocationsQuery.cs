@@ -40,7 +40,7 @@ public class GetLiveLocationsQueryHandler : ICommandHandler<GetLiveLocationsQuer
             join user in _db.Users on member.UserId equals user.Id
             where member.FamilyId == query.FamilyId && member.IsActive
             orderby member.JoinedAt
-            select new { member.UserId, user.FullName, user.DisplayName, user.ProfileImagePath })
+            select new { member.UserId, user.FullName, user.DisplayName, user.ProfileImagePath, user.ProfileUpdatedAt })
             .ToListAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
@@ -72,7 +72,8 @@ public class GetLiveLocationsQueryHandler : ICommandHandler<GetLiveLocationsQuer
                 canViewLocation ? latestPing?.BatteryPercent : null,
                 canViewLocation ? latestPing?.RecordedAtUtc : null,
                 _presence.IsOnline(member.UserId) || isRecent,
-                profileImageUrl));
+                profileImageUrl,
+                canViewLocation ? member.ProfileUpdatedAt : null));
         }
 
         return results;
