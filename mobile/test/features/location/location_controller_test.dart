@@ -401,6 +401,45 @@ void main() {
   });
 
   test(
+    'cold-start bootstrap threads profileUpdatedAt into selfPosition and family markers',
+    () async {
+      locationApi.liveLocationsToReturn = [
+        LiveLocation(
+          userId: 'self-user',
+          lat: 30.0444,
+          lng: 31.2357,
+          accuracyMeters: 10,
+          recordedAtUtc: DateTime.utc(2026, 7, 12, 10),
+          profileImageUrl: 'https://example.com/self.jpg',
+          profileUpdatedAt: DateTime.utc(2026, 7, 12, 9),
+        ),
+        LiveLocation(
+          userId: 'member-2',
+          lat: 29.9,
+          lng: 31.1,
+          accuracyMeters: 12,
+          recordedAtUtc: DateTime.utc(2026, 7, 12, 11),
+          profileImageUrl: 'https://example.com/member-2.jpg',
+          profileUpdatedAt: DateTime.utc(2026, 7, 12, 8),
+        ),
+      ];
+
+      container.read(locationControllerProvider);
+      await pumpEventQueue();
+
+      final state = container.read(locationControllerProvider).value!;
+      expect(
+        state.selfPosition?.profileUpdatedAt,
+        DateTime.utc(2026, 7, 12, 9),
+      );
+      expect(
+        state.members['member-2']?.profileUpdatedAt,
+        DateTime.utc(2026, 7, 12, 8),
+      );
+    },
+  );
+
+  test(
     'ProfileUpdated merges name/avatar without disturbing position or presence',
     () async {
       container.read(locationControllerProvider);
