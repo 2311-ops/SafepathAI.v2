@@ -145,6 +145,71 @@ public class GetLiveLocationsQueryTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_ReturnsProfileUpdatedAtWhenViewerCanSeeLocation()
+    {
+        await using var db = _factory.CreateContext();
+        var (familyId, callerId, memberId, _) = await SeedLiveLocationFamily(db);
+        var member = await db.Users.SingleAsync(u => u.Id == memberId);
+        var profileUpdatedAt = DateTime.UtcNow.AddMinutes(-5);
+        member.ProfileUpdatedAt = profileUpdatedAt;
+        await db.SaveChangesAsync();
+        var handler = new GetLiveLocationsQueryHandler(
+            db,
+            new FamilyAuthorizationService(db),
+            new FakePresenceQuery(),
+            new SharingAuthorizationService(db));
+
+        var result = await handler.Handle(new GetLiveLocationsQuery(callerId, familyId));
+
+        Assert.Equal(profileUpdatedAt, result.Single(location => location.UserId == memberId).ProfileUpdatedAt);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsNullProfileUpdatedAtWhenUserHasNoProfileUpdate()
+    {
+        await using var db = _factory.CreateContext();
+        var (familyId, callerId, memberId, _) = await SeedLiveLocationFamily(db);
+        var handler = new GetLiveLocationsQueryHandler(
+            db,
+            new FamilyAuthorizationService(db),
+            new FakePresenceQuery(),
+            new SharingAuthorizationService(db));
+
+        var result = await handler.Handle(new GetLiveLocationsQuery(callerId, familyId));
+
+        Assert.Null(result.Single(location => location.UserId == memberId).ProfileUpdatedAt);
+    }
+
+    [Fact]
+    public async Task Handle_HidesProfileUpdatedAtWhenViewerCannotSeeLocation()
+    {
+        await using var db = _factory.CreateContext();
+        var (familyId, callerId, memberId, _) = await SeedLiveLocationFamily(db);
+        var callerMemberRow = await db.FamilyMembers.SingleAsync(m => m.FamilyId == familyId && m.UserId == callerId);
+        var member = await db.Users.SingleAsync(u => u.Id == memberId);
+        member.ProfileUpdatedAt = DateTime.UtcNow.AddMinutes(-5);
+        db.SharingPreferences.Add(new SharingPreference
+        {
+            Id = Guid.NewGuid(),
+            FamilyId = familyId,
+            OwnerUserId = memberId,
+            RecipientMemberId = callerMemberRow.Id,
+            DataType = SharedDataType.LiveLocation,
+            IsEnabled = false,
+        });
+        await db.SaveChangesAsync();
+        var handler = new GetLiveLocationsQueryHandler(
+            db,
+            new FamilyAuthorizationService(db),
+            new FakePresenceQuery(),
+            new SharingAuthorizationService(db));
+
+        var result = await handler.Handle(new GetLiveLocationsQuery(callerId, familyId));
+
+        Assert.Null(result.Single(location => location.UserId == memberId).ProfileUpdatedAt);
+    }
+
+    [Fact]
     public async Task Handle_ByNonMember_IsDeniedBeforeReturningLocationRows()
     {
         await using var db = _factory.CreateContext();
