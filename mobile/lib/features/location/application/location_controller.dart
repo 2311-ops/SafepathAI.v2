@@ -365,6 +365,20 @@ class LocationController extends AsyncNotifier<LocationState> {
             isOnline:
                 _current.memberPresence[location.userId]?.isOnline ??
                 location.isOnline,
+            // Routine location ticks (hub LocationUpdated and the self
+            // foreground fix) never carry profile-image fields —
+            // LocationUpdateDto omits them by design. Without carrying the
+            // existing avatar forward here, every position tick would null a
+            // member's (or self's) avatar back to the initials fallback, so an
+            // avatar just seeded by the cold-start /live-locations bootstrap
+            // "reverts" to default on the first tick after a refresh/cold
+            // start (bug: avatar-persist-after-refresh). A genuine photo
+            // *removal* still flows through _applyProfileUpdate's
+            // clearProfileImage path, never through this location merge.
+            profileImageUrl:
+                location.profileImageUrl ?? existing.profileImageUrl,
+            profileUpdatedAt:
+                location.profileUpdatedAt ?? existing.profileUpdatedAt,
           );
     final nextMembers = Map<String, LiveLocation>.from(_current.members)
       ..[location.userId] = mergedLocation;

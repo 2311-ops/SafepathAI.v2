@@ -439,6 +439,196 @@ void main() {
     },
   );
 
+  // Regression for bug: avatar-persist-after-refresh. A routine location tick
+  // (self foreground fix or a member's hub LocationUpdated) carries no
+  // profile-image fields, so the _applyLocation merge must NOT null the avatar
+  // that the cold-start /live-locations bootstrap just seeded — otherwise the
+  // avatar "reverts to default" on the first tick after a refresh/cold start.
+  test(
+    'self avatar survives a foreground position tick (refresh does not null the image URL)',
+    () async {
+      locationApi.liveLocationsToReturn = [
+        LiveLocation(
+          userId: 'self-user',
+          lat: 30.0444,
+          lng: 31.2357,
+          accuracyMeters: 10,
+          recordedAtUtc: DateTime.utc(2026, 7, 12, 10),
+          profileImageUrl: 'https://example.com/self.jpg',
+          profileUpdatedAt: DateTime.utc(2026, 7, 12, 9),
+        ),
+      ];
+
+      container.read(locationControllerProvider);
+      await pumpEventQueue();
+
+      // A foreground fix from the position stream — no image fields, exactly
+      // like the real geolocator payload built in _reportPosition.
+      positions.add(
+        _position(
+          lat: 30.05,
+          lng: 31.24,
+          timestamp: DateTime.utc(2026, 7, 12, 10, 30),
+        ),
+      );
+      await pumpEventQueue();
+
+      final state = container.read(locationControllerProvider).value!;
+      expect(state.selfPosition?.lat, 30.05); // position advanced
+      expect(
+        state.selfPosition?.profileImageUrl,
+        'https://example.com/self.jpg',
+      );
+      expect(state.selfPosition?.profileUpdatedAt, DateTime.utc(2026, 7, 12, 9));
+      expect(
+        state.members['self-user']?.profileImageUrl,
+        'https://example.com/self.jpg',
+      );
+    },
+  );
+
+  test('member avatar survives a hub LocationUpdated tick', () async {
+    locationApi.liveLocationsToReturn = [
+      LiveLocation(
+        userId: 'self-user',
+        lat: 30.0444,
+        lng: 31.2357,
+        accuracyMeters: 10,
+        recordedAtUtc: DateTime.utc(2026, 7, 12, 10),
+      ),
+      LiveLocation(
+        userId: 'member-2',
+        displayName: 'Sam Rivera',
+        lat: 29.9,
+        lng: 31.1,
+        accuracyMeters: 12,
+        recordedAtUtc: DateTime.utc(2026, 7, 12, 11),
+        profileImageUrl: 'https://example.com/member-2.jpg',
+        profileUpdatedAt: DateTime.utc(2026, 7, 12, 8),
+      ),
+    ];
+
+    container.read(locationControllerProvider);
+    await pumpEventQueue();
+
+    // A member's routine ping carries only position/battery (LocationUpdateDto).
+    hubClient.emitLocation(
+      LiveLocation(
+        userId: 'member-2',
+        lat: 29.95,
+        lng: 31.15,
+        accuracyMeters: 10,
+        recordedAtUtc: DateTime.utc(2026, 7, 12, 11, 5),
+        batteryPercent: 60,
+      ),
+    );
+    await pumpEventQueue();
+
+    final member = container
+        .read(locationControllerProvider)
+        .value!
+        .members['member-2']!;
+    expect(member.lat, 29.95); // position advanced
+    expect(member.batteryPercent, 60);
+    expect(member.displayName, 'Sam Rivera'); // seeded name retained
+    expect(member.profileImageUrl, 'https://example.com/member-2.jpg');
+    expect(member.profileUpdatedAt, DateTime.utc(2026, 7, 12, 8));
+  });
+
+  test('multiple members retain their own avatars across location ticks', () async {
+    locationApi.liveLocationsToReturn = [
+      LiveLocation(
+        userId: 'member-a',
+        lat: 29.9,
+        lng: 31.1,
+        accuracyMeters: 12,
+        recordedAtUtc: DateTime.utc(2026, 7, 12, 11),
+        profileImageUrl: 'https://example.com/a.jpg',
+        profileUpdatedAt: DateTime.utc(2026, 7, 12, 8),
+      ),
+      LiveLocation(
+        userId: 'member-b',
+        lat: 29.8,
+        lng: 31.0,
+        accuracyMeters: 12,
+        recordedAtUtc: DateTime.utc(2026, 7, 12, 11),
+        profileImageUrl: 'https://example.com/b.jpg',
+        profileUpdatedAt: DateTime.utc(2026, 7, 12, 7),
+      ),
+    ];
+
+    container.read(locationControllerProvider);
+    await pumpEventQueue();
+
+    // Only member-a pings — member-b must keep its own distinct avatar.
+    hubClient.emitLocation(
+      LiveLocation(
+        userId: 'member-a',
+        lat: 29.95,
+        lng: 31.15,
+        accuracyMeters: 10,
+        recordedAtUtc: DateTime.utc(2026, 7, 12, 11, 5),
+      ),
+    );
+    await pumpEventQueue();
+
+    final members = container.read(locationControllerProvider).value!.members;
+    expect(members['member-a']?.profileImageUrl, 'https://example.com/a.jpg');
+    expect(members['member-b']?.profileImageUrl, 'https://example.com/b.jpg');
+  });
+
+  test('a removed photo stays cleared across a later location tick', () async {
+    locationApi.liveLocationsToReturn = [
+      LiveLocation(
+        userId: 'member-2',
+        lat: 29.9,
+        lng: 31.1,
+        accuracyMeters: 12,
+        recordedAtUtc: DateTime.utc(2026, 7, 12, 11),
+        profileImageUrl: 'https://example.com/member-2.jpg',
+        profileUpdatedAt: DateTime.utc(2026, 7, 12, 8),
+      ),
+    ];
+
+    container.read(locationControllerProvider);
+    await pumpEventQueue();
+
+    // Photo removed via the profile channel (clearProfileImage path).
+    hubClient.emitProfileUpdate(
+      const ProfileUpdate(userId: 'member-2', profileImageUrl: null),
+    );
+    await pumpEventQueue();
+    expect(
+      container
+          .read(locationControllerProvider)
+          .value!
+          .members['member-2']
+          ?.profileImageUrl,
+      isNull,
+    );
+
+    // A later location tick must NOT resurrect the removed photo.
+    hubClient.emitLocation(
+      LiveLocation(
+        userId: 'member-2',
+        lat: 29.95,
+        lng: 31.15,
+        accuracyMeters: 10,
+        recordedAtUtc: DateTime.utc(2026, 7, 12, 11, 5),
+      ),
+    );
+    await pumpEventQueue();
+
+    expect(
+      container
+          .read(locationControllerProvider)
+          .value!
+          .members['member-2']
+          ?.profileImageUrl,
+      isNull,
+    );
+  });
+
   test(
     'ProfileUpdated merges name/avatar without disturbing position or presence',
     () async {
