@@ -1,21 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 02-real-time-location-history-privacy
 source: [02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 02-04-SUMMARY.md, 02-05-SUMMARY.md, 02-06-SUMMARY.md, 02-07-SUMMARY.md, 02-08-SUMMARY.md, 02-09-SUMMARY.md, 02-10-SUMMARY.md, 02-11-SUMMARY.md, 02-12-SUMMARY.md, 02-13-SUMMARY.md, 02-14-SUMMARY.md, 02-15-SUMMARY.md, 02-16-SUMMARY.md, 02-17-SUMMARY.md]
 started: 2026-07-14T00:46:32.923Z
-updated: 2026-07-14T05:30:00.000Z
+updated: 2026-07-14T06:15:00.000Z
 ---
 
 ## Current Test
 
-number: 73
-name: Live Map header avatar live-updates on profile photo change (UAT test 72 closure)
-expected: |
-  The header avatar updates to the new photo after upload, updates again after
-  replace, and reverts to the default initial after remove — all without an
-  app reload, matching how the family member markers already behave (per UAT
-  test 71).
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -458,16 +451,18 @@ expected: |
   replace, and reverts to the default initial after remove — all without an
   app reload, matching how the family member markers already behave (per UAT
   test 71).
-result: pending
+result: issue
+reported: "when i open the app it the new feature header avatar live-updates works but when closing it it bring back the wrong avatar"
+severity: major
 source: 02-VERIFICATION.md human_verification (re-verification after gap closure)
-note: "Code fix verified correct by static analysis (const removed, avatar fields sourced from state?.selfPosition) and the new regression test passes, but the test only asserts first-build state — it does not mutate selfPosition mid-test and re-assert (WR-01 in 02-REVIEW.md). Needs one physical-device pass, same as test 71."
+note: "In-session live-update (the original UAT-72 bug) is confirmed FIXED — header avatar updates correctly while the app stays open. New distinct issue found: after closing and reopening the app, the header reverts to showing the wrong (stale/incorrect) avatar, i.e. the cold-start initial render path does not use the same up-to-date profile data as the live in-session update."
 
 ## Summary
 
 total: 73
 passed: 71
-issues: 0
-pending: 1
+issues: 1
+pending: 0
 skipped: 0
 
 ## Gaps
@@ -485,4 +480,14 @@ skipped: 0
     - "Remove const from the header's MemberMapPin instantiation"
     - "Pass userId, profileImageUrl, and profileUpdatedAt from state?.selfPosition, mirroring how LiveMemberMarker is fed in the same file"
   debug_session: .planning/debug/header-avatar-not-live-update.md
+
+- truth: "The header avatar updates to the new photo after upload, updates again after replace, and reverts to the default initial after remove — all without an app reload, matching how the family member markers already behave (per UAT test 71)."
+  status: failed
+  reason: "User reported: when i open the app it the new feature header avatar live-updates works but when closing it it bring back the wrong avatar"
+  severity: major
+  test: 73
+  root_cause: ""     # Filled by diagnosis
+  artifacts: []      # Filled by diagnosis
+  missing: []        # Filled by diagnosis
+  debug_session: ""  # Filled by diagnosis
 
