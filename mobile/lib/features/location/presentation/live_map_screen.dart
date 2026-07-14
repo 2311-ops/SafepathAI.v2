@@ -152,11 +152,14 @@ class LiveMapScreen extends ConsumerWidget {
                       padding: const EdgeInsets.all(AppSpacing.md),
                       child: Row(
                         children: [
-                          const MemberMapPin(
+                          MemberMapPin(
                             label: 'You',
                             identityColor: AppColors.primaryTeal,
                             isSelf: true,
                             size: 36,
+                            userId: state?.selfPosition?.userId,
+                            profileImageUrl: state?.selfPosition?.profileImageUrl,
+                            profileUpdatedAt: state?.selfPosition?.profileUpdatedAt,
                           ),
                           const SizedBox(width: AppSpacing.sm),
                           Expanded(
