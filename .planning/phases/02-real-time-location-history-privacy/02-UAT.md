@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 02-real-time-location-history-privacy
 source: [02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 02-04-SUMMARY.md, 02-05-SUMMARY.md, 02-06-SUMMARY.md, 02-07-SUMMARY.md, 02-08-SUMMARY.md, 02-09-SUMMARY.md, 02-10-SUMMARY.md, 02-11-SUMMARY.md, 02-12-SUMMARY.md, 02-13-SUMMARY.md, 02-14-SUMMARY.md, 02-15-SUMMARY.md, 02-16-SUMMARY.md, 02-17-SUMMARY.md]
 started: 2026-07-14T00:46:32.923Z
@@ -486,8 +486,15 @@ skipped: 0
   reason: "User reported: when i open the app it the new feature header avatar live-updates works but when closing it it bring back the wrong avatar"
   severity: major
   test: 73
-  root_cause: ""     # Filled by diagnosis
-  artifacts: []      # Filled by diagnosis
-  missing: []        # Filled by diagnosis
-  debug_session: ""  # Filled by diagnosis
+  root_cause: "Backend GET /families/{familyId}/live-locations (GetLiveLocationsQueryHandler) never selects/returns user.ProfileUpdatedAt — MemberLiveLocationDto has no field for it. Mobile's LocationController._bootstrap() calls this endpoint on every cold app start for both selfPosition and all members, so LiveLocation.fromJson always parses profileUpdatedAt as null on cold start. MemberMapPin/LiveMemberMarker both key their CachedNetworkImage cache as '${userId}-${profileUpdatedAt}', so a constant null-suffixed key on every cold start serves the stale cached image forever, never re-fetching the fresh signed profileImageUrl. In-session updates work because the live ProfileUpdated SignalR handler stamps its own fresh DateTime.now() locally (forcing a real cache-busting key), but that local stamp isn't persisted, so the next cold start reverts to the backend-omitted null and the stale image reappears. This affects family member markers too (same cache-key pattern), not just the header — it just wasn't caught in UAT test 71 because that test exercised in-session changes, not a cold restart."
+  artifacts:
+    - path: "backend/src/SafePath.Application/Location/LocationDtos.cs"
+      issue: "MemberLiveLocationDto has no ProfileUpdatedAt field"
+    - path: "backend/src/SafePath.Application/Location/GetLiveLocationsQuery.cs"
+      issue: "GetLiveLocationsQueryHandler's projection/constructor never selects or passes user.ProfileUpdatedAt"
+  missing:
+    - "Add ProfileUpdatedAt to MemberLiveLocationDto"
+    - "Select user.ProfileUpdatedAt in GetLiveLocationsQueryHandler's query/projection and pass it through to the DTO"
+    - "Confirm mobile's existing LiveLocation.fromJson parsing (already correct) receives and threads the real timestamp end-to-end on cold start, for both selfPosition and family members"
+  debug_session: .planning/debug/header-avatar-cold-start-stale.md
 
