@@ -6,14 +6,14 @@ current_phase: 02
 current_phase_name: real-time-location-history-privacy
 status: executing
 stopped_at: Completed 02-17-PLAN.md
-last_updated: "2026-07-14T01:29:43.035Z"
+last_updated: "2026-07-14T08:24:46.360Z"
 last_activity: 2026-07-14
 last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 33
-  completed_plans: 33
+  total_plans: 34
+  completed_plans: 34
   percent: 38
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 ## Current Position
 
 Phase: 02 (real-time-location-history-privacy) — EXECUTING
-Plan: 2 of 17
+Plan: 2 of 18
 Status: Ready to execute
 Last activity: 2026-07-14 — Phase 02 execution started
 
@@ -81,6 +81,7 @@ Progress: [██████████] 100%
 | Phase 02 P15 | ~2h30m | 3 tasks | 12 files |
 | Phase 02 P16 | ~10min | 4 tasks | 7 files |
 | Phase 02 P17 | 7min | 1 tasks | 2 files |
+| Phase 02-real-time-location-history-privacy P18 | 25min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -141,6 +142,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 02-16]: LiveLocation.copyWith gained an explicit clearProfileImage flag (mirroring clearError/clearLowBatteryAlert) so a removed profile photo actually clears the marker avatar instead of falling back via the usual ?? merge; LocationController._applyProfileUpdate stamps a fresh local profileUpdatedAt on avatar changes to bust the CachedNetworkImage cache key since the ProfileUpdated hub payload carries no timestamp. live_map_screen.dart's marker widget was promoted from private _LiveMemberMarker to public LiveMemberMarker so it is directly testable.
 - [Phase ?]: [Phase 02-15]: Profile entry point is a single Live Map app-bar action (both normal and no-circle empty states) rather than a new bottom-nav tab; ProfileAvatar placed under shared_widgets so 02-16's map markers can reuse it.
 - [Phase ?]: Header MemberMapPin reads userId/profileImageUrl/profileUpdatedAt from state?.selfPosition (not the self fallback variable), keeping label 'You' fixed — closing UAT test 72 for the Live Map header identity avatar — The header pin was a hardcoded const MemberMapPin, structurally immune to Riverpod rebuilds; family member markers (LiveMemberMarker) already read live avatar data from LiveLocation, but the header identity was left out
+- [Phase ?]: [Phase 02-18]: MemberLiveLocationDto.ProfileUpdatedAt is gated identically to ProfileImageUrl behind the existing canViewLocation sharing check (no new authorization call); appended as the last positional DTO parameter to preserve the single existing construction site.
 
 ### Pending Todos
 
@@ -166,6 +168,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-14T01:29:43.017Z
+Last session: 2026-07-14T08:22:58.336Z
 Stopped at: Completed 02-17-PLAN.md
 Resume file: None
