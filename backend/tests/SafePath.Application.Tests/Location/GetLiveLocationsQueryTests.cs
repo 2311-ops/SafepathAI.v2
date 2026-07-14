@@ -210,6 +210,90 @@ public class GetLiveLocationsQueryTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_DoesNotUseRecentPingForIsOnlineWhenLiveLocationSharingDenied()
+    {
+        await using var db = _factory.CreateContext();
+        var (familyId, callerId, memberId, _) = await SeedLiveLocationFamily(db);
+        var callerMemberRow = await db.FamilyMembers.SingleAsync(m => m.FamilyId == familyId && m.UserId == callerId);
+        var member = await db.Users.SingleAsync(u => u.Id == memberId);
+        member.ProfileImagePath = $"avatars/{memberId}/avatar.jpg";
+        member.ProfileUpdatedAt = DateTime.UtcNow.AddMinutes(-5);
+        var recentPing = NewPing(memberId, 30.0444, 31.2357, DateTime.UtcNow.AddSeconds(-30));
+        recentPing.BatteryPercent = 57;
+        db.LocationPings.Add(recentPing);
+        db.SharingPreferences.Add(new SharingPreference
+        {
+            Id = Guid.NewGuid(),
+            FamilyId = familyId,
+            OwnerUserId = memberId,
+            RecipientMemberId = callerMemberRow.Id,
+            DataType = SharedDataType.LiveLocation,
+            IsEnabled = false,
+        });
+        await db.SaveChangesAsync();
+        var handler = new GetLiveLocationsQueryHandler(
+            db,
+            new FamilyAuthorizationService(db),
+            new FakePresenceQuery(),
+            new SharingAuthorizationService(db),
+            new ProfileImageUrlFactory(new FakeProfileImageStorage()));
+
+        var result = await handler.Handle(new GetLiveLocationsQuery(callerId, familyId));
+
+        var deniedMember = result.Single(location => location.UserId == memberId);
+        Assert.False(deniedMember.IsOnline);
+        Assert.Null(deniedMember.Lat);
+        Assert.Null(deniedMember.Lng);
+        Assert.Null(deniedMember.AccuracyMeters);
+        Assert.Null(deniedMember.BatteryPercent);
+        Assert.Null(deniedMember.RecordedAtUtc);
+        Assert.Null(deniedMember.ProfileImageUrl);
+        Assert.Null(deniedMember.ProfileUpdatedAt);
+    }
+
+    [Fact]
+    public async Task Handle_PreservesConnectionPresenceWhenLiveLocationSharingDenied()
+    {
+        await using var db = _factory.CreateContext();
+        var (familyId, callerId, memberId, _) = await SeedLiveLocationFamily(db);
+        var callerMemberRow = await db.FamilyMembers.SingleAsync(m => m.FamilyId == familyId && m.UserId == callerId);
+        var member = await db.Users.SingleAsync(u => u.Id == memberId);
+        member.ProfileImagePath = $"avatars/{memberId}/avatar.jpg";
+        member.ProfileUpdatedAt = DateTime.UtcNow.AddMinutes(-5);
+        var recentPing = NewPing(memberId, 30.0444, 31.2357, DateTime.UtcNow.AddSeconds(-30));
+        recentPing.BatteryPercent = 57;
+        db.LocationPings.Add(recentPing);
+        db.SharingPreferences.Add(new SharingPreference
+        {
+            Id = Guid.NewGuid(),
+            FamilyId = familyId,
+            OwnerUserId = memberId,
+            RecipientMemberId = callerMemberRow.Id,
+            DataType = SharedDataType.LiveLocation,
+            IsEnabled = false,
+        });
+        await db.SaveChangesAsync();
+        var handler = new GetLiveLocationsQueryHandler(
+            db,
+            new FamilyAuthorizationService(db),
+            new FakePresenceQuery(memberId),
+            new SharingAuthorizationService(db),
+            new ProfileImageUrlFactory(new FakeProfileImageStorage()));
+
+        var result = await handler.Handle(new GetLiveLocationsQuery(callerId, familyId));
+
+        var deniedMember = result.Single(location => location.UserId == memberId);
+        Assert.True(deniedMember.IsOnline);
+        Assert.Null(deniedMember.Lat);
+        Assert.Null(deniedMember.Lng);
+        Assert.Null(deniedMember.AccuracyMeters);
+        Assert.Null(deniedMember.BatteryPercent);
+        Assert.Null(deniedMember.RecordedAtUtc);
+        Assert.Null(deniedMember.ProfileImageUrl);
+        Assert.Null(deniedMember.ProfileUpdatedAt);
+    }
+
+    [Fact]
     public async Task Handle_ByNonMember_IsDeniedBeforeReturningLocationRows()
     {
         await using var db = _factory.CreateContext();
