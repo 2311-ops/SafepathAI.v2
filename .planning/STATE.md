@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 02
 current_phase_name: real-time-location-history-privacy
-status: planned
-stopped_at: Completed 02-16-PLAN.md
-last_updated: "2026-07-14T00:00:00.000Z"
+status: executing
+stopped_at: Completed 02-17-PLAN.md
+last_updated: "2026-07-14T01:29:43.035Z"
 last_activity: 2026-07-14
-last_activity_desc: Completed 02-16 live map avatar markers + real-time ProfileUpdated rendering; human-verify checkpoint approved. Phase 2 now 16/16 plans complete (phase-level closeout pending orchestrator)
+last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 8
-  completed_phases: 2
-  total_plans: 32
-  completed_plans: 32
-  percent: 100
+  completed_phases: 3
+  total_plans: 33
+  completed_plans: 33
+  percent: 38
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-06)
 
 **Core value:** The SOS system must always work — a single tap or covert Silent/Duress trigger reliably delivers an immediate alert with live location to a user's designated guardians within seconds, bypassing every routine and AI pipeline.
-**Current focus:** v1.0 milestone closeout
+**Current focus:** Phase 02 — real-time-location-history-privacy
 
 ## Current Position
 
-Phase: 02 (real-time-location-history-privacy) — 16/16 plans complete, phase-level closeout pending
-Plan: All plans in Phase 2 (including the additive 02-13..02-16 User Profile & Map Identity wave) are executed. Next: phase-level verification/closeout (orchestrator-driven), then Phase 3.
-Status: 16/16 plans shipped. 02-16 completed live-map avatar markers + always-visible name labels with real-time ProfileUpdated rendering, closing PROFILE-06/PROFILE-07; human-verify checkpoint approved on physical devices across two accounts.
-Last activity: 2026-07-14 — Completed 02-16 live map avatar markers; checkpoint approved
+Phase: 02 (real-time-location-history-privacy) — EXECUTING
+Plan: 2 of 17
+Status: Ready to execute
+Last activity: 2026-07-14 — Phase 02 execution started
 
 Progress: [██████████] 100%
 
@@ -80,6 +80,7 @@ Progress: [██████████] 100%
 | Phase 02 P14 | 10min | 3 tasks | 19 files |
 | Phase 02 P15 | ~2h30m | 3 tasks | 12 files |
 | Phase 02 P16 | ~10min | 4 tasks | 7 files |
+| Phase 02 P17 | 7min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,7 @@ Recent decisions affecting current work:
 - [Phase 02-14]: Profile writes stay `/me`-only and derive `CallerUserId` exclusively from `ICurrentUserService`; signed avatar URLs use a shared 1-hour `ProfileImageUrlFactory`; `ProfileUpdated` broadcasts only on profile changes while `LocationUpdateDto` remains lean.
 - [Phase ?]: [Phase 02-16]: LiveLocation.copyWith gained an explicit clearProfileImage flag (mirroring clearError/clearLowBatteryAlert) so a removed profile photo actually clears the marker avatar instead of falling back via the usual ?? merge; LocationController._applyProfileUpdate stamps a fresh local profileUpdatedAt on avatar changes to bust the CachedNetworkImage cache key since the ProfileUpdated hub payload carries no timestamp. live_map_screen.dart's marker widget was promoted from private _LiveMemberMarker to public LiveMemberMarker so it is directly testable.
 - [Phase ?]: [Phase 02-15]: Profile entry point is a single Live Map app-bar action (both normal and no-circle empty states) rather than a new bottom-nav tab; ProfileAvatar placed under shared_widgets so 02-16's map markers can reuse it.
+- [Phase ?]: Header MemberMapPin reads userId/profileImageUrl/profileUpdatedAt from state?.selfPosition (not the self fallback variable), keeping label 'You' fixed — closing UAT test 72 for the Live Map header identity avatar — The header pin was a hardcoded const MemberMapPin, structurally immune to Riverpod rebuilds; family member markers (LiveMemberMarker) already read live avatar data from LiveLocation, but the header identity was left out
 
 ### Pending Todos
 
@@ -164,6 +166,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T23:51:49.000Z
-Stopped at: Completed 02-16-PLAN.md
+Last session: 2026-07-14T01:29:43.017Z
+Stopped at: Completed 02-17-PLAN.md
 Resume file: None

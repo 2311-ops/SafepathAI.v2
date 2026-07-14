@@ -24,7 +24,7 @@ dependency is satisfied with seeded/synthetic data.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Backend & Auth Foundation** - Auth, roles, and family circles on a Clean Architecture backend + Supabase, with the app's design system wired into Flutter.
-- [ ] **Phase 2: Real-Time Location, History & Privacy** - Family members see live and historical location on a shared map, with full privacy controls over what's shared. (reopened 2026-07-13 for additive User Profile & Map Identity wave; 16/16 plans complete, phase closeout pending)
+- [x] **Phase 2: Real-Time Location, History & Privacy** - Family members see live and historical location on a shared map, with full privacy controls over what's shared. (reopened 2026-07-13 for additive User Profile & Map Identity wave; 16/16 plans complete, phase closeout pending) (completed 2026-07-14)
 - [ ] **Phase 3: SOS Fast Path (Core Value)** - One tap (or covert trigger) reliably alerts guardians with live location within seconds, bypassing every routine and AI pipeline.
 - [ ] **Phase 4: Geofencing** - Safe zones trigger reliable enter/exit alerts without GPS-drift false positives.
 - [ ] **Phase 5: AI Analytics & Family Dashboard** - Explainable anomaly detection, ETA prediction, safety scoring, and family dashboards.
@@ -98,7 +98,7 @@ Plans:
   5. User can toggle sharing per data type/recipient, enable temporary auto-stopping location sharing, and export or delete their data from a Privacy Center — backed by end-to-end encrypted communication and a documented no-data-resale commitment (PRIV-01, PRIV-02, PRIV-03, PRIV-04, PRIV-05)
   6. User can upload, replace, and remove their profile picture and edit their display name; every visible family member appears on the live map as a custom marker showing their avatar (or a default avatar), name, online/offline status, and current location, updating in real time — visible only to members of the same Family Circle (PROFILE-01, PROFILE-02, PROFILE-03, PROFILE-04, PROFILE-05, PROFILE-06, PROFILE-07)
 
-**Plans**: 17 plans (16 complete + 1 gap-closure pending)
+**Plans**: 17/17 plans complete
 **Map SDK retrofit complete (2026-07-13)**: originally shipped on `google_maps_flutter`; project direction changed to OpenStreetMap and executed in `02-12-PLAN.md` (`live_map_screen.dart` + `route_stats_sheet.dart` now on `flutter_map`/`latlong2`, native Google-Maps-key wiring removed from Android/iOS). iOS build is source-verified only (no macOS/CI runner available here) — validate the actual Xcode compile before an iOS release build. Before production traffic, replace the raw `tile.openstreetmap.org` URL with a dedicated tile-hosting provider per OSM's tile usage policy (documented in `02-01-USER-SETUP.md`). See `.planning/phases/02-real-time-location-history-privacy/02-OSM-MIGRATION-IMPACT.md`.
 
 Plans:
@@ -157,7 +157,7 @@ Plans:
 
 **Wave 13** *(gap closure — UAT test 72, planned 2026-07-14)*
 
-- [ ] 02-17-PLAN.md — mobile: wire Live Map header identity pin to selfPosition so the header avatar live-updates on profile-photo change (PROFILE-03/06)
+- [x] 02-17-PLAN.md — mobile: wire Live Map header identity pin to selfPosition so the header avatar live-updates on profile-photo change (PROFILE-03/06)
 
 **UI hint**: yes
 
@@ -251,7 +251,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Backend & Auth Foundation | 14/14 | Complete | 2026-07-10 |
-| 2. Real-Time Location, History & Privacy | 16/16 | In Progress | - |
+| 2. Real-Time Location, History & Privacy | 17/17 | Complete   | 2026-07-14 |
 | 3. SOS Fast Path (Core Value) | 0/TBD | Not started | - |
 | 4. Geofencing | 0/TBD | Not started | - |
 | 5. AI Analytics & Family Dashboard | 0/TBD | Not started | - |
