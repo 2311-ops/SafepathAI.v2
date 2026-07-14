@@ -85,7 +85,7 @@ Plans:
 
 ### Phase 2: Real-Time Location, History & Privacy
 
-**Goal**: Family members can see each other's live and past location, with full control over what's shared and with whom.
+**Goal**: As a family member, I want to see my family's live and past location and control exactly what I share and with whom, so that we can stay connected safely without giving up privacy.
 **Mode:** mvp
 **Depends on**: Phase 1
 **Requirements**: LOC-01, LOC-02, LOC-03, LOC-04, LOC-05, HIST-01, HIST-02, HIST-03, NOTIF-01, PRIV-01, PRIV-02, PRIV-03, PRIV-04, PRIV-05, PROFILE-01, PROFILE-02, PROFILE-03, PROFILE-04, PROFILE-05, PROFILE-06, PROFILE-07
