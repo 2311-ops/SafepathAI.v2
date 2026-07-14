@@ -62,7 +62,7 @@ public class GetLiveLocationsQueryHandler : ICommandHandler<GetLiveLocationsQuer
             var profileImageUrl = canViewLocation && _profileImageUrlFactory is not null
                 ? await _profileImageUrlFactory.SignAsync(member.ProfileImagePath, cancellationToken)
                 : null;
-            var isRecent = latestPing is not null && now - latestPing.RecordedAtUtc <= PingFreshnessWindow;
+            var isRecent = canViewLocation && latestPing is not null && now - latestPing.RecordedAtUtc <= PingFreshnessWindow;
             results.Add(new MemberLiveLocationDto(
                 member.UserId,
                 string.IsNullOrWhiteSpace(member.DisplayName) ? member.FullName : member.DisplayName,
