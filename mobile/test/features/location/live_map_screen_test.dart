@@ -15,6 +15,7 @@ import 'package:mobile/features/location/data/location_models.dart';
 import 'package:mobile/features/location/presentation/live_map_screen.dart';
 import 'package:mobile/features/profile/application/profile_controller.dart';
 import 'package:mobile/features/profile/data/user_profile.dart';
+import 'package:mobile/shared_widgets/member_map_pin.dart';
 
 /// No circle yet: family == null and not loading — the state a family-less
 /// user's Map tab lands in.
@@ -49,6 +50,37 @@ class _PopulatedLocationController extends LocationController {
       lng: 31.2357,
       accuracyMeters: 12,
       recordedAtUtc: now,
+    );
+    final other = LiveLocation(
+      userId: 'other-user',
+      displayName: 'Sam',
+      lat: 30.0500,
+      lng: 31.2400,
+      accuracyMeters: 20,
+      recordedAtUtc: now.subtract(const Duration(minutes: 1)),
+    );
+    return LocationState(
+      selfPosition: self,
+      members: {'self-user': self, 'other-user': other},
+    );
+  }
+}
+
+/// A self position (with a live avatar already set) plus one other family
+/// member — used to prove the header identity pin reads its avatar from
+/// `LocationState.selfPosition` rather than a hardcoded/const pin (UAT 72).
+class _SeededSelfAvatarLocationController extends LocationController {
+  @override
+  LocationState build() {
+    final now = DateTime.now().toUtc();
+    final self = LiveLocation(
+      userId: 'self-user',
+      lat: 30.0444,
+      lng: 31.2357,
+      accuracyMeters: 12,
+      recordedAtUtc: now,
+      profileImageUrl: 'https://example.com/avatar/self-user.jpg',
+      profileUpdatedAt: now,
     );
     final other = LiveLocation(
       userId: 'other-user',
@@ -214,4 +246,47 @@ void main() {
     expect(find.byType(FlutterMap), findsOneWidget);
     expect(find.textContaining('OpenStreetMap'), findsWidgets);
   });
+
+  testWidgets(
+    'header identity pin live-updates from LocationState.selfPosition (UAT 72)',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            familyControllerProvider.overrideWith(
+              _PopulatedFamilyController.new,
+            ),
+            locationControllerProvider.overrideWith(
+              _SeededSelfAvatarLocationController.new,
+            ),
+            profileControllerProvider.overrideWith(
+              () => _SeededProfileController(Role.guardian),
+            ),
+          ],
+          child: const MaterialApp(home: LiveMapScreen()),
+        ),
+      );
+      // flutter_map issues real network tile requests that never resolve in
+      // the test harness; pumpAndSettle would hang waiting on them, so build
+      // the tree with a fixed-duration pump instead (mirrors the populated
+      // map test above).
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Map markers use LiveMemberMarker, not MemberMapPin — so the single
+      // MemberMapPin on screen is the header identity pin. These assertions
+      // fail if the header is ever reverted to a hardcoded/const pin, since
+      // profileImageUrl/userId would be null in that case.
+      final headerPinFinder = find.byType(MemberMapPin);
+      expect(headerPinFinder, findsOneWidget);
+
+      final headerPin = tester.widget<MemberMapPin>(headerPinFinder);
+      expect(headerPin.label, 'You');
+      expect(headerPin.userId, 'self-user');
+      expect(
+        headerPin.profileImageUrl,
+        'https://example.com/avatar/self-user.jpg',
+      );
+      expect(headerPin.profileUpdatedAt, isNotNull);
+    },
+  );
 }
