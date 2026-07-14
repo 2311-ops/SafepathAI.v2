@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 02-real-time-location-history-privacy
 source: [02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 02-04-SUMMARY.md, 02-05-SUMMARY.md, 02-06-SUMMARY.md, 02-07-SUMMARY.md, 02-08-SUMMARY.md, 02-09-SUMMARY.md, 02-10-SUMMARY.md, 02-11-SUMMARY.md, 02-12-SUMMARY.md, 02-13-SUMMARY.md, 02-14-SUMMARY.md, 02-15-SUMMARY.md, 02-16-SUMMARY.md]
 started: 2026-07-14T00:46:32.923Z
-updated: 2026-07-14T00:46:32.923Z
+updated: 2026-07-14T01:30:00.000Z
 ---
 
 ## Current Test
@@ -455,7 +455,7 @@ skipped: 0
 ## Gaps
 
 - truth: "Updating the display name or profile photo updates the identity indicator everywhere it appears on the Live Map, including the header's own avatar/initial, not just family member markers."
-  status: failed
+  status: resolved
   reason: "User reported: when updating name or photo it also display on the header it already displays in the map but not the header up their"
   severity: minor
   test: 72
