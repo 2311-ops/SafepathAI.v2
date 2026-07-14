@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 02
 current_phase_name: real-time-location-history-privacy
-status: executing
-stopped_at: Completed 02-17-PLAN.md
-last_updated: "2026-07-14T08:24:46.360Z"
+status: complete
+stopped_at: Completed 02-19-PLAN.md
+last_updated: "2026-07-14T23:01:07.556Z"
 last_activity: 2026-07-14
-last_activity_desc: Phase 02 execution started
+last_activity_desc: Completed 02-19-PLAN.md
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 34
-  completed_plans: 34
+  total_plans: 35
+  completed_plans: 35
   percent: 38
 ---
 
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-06)
 
 ## Current Position
 
-Phase: 02 (real-time-location-history-privacy) — EXECUTING
-Plan: 2 of 18
-Status: Ready to execute
-Last activity: 2026-07-14 — Phase 02 execution started
+Phase: 02 (real-time-location-history-privacy) — COMPLETE
+Plan: 19 of 19
+Status: Phase 02 plans complete; ready for verification/Phase 3 planning
+Last activity: 2026-07-14 — Completed 02-19-PLAN.md
 
 Progress: [██████████] 100%
 
@@ -82,6 +82,7 @@ Progress: [██████████] 100%
 | Phase 02 P16 | ~10min | 4 tasks | 7 files |
 | Phase 02 P17 | 7min | 1 tasks | 2 files |
 | Phase 02-real-time-location-history-privacy P18 | 25min | 2 tasks | 4 files |
+| Phase 02 P19 | 20min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 02-15]: Profile entry point is a single Live Map app-bar action (both normal and no-circle empty states) rather than a new bottom-nav tab; ProfileAvatar placed under shared_widgets so 02-16's map markers can reuse it.
 - [Phase ?]: Header MemberMapPin reads userId/profileImageUrl/profileUpdatedAt from state?.selfPosition (not the self fallback variable), keeping label 'You' fixed — closing UAT test 72 for the Live Map header identity avatar — The header pin was a hardcoded const MemberMapPin, structurally immune to Riverpod rebuilds; family member markers (LiveMemberMarker) already read live avatar data from LiveLocation, but the header identity was left out
 - [Phase ?]: [Phase 02-18]: MemberLiveLocationDto.ProfileUpdatedAt is gated identically to ProfileImageUrl behind the existing canViewLocation sharing check (no new authorization call); appended as the last positional DTO parameter to preserve the single existing construction site.
+- [Phase 02]: [Phase 02-19]: Ping-derived IsOnline recency is treated as LiveLocation data and is false when canViewLocation is false. — Closes CR-01 / PRIV-02 by preventing recent location pings from contributing to IsOnline for viewers denied LiveLocation sharing.
+- [Phase 02]: [Phase 02-19]: Independent IPresenceQuery.IsOnline connection presence remains visible under denied LiveLocation sharing, preserving D-03. — The plan explicitly preserves the accepted non-location connection-presence signal while gating only ping-derived recency.
 
 ### Pending Todos
 
@@ -168,6 +171,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-14T08:22:58.336Z
-Stopped at: Completed 02-17-PLAN.md
+Last session: 2026-07-14T23:00:20.502Z
+Stopped at: Completed 02-19-PLAN.md
 Resume file: None
