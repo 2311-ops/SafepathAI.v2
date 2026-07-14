@@ -2,143 +2,164 @@
 phase: 02-real-time-location-history-privacy
 reviewed: 2026-07-14T00:00:00Z
 depth: standard
-files_reviewed: 2
+files_reviewed: 4
 files_reviewed_list:
-  - mobile/lib/features/location/presentation/live_map_screen.dart
-  - mobile/test/features/location/live_map_screen_test.dart
+  - backend/src/SafePath.Application/Location/LocationDtos.cs
+  - backend/src/SafePath.Application/Location/GetLiveLocationsQuery.cs
+  - backend/tests/SafePath.Application.Tests/Location/GetLiveLocationsQueryTests.cs
+  - mobile/test/features/location/location_controller_test.dart
 findings:
-  critical: 0
-  warning: 1
+  critical: 1
+  warning: 2
   info: 2
-  total: 3
+  total: 5
 status: issues_found
 ---
 
-# Phase 02: Code Review Report (Gap Closure — Plan 02-17)
+# Phase 02: Code Review Report (Gap Closure — Plan 02-18)
 
 **Reviewed:** 2026-07-14T00:00:00Z
 **Depth:** standard
-**Files Reviewed:** 2
-**Status:** issues_found (warnings/info only — no blockers)
+**Files Reviewed:** 4
+**Status:** issues_found
 
 ## Summary
 
-Scoped review of plan 02-17's single call-site fix: the Live Map header's
-`MemberMapPin` was changed from a `const` instantiation to a dynamic one wired
-to `state?.selfPosition?.userId` / `profileImageUrl` / `profileUpdatedAt`, plus
-a new TDD regression widget test. This is a narrow, targeted follow-up to the
-already-resolved full-file reviews (`02-REVIEW.md`/`02-REVIEW-2.md` from the
-prior pass); only these two files and this specific diff were re-reviewed.
+This is a scoped gap-closure review for plan 02-18 (fix for UAT test 73: cold-start avatar
+caching bug caused by `profileUpdatedAt` never flowing through `GET /families/{familyId}/live-locations`).
 
-The wiring itself is correct:
-- All three new fields use the `?.` null-safe chain through `state` →
-  `selfPosition`, so a `null` `LocationState` or a `null` `selfPosition` (e.g.
-  before the user's own location has ever been reported) degrades cleanly to
-  `MemberMapPin`'s existing initials fallback (`_hasAvatar` is `false` when
-  `profileImageUrl` is `null`/blank) rather than throwing.
-- The fix mirrors the exact `LiveMemberMarker` pattern already used for other
-  family members' pins in the same file (same field names, same null-coalescing
-  shape), which is what the plan asked for.
-- Traced into `LocationController` (`_applyLocation`, `_applyProfileUpdate` in
-  `location_controller.dart`): `selfPosition` is correctly kept in sync
-  whenever a location or profile-update event arrives for the current user's
-  `userId`, so the header will genuinely live-update at runtime, not just at
-  first build — the fix is wired to a data source that actually changes.
-- Confirmed `LiveLocation.profileImageUrl` / `profileUpdatedAt` are
-  nullable (`String?` / `DateTime?`) in `location_models.dart`, matching the
-  types `MemberMapPin` expects — no type mismatch.
-- Confirmed via `git diff b59b567~1..HEAD` that the diff is exactly the 4-line
-  addition described (no other call sites or logic touched), so the
-  already-reviewed broader file was not re-litigated here.
+The core change itself — adding a trailing `ProfileUpdatedAt` field to `MemberLiveLocationDto` and
+projecting/gating it in `GetLiveLocationsQueryHandler` — is correct: the field is appended (not
+inserted) so no positional-record ordering hazard exists, the type (`DateTime?`) matches the
+underlying `User.ProfileUpdatedAt` entity property, JSON serialization is name-based (not
+positional) so the API contract is unaffected, and the single construction site
+(`GetLiveLocationsQuery.cs:66`) is the only place that needed updating. The three new backend
+tests genuinely exercise three distinct branches (visible-and-set, visible-and-unset,
+gated-and-denied) rather than three copies of the happy path. The mobile test's assertion that
+only `selfPosition.profileUpdatedAt` (not also `members['self-user'].profileUpdatedAt`) gets
+checked is not a coverage gap — `_bootstrap()` assigns `selfPosition = initialMembers[currentUserId]`,
+i.e. the exact same object reference, so the two assertions would be redundant.
 
-The new regression test is a real, TDD-authored (fails-before-fix per commit
-`c522e4c`, then fixed in `b59b567`) lock on the specific bug (hardcoded/const
-pin), and correctly disambiguates against the map's own per-member pins by
-asserting `findsOneWidget` for `MemberMapPin` (map markers use the sibling
-`LiveMemberMarker` widget, not `MemberMapPin`) — this is a sound assertion,
-not an incidental one.
+However, while auditing "is the sharing gate actually complete" (the specific question this
+review was asked to answer), I found that a *different* field already present in this file —
+`IsOnline` — is not gated by `canViewLocation` at all, and it is computed from the same
+location-ping timestamp that `ProfileUpdatedAt`/`ProfileImageUrl`/`Lat`/`Lng` are correctly gated
+behind. That's a pre-existing gap in `GetLiveLocationsQuery.cs` (not introduced by this diff, but
+squarely inside one of the four files in scope), and it means a viewer who has been denied
+`LiveLocation` sharing can still infer "this family member's device pinged the server within the
+last 2 minutes" — a location-adjacent signal leaking straight past the privacy boundary this
+handler is supposed to enforce.
 
-Two minor gaps below (a test-coverage completeness gap and a formatting nit)
-are worth fixing but neither is a shippable-blocking issue.
+## Critical Issues
+
+### CR-01: `IsOnline` leaks location-ping recency past the `LiveLocation` sharing gate
+
+**File:** `backend/src/SafePath.Application/Location/GetLiveLocationsQuery.cs:51-65,74`
+**Issue:**
+`isRecent` is computed directly from `latestPing.RecordedAtUtc` *before* (and independently of)
+the `canViewLocation` check, and is then OR'd into the `IsOnline` field unconditionally:
+
+```csharp
+var latestPing = await _db.LocationPings...FirstOrDefaultAsync(cancellationToken);
+var canViewLocation = await _sharing.CanView(..., SharedDataType.LiveLocation, ...);
+...
+var isRecent = latestPing is not null && now - latestPing.RecordedAtUtc <= PingFreshnessWindow;
+results.Add(new MemberLiveLocationDto(
+    ...,
+    canViewLocation ? latestPing?.RecordedAtUtc : null,   // <-- correctly gated
+    _presence.IsOnline(member.UserId) || isRecent,        // <-- NOT gated
+    profileImageUrl,
+    canViewLocation ? member.ProfileUpdatedAt : null));   // <-- correctly gated (this fix)
+```
+
+Every other location-derived field on this DTO (`Lat`, `Lng`, `AccuracyMeters`, `RecordedAtUtc`,
+`ProfileImageUrl`, and now `ProfileUpdatedAt`) is null when `canViewLocation` is false. `IsOnline`
+is the one exception: it still reflects whether the member pinged the server in the last two
+minutes, regardless of whether the viewer is authorized to see that member's location at all. For
+a family-safety app whose stated design principle is privacy-first sharing controls, "this
+person's device was active moments ago" is exactly the kind of location-adjacent inference a
+sharing-disabled family member would expect to be withheld — this is the same class of leak the
+`ProfileUpdatedAt` fix in this same diff was written to close, just on a sibling field the fix
+didn't touch. No existing test (including the pre-existing
+`Handle_SignsProfileImageUrlOnlyWhenViewerCanSeeLocation` denial test) asserts `IsOnline` after a
+sharing denial, so this has never been caught.
+
+**Fix:** Gate the ping-recency contribution behind `canViewLocation`, same as the other fields
+(presence/connection state from `_presence.IsOnline` is a separate, non-location signal and can
+stay ungated if that's the intended product behavior — but the ping-derived half must not be):
+
+```csharp
+var isRecent = canViewLocation && latestPing is not null
+    && now - latestPing.RecordedAtUtc <= PingFreshnessWindow;
+results.Add(new MemberLiveLocationDto(
+    ...,
+    _presence.IsOnline(member.UserId) || isRecent,
+    ...
+```
+
+Add a regression test mirroring `Handle_HidesProfileUpdatedAtWhenViewerCannotSeeLocation` that
+seeds a recent ping, denies `LiveLocation` sharing, and asserts `IsOnline` is `false` (assuming no
+independent, non-ping presence signal is active).
 
 ## Warnings
 
-### WR-01: Regression test only checks the initial build, not an in-flight live update
+### WR-01: No test locks in the self-viewing-own-row path for `ProfileUpdatedAt`
 
-**File:** `mobile/test/features/location/live_map_screen_test.dart:250-291`
-**Issue:** The test name is "header identity pin live-updates from
-LocationState.selfPosition (UAT 72)," and the bug being fixed was specifically
-that the header never *reflected changes* to the current user's profile
-photo. However, the test only asserts that `MemberMapPin`'s props are correct
-on the widget's first build from a state that is seeded with the avatar
-already present — it never mutates `selfPosition` mid-test (e.g., by pumping
-a second frame after the notifier applies a simulated `_applyProfileUpdate`/
-`_applyLocation` event with a *different* `profileImageUrl`) and re-asserting
-the pin picked up the new value. As written, the test would pass equally well
-for an implementation that captured `selfPosition` once and never rebuilt —
-it happens to also prove the actual fix (removing `const`) because a `const`
-widget's fields are fixed to null regardless of state, but it doesn't
-independently prove the "live" (reactive-to-change) half of the bug
-description.
-**Fix:** Add a second phase to the test that mutates the seeded state after
-the first `pump` (e.g., expose a settable field on
-`_SeededSelfAvatarLocationController` or drive its notifier directly) to
-change `profileImageUrl`, then re-`pump` and re-assert the `MemberMapPin`'s
-`profileImageUrl` reflects the new value:
-```dart
-controller.simulateProfileChange(imageUrl: 'https://example.com/new.jpg');
-await tester.pump(const Duration(milliseconds: 100));
-final updatedPin = tester.widget<MemberMapPin>(find.byType(MemberMapPin));
-expect(updatedPin.profileImageUrl, 'https://example.com/new.jpg');
-```
+**File:** `backend/tests/SafePath.Application.Tests/Location/GetLiveLocationsQueryTests.cs:147-181`
+**Issue:** All three new tests exercise `ProfileUpdatedAt` for the *caller viewing a family
+member* (`memberId`), relying on `SharingAuthorizationService.CanView`'s self-bypass
+(`viewerUserId == ownerUserId`) being correct only by inference from other test files. Given the
+underlying UAT bug (test 73) was specifically about the *current user's own* avatar going stale
+on cold start — not just family members' avatars — a direct assertion that the caller's own row
+(`result.Single(l => l.UserId == callerId)`) also carries a non-null `ProfileUpdatedAt` when set
+would close the loop on the exact regression this plan was meant to fix, rather than relying on
+self-bypass being exercised correctly elsewhere.
+**Fix:** Add (or extend an existing test) to set `caller.ProfileUpdatedAt` and assert
+`result.Single(l => l.UserId == callerId).ProfileUpdatedAt` equals it, with no `SharingPreference`
+row needed (self-bypass path).
+
+### WR-02: `ProfileUpdatedAt`/`ProfileImageUrl` visibility is coupled to the `LiveLocation` permission, not a profile-specific one
+
+**File:** `backend/src/SafePath.Application/Location/GetLiveLocationsQuery.cs:62-76`
+**Issue:** The fix intentionally mirrors the existing `ProfileImageUrl` gating pattern (per this
+plan's stated rationale), but that means disabling *location* sharing for a family member also
+blanks their avatar and cache-bust timestamp, even though `DisplayName` remains visible
+regardless. There's no `SharedDataType.Profile`/`Identity` category — `LiveLocation` is being
+overloaded as a proxy for "can this viewer see this person's current profile appearance." This
+isn't a regression introduced by this diff (the same coupling already existed for
+`ProfileImageUrl`), but extending it to a second field compounds the coupling rather than
+resolving it, and is worth flagging before it becomes harder to unwind.
+**Fix:** Not blocking for this gap-closure plan. Consider a follow-up to introduce a dedicated
+`SharedDataType.Profile` (or equivalent) if avatar/profile visibility should ever need to vary
+independently of live-location sharing.
 
 ## Info
 
-### IN-01: `profileUpdatedAt` assertion is looser than the other two new fields
+### IN-01: `DateTime` equality assertions round-tripped through the SQLite test provider
 
-**File:** `mobile/test/features/location/live_map_screen_test.dart:289`
-**Issue:** `expect(headerPin.profileUpdatedAt, isNotNull);` only checks
-non-null, whereas the sibling assertions for `userId` and `profileImageUrl`
-(lines 284-288) check exact values. Since `_SeededSelfAvatarLocationController`
-seeds a specific `now` value for `profileUpdatedAt`, the test could pin the
-exact `DateTime` and catch a wiring mistake (e.g., accidentally passing a
-freshly-created `DateTime.now()` instead of
-`state.selfPosition.profileUpdatedAt`) that `isNotNull` would miss.
-**Fix:**
-```dart
-expect(headerPin.profileUpdatedAt, self.profileUpdatedAt);
-```
+**File:** `backend/tests/SafePath.Application.Tests/Location/GetLiveLocationsQueryTests.cs:153-164,190-209`
+**Issue:** `Assert.Equal(profileUpdatedAt, result.Single(...).ProfileUpdatedAt)` compares a
+`DateTime.UtcNow.AddMinutes(-5)` value written to and read back from an in-memory SQLite context.
+This mirrors an existing established pattern in this same file (e.g. `RecordedAtUtc` equality
+checks), so it's consistent with prior art and not a new risk, but any sub-tick precision loss in
+the Sqlite EF Core provider's DateTime round-trip would make this assertion (and its siblings)
+flaky. Not action-required given precedent, but worth knowing if these tests ever start
+intermittently failing.
+**Fix:** If flakiness appears, switch to `Assert.Equal(profileUpdatedAt, actual, TimeSpan.FromMilliseconds(1))` (xUnit's tolerance overload) rather than exact equality.
 
-### IN-02: New lines exceed the file's 80-column formatting convention
+### IN-02: Mobile test naming slightly overstates what's being verified
 
-**File:** `mobile/lib/features/location/presentation/live_map_screen.dart:161-162`
-**Issue:** The two new lines are 82 and 84 characters respectively:
-```dart
-                            profileImageUrl: state?.selfPosition?.profileImageUrl,
-                            profileUpdatedAt: state?.selfPosition?.profileUpdatedAt,
-```
-Every other line in this file's `Row`/`Column` block (and the vast majority of
-the file) wraps at or under 80 columns per standard `dart format` output,
-suggesting these two lines weren't run through `dart format` after editing.
-Not a lint failure under this project's `analysis_options.yaml` (no
-`lines_longer_than_80_chars` rule enabled), but inconsistent with the
-surrounding style.
-**Fix:** Run `dart format mobile/lib/features/location/presentation/live_map_screen.dart`
-so these two lines wrap consistently with the rest of the constructor call,
-e.g.:
-```dart
-MemberMapPin(
-  label: 'You',
-  identityColor: AppColors.primaryTeal,
-  isSelf: true,
-  size: 36,
-  userId: state?.selfPosition?.userId,
-  profileImageUrl:
-      state?.selfPosition?.profileImageUrl,
-  profileUpdatedAt:
-      state?.selfPosition?.profileUpdatedAt,
-),
-```
+**File:** `mobile/test/features/location/location_controller_test.dart:403-440`
+**Issue:** The test name "cold-start bootstrap threads profileUpdatedAt into selfPosition and
+family markers" only asserts `selfPosition` and `members['member-2']`, not
+`members['self-user']` directly. As analyzed, this is fine because `selfPosition` and
+`members['self-user']` are the same object reference in `_bootstrap()` — but a future refactor
+that stops aliasing them (e.g. if `selfPosition` is ever built from a separate lookup) could
+silently invalidate this test's coverage of the family-marker map for the self user without
+failing.
+**Fix:** Optional: add an explicit `expect(state.members['self-user']?.profileUpdatedAt, ...)`
+assertion alongside the `selfPosition` one, purely as a tripwire against that future refactor
+risk. Not required now.
 
 ---
 
