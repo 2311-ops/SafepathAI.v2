@@ -1,14 +1,21 @@
 ---
-status: diagnosed
+status: testing
 phase: 02-real-time-location-history-privacy
-source: [02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 02-04-SUMMARY.md, 02-05-SUMMARY.md, 02-06-SUMMARY.md, 02-07-SUMMARY.md, 02-08-SUMMARY.md, 02-09-SUMMARY.md, 02-10-SUMMARY.md, 02-11-SUMMARY.md, 02-12-SUMMARY.md, 02-13-SUMMARY.md, 02-14-SUMMARY.md, 02-15-SUMMARY.md, 02-16-SUMMARY.md, 02-17-SUMMARY.md]
+source: [02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 02-04-SUMMARY.md, 02-05-SUMMARY.md, 02-06-SUMMARY.md, 02-07-SUMMARY.md, 02-08-SUMMARY.md, 02-09-SUMMARY.md, 02-10-SUMMARY.md, 02-11-SUMMARY.md, 02-12-SUMMARY.md, 02-13-SUMMARY.md, 02-14-SUMMARY.md, 02-15-SUMMARY.md, 02-16-SUMMARY.md, 02-17-SUMMARY.md, 02-18-SUMMARY.md, 02-19-SUMMARY.md, 02-VERIFICATION.md]
 started: 2026-07-14T00:46:32.923Z
-updated: 2026-07-14T06:15:00.000Z
+updated: 2026-07-15T00:00:00.000Z
 ---
 
 ## Current Test
 
-[testing complete]
+number: 73
+name: UAT 73 physical-device cold-start avatar retest
+expected: |
+  On a physical device signed into a family circle, upload a profile photo,
+  confirm the Live Map header and family marker update while the app is open,
+  fully close the app, reopen it, and inspect the same header and markers.
+  Repeat after replacing the photo and after removing it.
+awaiting: user response
 
 ## Tests
 
@@ -440,7 +447,7 @@ evidence: Confirmed this session on physical devices: live map markers showed av
 
 ### 72. Map header identity indicator updates live with profile changes
 expected: When a user updates their display name or profile photo, the change is reflected everywhere their identity is shown on the Live Map — including the map header's own identity indicator (the circular avatar/initial in the 'Your family, live' bar) — not just the family member markers on the map.
-result: issue
+result: pass
 reported: "when updating name or photo it also display on the header it already displays in the map but not the header up their"
 severity: minor
 resolution: "Fixed in plan 02-17 (gap_closure): header MemberMapPin de-const'd and wired to state?.selfPosition. See test 73 for post-fix device confirmation."
@@ -451,19 +458,21 @@ expected: |
   replace, and reverts to the default initial after remove — all without an
   app reload, matching how the family member markers already behave (per UAT
   test 71).
-result: issue
+result: pending
 reported: "when i open the app it the new feature header avatar live-updates works but when closing it it bring back the wrong avatar"
 severity: major
 source: 02-VERIFICATION.md human_verification (re-verification after gap closure)
 note: "In-session live-update (the original UAT-72 bug) is confirmed FIXED — header avatar updates correctly while the app stays open. New distinct issue found: after closing and reopening the app, the header reverts to showing the wrong (stale/incorrect) avatar, i.e. the cold-start initial render path does not use the same up-to-date profile data as the live in-session update."
+resolution: "Automated data-path fixes are complete in 02-18 and 02-19. Awaiting physical-device close/reopen retest to confirm persistent image-cache behavior."
 
 ## Summary
 
 total: 73
-passed: 71
-issues: 1
-pending: 0
+passed: 72
+issues: 0
+pending: 1
 skipped: 0
+blocked: 0
 
 ## Gaps
 
@@ -482,19 +491,16 @@ skipped: 0
   debug_session: .planning/debug/header-avatar-not-live-update.md
 
 - truth: "The header avatar updates to the new photo after upload, updates again after replace, and reverts to the default initial after remove — all without an app reload, matching how the family member markers already behave (per UAT test 71)."
-  status: failed
+  status: pending
   reason: "User reported: when i open the app it the new feature header avatar live-updates works but when closing it it bring back the wrong avatar"
   severity: major
   test: 73
-  root_cause: "Backend GET /families/{familyId}/live-locations (GetLiveLocationsQueryHandler) never selects/returns user.ProfileUpdatedAt — MemberLiveLocationDto has no field for it. Mobile's LocationController._bootstrap() calls this endpoint on every cold app start for both selfPosition and all members, so LiveLocation.fromJson always parses profileUpdatedAt as null on cold start. MemberMapPin/LiveMemberMarker both key their CachedNetworkImage cache as '${userId}-${profileUpdatedAt}', so a constant null-suffixed key on every cold start serves the stale cached image forever, never re-fetching the fresh signed profileImageUrl. In-session updates work because the live ProfileUpdated SignalR handler stamps its own fresh DateTime.now() locally (forcing a real cache-busting key), but that local stamp isn't persisted, so the next cold start reverts to the backend-omitted null and the stale image reappears. This affects family member markers too (same cache-key pattern), not just the header — it just wasn't caught in UAT test 71 because that test exercised in-session changes, not a cold restart."
+  root_cause: "Resolved by 02-18: Backend GET /families/{familyId}/live-locations now selects/returns user.ProfileUpdatedAt so mobile's cold-start bootstrap receives a non-null cache-busting timestamp. 02-19 also closed the later CR-01 privacy blocker around ping-derived IsOnline recency."
   artifacts:
     - path: "backend/src/SafePath.Application/Location/LocationDtos.cs"
-      issue: "MemberLiveLocationDto has no ProfileUpdatedAt field"
+      issue: "Resolved: MemberLiveLocationDto now has ProfileUpdatedAt."
     - path: "backend/src/SafePath.Application/Location/GetLiveLocationsQuery.cs"
-      issue: "GetLiveLocationsQueryHandler's projection/constructor never selects or passes user.ProfileUpdatedAt"
+      issue: "Resolved: GetLiveLocationsQueryHandler selects/passes user.ProfileUpdatedAt and gates location-derived recency."
   missing:
-    - "Add ProfileUpdatedAt to MemberLiveLocationDto"
-    - "Select user.ProfileUpdatedAt in GetLiveLocationsQueryHandler's query/projection and pass it through to the DTO"
-    - "Confirm mobile's existing LiveLocation.fromJson parsing (already correct) receives and threads the real timestamp end-to-end on cold start, for both selfPosition and family members"
+    - "Physical-device retest: upload, replace, and remove profile photo; after each change, fully close and reopen the app; confirm header and family markers show the latest photo or default initials with no stale cached image."
   debug_session: .planning/debug/header-avatar-cold-start-stale.md
-
