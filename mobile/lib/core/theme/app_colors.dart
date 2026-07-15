@@ -10,16 +10,18 @@ import 'package:flutter/material.dart';
 /// (and the single flagged "Remove from circle" exception documented in
 /// 01-UI-SPEC.md) — never use them for routine warnings.
 abstract final class AppColors {
+  static const Color primaryNavy = Color(0xFF1F3B57);
+
   /// Deep Teal — Welcome screen gradient hero background (end stop).
-  static const Color deepTeal = Color(0xFF0C3A3F);
+  static const Color deepTeal = Color(0xFF132B43);
 
   /// Lighter teal — Welcome screen gradient hero background (start stop;
   /// [deepTeal] is the end stop). See 01-UI-SPEC.md Color section
   /// ("`#1FA89B` -> `#0C3A3F`").
-  static const Color heroGradientStart = Color(0xFF1FA89B);
+  static const Color heroGradientStart = Color(0xFF2E7D7B);
 
   /// Primary teal — CTA fills, focused-input borders, selected states.
-  static const Color primaryTeal = Color(0xFF15807C);
+  static const Color primaryTeal = Color(0xFF2E7D7B);
 
   /// Safe green — positive/safe status indicators.
   static const Color safe = Color(0xFF2F9E6B);
@@ -37,24 +39,25 @@ abstract final class AppColors {
   static const Color sosRedDeep = Color(0xFFC42A30);
 
   /// Default app background (dominant, 60%).
-  static const Color appBg = Color(0xFFECF0EF);
-  static const Color primaryTintBg = Color(0xFFE3EFEE);
-  static const Color hairline = Color(0xFFE4EAE8);
-  static const Color hairlineSoft = Color(0xFFF0F3F2);
+  static const Color appBg = Color(0xFFF4F8FA);
+  static const Color primaryTintBg = Color(0xFFE8F2F2);
+  static const Color navyTintBg = Color(0xFFEAF0F5);
+  static const Color hairline = Color(0xFFDDE8EE);
+  static const Color hairlineSoft = Color(0xFFF1F6F8);
 
   /// Ink — primary body/heading text color.
-  static const Color ink = Color(0xFF15302E);
+  static const Color ink = Color(0xFF14283A);
 
   /// Surface — cards, input fields, panels (secondary, 30%).
   static const Color surface = Color(0xFFFFFFFF);
 
   /// Accent Mint — Welcome screen's primary CTA fill only (on the deep-teal
   /// gradient hero, where mint has contrast and teal-on-teal would not).
-  static const Color accentMint = Color(0xFF5FD0C5);
+  static const Color accentMint = Color(0xFF79D6C9);
 
   /// Secondary body text color (subtitles, helper text).
-  static const Color bodySecondary = Color(0xFF5E726F);
-  static const Color toggleOffTrack = Color(0xFFDDE5E3);
+  static const Color bodySecondary = Color(0xFF52697A);
+  static const Color toggleOffTrack = Color(0xFFDCE8EC);
   static const Color memberViolet = Color(0xFF6E66C9);
   static const Color memberPink = Color(0xFFC95E8F);
 

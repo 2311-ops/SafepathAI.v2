@@ -62,17 +62,22 @@ class _MainShellState extends State<MainShell> {
       bottomNavigationBar: SafeArea(
         top: false,
         child: SizedBox(
-          height: 96,
+          height: 104,
           child: Stack(
             clipBehavior: Clip.none,
             alignment: Alignment.bottomCenter,
             children: [
               Container(
-                height: 72,
-                decoration: const BoxDecoration(
+                height: 76,
+                decoration: BoxDecoration(
                   color: AppColors.surface,
-                  border: Border(top: BorderSide(color: AppColors.hairline)),
-                  boxShadow: [
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(22),
+                  ),
+                  border: const Border(
+                    top: BorderSide(color: AppColors.hairline),
+                  ),
+                  boxShadow: const [
                     BoxShadow(
                       color: Color(0x160C3A3F),
                       blurRadius: 22,
@@ -85,7 +90,7 @@ class _MainShellState extends State<MainShell> {
                     for (var i = 0; i < _tabs.length; i++)
                       Expanded(
                         child: i == 2
-                            ? const SizedBox.shrink()
+                            ? const SizedBox(width: 76)
                             : _NavItem(
                                 tab: _tabs[i],
                                 selected: _index == i,
@@ -96,7 +101,7 @@ class _MainShellState extends State<MainShell> {
                 ),
               ),
               Positioned(
-                top: -8,
+                top: -10,
                 child: _SosTabButton(
                   selected: _index == 2,
                   onPressed: () {
@@ -141,26 +146,53 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = selected ? AppColors.primaryTeal : AppColors.bodySecondary;
-    return InkResponse(
-      onTap: onTap,
-      radius: 34,
-      child: SizedBox(
-        height: 72,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(selected ? tab.activeIcon : tab.icon, color: color),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              tab.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.caption.copyWith(
-                color: color,
-                letterSpacing: 0,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: tab.label,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(16),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              height: 64,
+              decoration: BoxDecoration(
+                color: selected ? AppColors.primaryTintBg : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AnimatedScale(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    scale: selected ? 1.08 : 1.0,
+                    child: Icon(
+                      selected ? tab.activeIcon : tab.icon,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    tab.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.caption.copyWith(
+                      color: color,
+                      letterSpacing: 0,
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -177,32 +209,50 @@ class _SosTabButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: 'SOS',
-      child: GestureDetector(
-        onTap: onPressed,
-        child: Container(
-          width: 64,
-          height: 64,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppColors.sosRed,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 4),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x73DE3B40),
-                blurRadius: 22,
-                offset: Offset(0, 10),
+      selected: selected,
+      label: 'SOS emergency tools',
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        scale: selected ? 1.04 : 1.0,
+        child: Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onPressed,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              width: 76,
+              height: 76,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.sosRed,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 5),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x50DE3B40),
+                    blurRadius: 26,
+                    offset: Offset(0, 12),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Text(
-            'SOS',
-            style: AppTypography.body.copyWith(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.sos, color: Colors.white, size: 24),
+                  Text(
+                    'SOS',
+                    style: AppTypography.caption.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -4,7 +4,13 @@ using SafePath.Domain.Enums;
 
 namespace SafePath.Application.Families;
 
-public record FamilyMemberDto(Guid Id, Guid UserId, Role Role, PermissionLevel Permissions, DateTime JoinedAt);
+public record FamilyMemberDto(
+    Guid Id,
+    Guid UserId,
+    string DisplayName,
+    Role Role,
+    PermissionLevel Permissions,
+    DateTime JoinedAt);
 
 /// <summary>
 /// Lists the active members of a family. Membership-gated: the caller must themselves be an
@@ -27,10 +33,18 @@ public class ListFamilyMembersQueryHandler : ICommandHandler<ListFamilyMembersQu
     {
         await _authorization.RequireMembership(query.UserId, query.FamilyId, cancellationToken);
 
-        return await _db.FamilyMembers
-            .Where(m => m.FamilyId == query.FamilyId && m.IsActive)
-            .OrderBy(m => m.JoinedAt)
-            .Select(m => new FamilyMemberDto(m.Id, m.UserId, m.Role, m.Permissions, m.JoinedAt))
+        return await (
+            from member in _db.FamilyMembers
+            join user in _db.Users on member.UserId equals user.Id
+            where member.FamilyId == query.FamilyId && member.IsActive
+            orderby member.JoinedAt
+            select new FamilyMemberDto(
+                member.Id,
+                member.UserId,
+                string.IsNullOrWhiteSpace(user.DisplayName) ? user.FullName : user.DisplayName,
+                member.Role,
+                member.Permissions,
+                member.JoinedAt))
             .ToListAsync(cancellationToken);
     }
 }

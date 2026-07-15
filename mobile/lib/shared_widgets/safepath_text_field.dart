@@ -4,15 +4,9 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_spacing.dart';
 import '../core/theme/app_typography.dart';
 
-/// SafePath text field — mono uppercase field label above a themed
-/// [TextFormField] (relies on `ThemeData.inputDecorationTheme` for the
-/// 16px-radius / 1.5px-border / teal-focus visual treatment).
-///
-/// On invalid input, the field's border/error copy render in the Caution
-/// amber tokens (`#C98A2B` / `#FBF3E3` / `#EFDFBF`) per `01-UI-SPEC.md` —
-/// SOS red is reserved exclusively for emergency states, never validation
-/// errors.
-class SafePathTextField extends StatelessWidget {
+/// SafePath text field with a visible label, screen-reader label, touch-safe
+/// password visibility toggle, and amber validation styling.
+class SafePathTextField extends StatefulWidget {
   const SafePathTextField({
     super.key,
     required this.label,
@@ -25,6 +19,8 @@ class SafePathTextField extends StatelessWidget {
     this.autofillHints,
     this.textInputAction,
     this.onFieldSubmitted,
+    this.helperText,
+    this.prefixIcon,
   });
 
   final String label;
@@ -36,34 +32,72 @@ class SafePathTextField extends StatelessWidget {
   final Iterable<String>? autofillHints;
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onFieldSubmitted;
-
-  /// Optional form-field validator (used when this field is wrapped in a
-  /// [Form] — e.g. Register's client-side email/password checks).
+  final String? helperText;
+  final IconData? prefixIcon;
   final FormFieldValidator<String>? validator;
 
   @override
+  State<SafePathTextField> createState() => _SafePathTextFieldState();
+}
+
+class _SafePathTextFieldState extends State<SafePathTextField> {
+  late bool _obscured = widget.obscureText;
+
+  @override
+  void didUpdateWidget(covariant SafePathTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.obscureText != widget.obscureText) {
+      _obscured = widget.obscureText;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isPassword = widget.obscureText;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label.toUpperCase(), style: AppTypography.caption),
+        Text(widget.label.toUpperCase(), style: AppTypography.caption),
         const SizedBox(height: AppSpacing.sm),
-        TextFormField(
-          controller: controller,
-          obscureText: obscureText,
-          keyboardType: keyboardType,
-          onChanged: onChanged,
-          autofillHints: autofillHints,
-          textInputAction: textInputAction,
-          onFieldSubmitted: onFieldSubmitted,
-          validator: validator,
-          style: AppTypography.body,
-          decoration: InputDecoration(
-            errorText: errorText,
-            errorStyle: const TextStyle(
-              color: AppColors.cautionText,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+        Semantics(
+          label: widget.label,
+          textField: true,
+          child: TextFormField(
+            controller: widget.controller,
+            obscureText: _obscured,
+            keyboardType: widget.keyboardType,
+            onChanged: widget.onChanged,
+            autofillHints: widget.autofillHints,
+            textInputAction: widget.textInputAction,
+            onFieldSubmitted: widget.onFieldSubmitted,
+            validator: widget.validator,
+            autocorrect: !isPassword,
+            enableSuggestions: !isPassword,
+            style: AppTypography.body,
+            decoration: InputDecoration(
+              helperText: widget.helperText,
+              helperStyle: AppTypography.bodySecondary.copyWith(fontSize: 12),
+              prefixIcon: widget.prefixIcon == null
+                  ? null
+                  : Icon(widget.prefixIcon, size: 20),
+              suffixIcon: isPassword
+                  ? IconButton(
+                      tooltip: _obscured ? 'Show password' : 'Hide password',
+                      icon: Icon(
+                        _obscured
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () => setState(() => _obscured = !_obscured),
+                    )
+                  : null,
+              errorText: widget.errorText,
+              errorStyle: const TextStyle(
+                color: AppColors.cautionText,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),

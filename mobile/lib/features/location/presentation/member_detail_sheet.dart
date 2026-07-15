@@ -8,12 +8,12 @@ class MemberDetail {
   const MemberDetail({
     required this.name,
     required this.isOnline,
-    required this.recordedAtUtc,
+    required this.lastSeenAtUtc,
   });
 
   final String name;
   final bool isOnline;
-  final DateTime? recordedAtUtc;
+  final DateTime? lastSeenAtUtc;
 }
 
 Future<void> showMemberDetailSheet(
@@ -77,7 +77,7 @@ class MemberDetailSheet extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              lastSeenText(member.recordedAtUtc, now: now),
+              lastSeenText(member.lastSeenAtUtc, now: now),
               style: AppTypography.bodySecondary,
             ),
           ],
@@ -95,21 +95,24 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = isOnline ? 'ONLINE' : 'OFFLINE';
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: isOnline ? AppColors.safeBg : AppColors.hairlineSoft,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: isOnline ? AppColors.safeBgBorder : AppColors.hairline,
+    return Semantics(
+      label: isOnline ? 'Online' : 'Offline',
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: isOnline ? AppColors.safeBg : AppColors.hairlineSoft,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: isOnline ? AppColors.safeBgBorder : AppColors.hairline,
+          ),
         ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        child: Text(
-          text,
-          style: AppTypography.caption.copyWith(
-            color: isOnline ? AppColors.safe : AppColors.bodySecondary,
-            letterSpacing: 0.6,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          child: Text(
+            text,
+            style: AppTypography.caption.copyWith(
+              color: isOnline ? AppColors.safe : AppColors.bodySecondary,
+              letterSpacing: 0.6,
+            ),
           ),
         ),
       ),

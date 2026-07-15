@@ -12,7 +12,8 @@ enum PermissionLevel {
 
   final String wireValue;
 
-  static PermissionLevel fromWire(String value) => PermissionLevel.values.firstWhere(
+  static PermissionLevel fromWire(String value) =>
+      PermissionLevel.values.firstWhere(
         (level) => level.wireValue == value,
         orElse: () => throw ArgumentError('Unknown permission level: $value'),
       );
@@ -20,10 +21,10 @@ enum PermissionLevel {
   /// Short human label for the permission toggle UI (Manage Permissions
   /// screen).
   String get label => switch (this) {
-        PermissionLevel.viewOnly => 'View only',
-        PermissionLevel.fullLocation => 'Full location',
-        PermissionLevel.notificationOnly => 'Notification only',
-      };
+    PermissionLevel.viewOnly => 'View only',
+    PermissionLevel.fullLocation => 'Full location',
+    PermissionLevel.notificationOnly => 'Notification only',
+  };
 }
 
 /// A family circle. [name] is only known client-side when this device
@@ -44,6 +45,7 @@ class FamilyMemberView {
   const FamilyMemberView({
     required this.memberId,
     required this.userId,
+    this.displayName,
     required this.role,
     required this.permission,
     required this.joinedAt,
@@ -51,25 +53,29 @@ class FamilyMemberView {
 
   final String memberId;
   final String userId;
+  final String? displayName;
   final Role role;
   final PermissionLevel permission;
   final DateTime joinedAt;
 
-  factory FamilyMemberView.fromJson(Map<String, dynamic> json) => FamilyMemberView(
+  factory FamilyMemberView.fromJson(Map<String, dynamic> json) =>
+      FamilyMemberView(
         memberId: json['id'] as String,
         userId: json['userId'] as String,
+        displayName: json['displayName'] as String?,
         role: Role.fromWire(json['role'] as String),
         permission: PermissionLevel.fromWire(json['permissions'] as String),
         joinedAt: DateTime.parse(json['joinedAt'] as String),
       );
 
   FamilyMemberView copyWith({PermissionLevel? permission}) => FamilyMemberView(
-        memberId: memberId,
-        userId: userId,
-        role: role,
-        permission: permission ?? this.permission,
-        joinedAt: joinedAt,
-      );
+    memberId: memberId,
+    userId: userId,
+    displayName: displayName,
+    role: role,
+    permission: permission ?? this.permission,
+    joinedAt: joinedAt,
+  );
 }
 
 /// A share-code/QR invite, as returned by `POST /families/{familyId}/invites`
@@ -91,13 +97,16 @@ class Invitation {
   final DateTime expiresAt;
   final String? inviteeLabel;
 
-  factory Invitation.fromJson(Map<String, dynamic> json, {String? inviteeLabel}) => Invitation(
-        invitationId: json['invitationId'] as String,
-        code: json['code'] as String,
-        linkToken: json['linkToken'] as String,
-        expiresAt: DateTime.parse(json['expiresAt'] as String).toLocal(),
-        inviteeLabel: inviteeLabel,
-      );
+  factory Invitation.fromJson(
+    Map<String, dynamic> json, {
+    String? inviteeLabel,
+  }) => Invitation(
+    invitationId: json['invitationId'] as String,
+    code: json['code'] as String,
+    linkToken: json['linkToken'] as String,
+    expiresAt: DateTime.parse(json['expiresAt'] as String).toLocal(),
+    inviteeLabel: inviteeLabel,
+  );
 }
 
 /// One of the caller's own active family memberships, as returned by
@@ -120,11 +129,11 @@ class MyFamily {
   final PermissionLevel permissions;
 
   factory MyFamily.fromJson(Map<String, dynamic> json) => MyFamily(
-        familyId: json['familyId'] as String,
-        familyName: json['familyName'] as String,
-        role: Role.fromWire(json['role'] as String),
-        permissions: PermissionLevel.fromWire(json['permissions'] as String),
-      );
+    familyId: json['familyId'] as String,
+    familyName: json['familyName'] as String,
+    role: Role.fromWire(json['role'] as String),
+    permissions: PermissionLevel.fromWire(json['permissions'] as String),
+  );
 }
 
 /// Result of `POST /invites/redeem` (`RedeemInviteResult`). [accepted] is a
@@ -142,8 +151,8 @@ class RedeemResult {
   final bool accepted;
 
   factory RedeemResult.fromJson(Map<String, dynamic> json) => RedeemResult(
-        familyId: json['familyId'] as String,
-        status: json['status'] as String,
-        accepted: json['status'] == 'Accepted',
-      );
+    familyId: json['familyId'] as String,
+    status: json['status'] as String,
+    accepted: json['status'] == 'Accepted',
+  );
 }

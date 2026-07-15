@@ -1184,14 +1184,35 @@
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400,&quot;height&quot;:900}}">
 class Component extends DCLogic {
   state = { hold: 0, armed: false };
+  _cancelTapGuard = false;
+  _cancelTapGuardTimer = null;
+
+  clearCancelTapGuard = () => {
+    if (this._cancelTapGuardTimer != null) {
+      clearTimeout(this._cancelTapGuardTimer);
+      this._cancelTapGuardTimer = null;
+    }
+    this._cancelTapGuard = false;
+  };
 
   startHold = () => {
     if (this.state.armed) return;
+    this.clearCancelTapGuard();
     this._t0 = performance.now();
     const loop = () => {
       const e = (performance.now() - this._t0) / 3000;
       const h = Math.min(1, e);
-      if (h >= 1) { this.setState({ hold: 1, armed: true }); return; }
+      if (h >= 1) {
+        this.setState({ hold: 1, armed: true });
+        // Swallow the release-generated click from the hold gesture so the
+        // armed state survives long enough for an intentional follow-up tap.
+        this._cancelTapGuard = true;
+        this._cancelTapGuardTimer = setTimeout(() => {
+          this._cancelTapGuard = false;
+          this._cancelTapGuardTimer = null;
+        }, 0);
+        return;
+      }
       this.setState({ hold: h });
       this._raf = requestAnimationFrame(loop);
     };
@@ -1202,11 +1223,20 @@ class Component extends DCLogic {
     if (this.state.armed) return;
     cancelAnimationFrame(this._raf);
     this.setState({ hold: 0 });
+    this.clearCancelTapGuard();
   };
 
-  resetSos = () => { cancelAnimationFrame(this._raf); this.setState({ hold: 0, armed: false }); };
+  resetSos = () => {
+    if (this._cancelTapGuard) return;
+    cancelAnimationFrame(this._raf);
+    this.clearCancelTapGuard();
+    this.setState({ hold: 0, armed: false });
+  };
 
-  componentWillUnmount() { cancelAnimationFrame(this._raf); }
+  componentWillUnmount() {
+    cancelAnimationFrame(this._raf);
+    this.clearCancelTapGuard();
+  }
 
   renderVals() {
     const C = 2 * Math.PI * 46; // r=46

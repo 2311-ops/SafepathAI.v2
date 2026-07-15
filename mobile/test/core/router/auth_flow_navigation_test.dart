@@ -36,6 +36,28 @@ Future<void> _fillRegisterForm(WidgetTester tester) async {
   await tester.enterText(fields.at(2), 'correct-horse-1');
 }
 
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await tester.ensureVisible(finder);
+  await tester.tap(finder);
+}
+
+Future<void> _continueFromRegister(WidgetTester tester) async {
+  await _tapVisible(tester, find.widgetWithText(ElevatedButton, 'Continue'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _submitRoleSelection(WidgetTester tester) async {
+  await _tapVisible(
+    tester,
+    find.widgetWithText(ElevatedButton, 'Create your circle'),
+  );
+}
+
+Future<void> _goToLoginFromWelcome(WidgetTester tester) async {
+  await _tapVisible(tester, find.text('I already have an account'));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUpAll(() {
     GoogleFonts.config.allowRuntimeFetching = false;
@@ -84,8 +106,7 @@ void main() {
       await tester.pumpWidget(buildApp());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('I already have an account'));
-      await tester.pumpAndSettle();
+      await _goToLoginFromWelcome(tester);
 
       expect(find.text('Welcome back.'), findsOneWidget);
     });
@@ -104,17 +125,14 @@ void main() {
         await tester.pumpAndSettle();
 
         await _fillRegisterForm(tester);
-        await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
-        await tester.pumpAndSettle();
+        await _continueFromRegister(tester);
 
         // Must be on Role select, not bounced back to Register.
         expect(find.text('Who are you in this circle?'), findsOneWidget);
         expect(find.text('Create account'), findsNothing);
 
         await tester.tap(find.text('Guardian / Parent'));
-        await tester.tap(
-          find.widgetWithText(ElevatedButton, 'Create your circle'),
-        );
+        await _submitRoleSelection(tester);
         await tester.pumpAndSettle();
 
         // register() received the data entered on the Register screen.
@@ -143,8 +161,7 @@ void main() {
         await tester.tap(find.text('Create your circle'));
         await tester.pumpAndSettle();
         await _fillRegisterForm(tester);
-        await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
-        await tester.pumpAndSettle();
+        await _continueFromRegister(tester);
 
         expect(find.text('Who are you in this circle?'), findsOneWidget);
       },
@@ -160,12 +177,9 @@ void main() {
         await tester.tap(find.text('Create your circle'));
         await tester.pumpAndSettle();
         await _fillRegisterForm(tester);
-        await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
-        await tester.pumpAndSettle();
+        await _continueFromRegister(tester);
 
-        await tester.tap(
-          find.widgetWithText(ElevatedButton, 'Create your circle'),
-        );
+        await _submitRoleSelection(tester);
         await tester.pumpAndSettle();
 
         expect(find.text('Who are you in this circle?'), findsOneWidget);
@@ -184,14 +198,13 @@ void main() {
         await tester.tap(find.text('Create your circle'));
         await tester.pumpAndSettle();
         await _fillRegisterForm(tester);
-        await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
-        await tester.pumpAndSettle();
+        await _continueFromRegister(tester);
 
         final confirmButton = find.widgetWithText(
           ElevatedButton,
           'Create your circle',
         );
-        await tester.tap(confirmButton);
+        await _tapVisible(tester, confirmButton);
         await tester.pump(); // start the request, do not let it resolve yet
 
         expect(find.text('Creating your circle...'), findsOneWidget);
@@ -215,12 +228,9 @@ void main() {
       await tester.tap(find.text('Create your circle'));
       await tester.pumpAndSettle();
       await _fillRegisterForm(tester);
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
-      await tester.pumpAndSettle();
+      await _continueFromRegister(tester);
       await tester.tap(find.text('Guardian / Parent'));
-      await tester.tap(
-        find.widgetWithText(ElevatedButton, 'Create your circle'),
-      );
+      await _submitRoleSelection(tester);
       await tester.pumpAndSettle();
 
       await tester.tap(find.widgetWithText(ElevatedButton, 'Back to login'));
@@ -240,12 +250,9 @@ void main() {
         await tester.tap(find.text('Create your circle'));
         await tester.pumpAndSettle();
         await _fillRegisterForm(tester);
-        await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
-        await tester.pumpAndSettle();
+        await _continueFromRegister(tester);
         await tester.tap(find.text('Guardian / Parent'));
-        await tester.tap(
-          find.widgetWithText(ElevatedButton, 'Create your circle'),
-        );
+        await _submitRoleSelection(tester);
         await tester.pumpAndSettle();
 
         expect(find.text('Check your email'), findsOneWidget);
@@ -260,25 +267,23 @@ void main() {
   });
 
   group('Login -> Home', () {
-    testWidgets(
-      'successful login navigates to Home (no-circle empty state)',
-      (tester) async {
-        await tester.pumpWidget(buildApp());
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('I already have an account'));
-        await tester.pumpAndSettle();
+    testWidgets('successful login navigates to Home (no-circle empty state)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildApp());
+      await tester.pumpAndSettle();
+      await _goToLoginFromWelcome(tester);
 
-        final fields = find.byType(TextFormField);
-        await tester.enterText(fields.at(0), 'ada@family.com');
-        await tester.enterText(fields.at(1), 'correct-horse-1');
-        await tester.tap(find.widgetWithText(ElevatedButton, 'Log in'));
-        await tester.pumpAndSettle();
+      final fields = find.byType(TextFormField);
+      await tester.enterText(fields.at(0), 'ada@family.com');
+      await tester.enterText(fields.at(1), 'correct-horse-1');
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Log in'));
+      await tester.pumpAndSettle();
 
-        expect(find.text('No circle yet'), findsOneWidget);
-        expect(find.text('Create a circle'), findsOneWidget);
-        expect(fakeApi.lastLoginEmail, 'ada@family.com');
-      },
-    );
+      expect(find.text('No circle yet'), findsOneWidget);
+      expect(find.text('Create a circle'), findsOneWidget);
+      expect(fakeApi.lastLoginEmail, 'ada@family.com');
+    });
 
     testWidgets('login failure shows an inline error and stays on Login', (
       tester,
@@ -287,8 +292,7 @@ void main() {
 
       await tester.pumpWidget(buildApp());
       await tester.pumpAndSettle();
-      await tester.tap(find.text('I already have an account'));
-      await tester.pumpAndSettle();
+      await _goToLoginFromWelcome(tester);
 
       final fields = find.byType(TextFormField);
       await tester.enterText(fields.at(0), 'ada@family.com');

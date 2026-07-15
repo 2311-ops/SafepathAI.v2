@@ -20,7 +20,7 @@ guarantee; none of it may ever slow it down.
 
 ### Constraints
 
-- **Tech stack**: Flutter/Dart (mobile, Google Maps SDK, FCM), ASP.NET Core Web API + SignalR
+- **Tech stack**: Flutter/Dart (mobile, OpenStreetMap via flutter_map, FCM), ASP.NET Core Web API + SignalR
   (backend, Clean Architecture, Repository Pattern, DI, SOLID), Supabase (managed PostgreSQL) via
   Npgsql/EF Core, Python (Pandas/NumPy/Scikit-learn, Isolation Forest, XGBoost) for AI, Azure for
   backend/AI hosting — fixed by the brief, not open for re-litigation.
@@ -64,7 +64,7 @@ guarantee; none of it may ever slow it down.
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| `google_maps_flutter` | **2.17.x** (+ `google_maps_flutter_android`, `google_maps_flutter_ios`, federated platform packages, kept in lockstep) | Live map, geofence visualization, history/route rendering | This is the brief's specified map SDK; current federated-plugin architecture means you pull the umbrella package and the platform packages resolve automatically. Requires a Google Cloud Maps SDK API key per platform. |
+| `flutter_map` | **8.x** (+ `latlong2` 0.9.x for coordinates) | Live map, geofence visualization, history/route rendering | OpenStreetMap-based (project direction changed 2026-07-13 from Google Maps SDK). Tile-based renderer, no API key/billing account required; requires a tile-hosting provider for production traffic (OSM's own tile server is dev/light-use only per its usage policy) and on-map OSM attribution. See `.planning/phases/02-real-time-location-history-privacy/02-OSM-MIGRATION-IMPACT.md` for the retrofit plan — Phase 2 originally shipped on google_maps_flutter and needs a follow-up migration plan. |
 | `geolocator` | **14.0.x** | Foreground location, one-shot/position-stream API, permission handling wrapper | Use for **all in-app / foreground location reads** (live map "my location," ETA calc inputs, ETA-mode "Walk Me Home"). It is intentionally a thin, honest wrapper around `CLLocationManager`/`FusedLocationProviderClient` with **no** built-in battery intelligence — that's fine for foreground use, it's the background case where you need more. |
 | `flutter_foreground_task` | **9.2.x** | Android foreground service + iOS background execution for **continuous** background tracking | Pair with `geolocator` to keep a location stream alive while the app is backgrounded/killed-and-relaunched on Android (mandatory since Android 8+ background execution limits) and to keep a background task alive on iOS within Apple's background modes. This is the standard, MIT/free-licensed pattern used in place of `flutter_background_geolocation`'s $500/app-per-year commercial license — appropriate for a graduation project budget. Requires Flutter ≥3.22, Android ≥5.0, iOS ≥12. |
 | `native_geofence` | current stable (battery-efficient wrapper) | **Geofencing** (safe zones: Home/School/Work) | Do **not** implement geofencing via location polling. This package binds directly to Android's `GeofencingClient` and iOS's `CLCircularRegion`/region-monitoring — the OS handles the enter/exit detection in a battery-optimized way (Android: geofence transitions delivered every ~couple of minutes regardless of app state; iOS: region monitoring wakes the app on boundary cross). See **Pitfall flag** below — as of the April 2026 Google Play policy update, using a *foreground service* to “poll and check geofence bounds yourself” is explicitly **no longer an approved use case** on Android; you must use the native Geofence API path this package provides. Requires iOS 14+/Android API 23+, plus background location permission on both platforms. |
@@ -143,7 +143,7 @@ guarantee; none of it may ever slow it down.
 | scikit-learn `1.9.x` | Python `>=3.11` | Compatible with the Python 3.12 chosen for XGBoost compatibility above. |
 | `flutter_foreground_task 9.2.x` | Flutter `>=3.22.0`, Dart `>=3.4.0`, Android `>=5.0 (API 21)`, iOS `>=12.0` | Comfortably covered by the recommended Flutter 3.44 SDK. |
 | `native_geofence` | iOS `>=14`, Android API `>=23` | Set these as your app's minimum OS targets; both are reasonable floors for a 2026 app. |
-| `google_maps_flutter` federated packages | Must upgrade `google_maps_flutter`, `_android`, `_ios`, `_platform_interface` together | Flutter's federated plugin pattern — pinning only the umbrella package and letting the platform packages float can cause API-surface mismatches; upgrade as a set. |
+| `flutter_map` (tile-based OSM) | `flutter_map_marker_cluster` for marker clustering at scale | Add clustering only once family/guardian overview maps show enough simultaneous markers to need it — not needed for MVP scale. |
 
 ## Sources
 

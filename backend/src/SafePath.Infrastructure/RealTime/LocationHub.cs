@@ -39,11 +39,12 @@ public class LocationHub : Hub<ILocationClient>
         var groupName = FamilyGroupName(familyId);
         await Groups.AddToGroupAsync(Context.ConnectionId, groupName, Context.ConnectionAborted);
 
-        var wasOffline = _presence.AddConnection(userId, Context.ConnectionId);
+        var changedAtUtc = DateTime.UtcNow;
+        var wasOffline = _presence.AddConnection(userId, Context.ConnectionId, changedAtUtc);
         if (wasOffline)
         {
             await Clients.OthersInGroup(groupName)
-                .PresenceChanged(new PresenceChangeDto(userId, IsOnline: true));
+                .PresenceChanged(new PresenceChangeDto(userId, IsOnline: true, changedAtUtc));
         }
 
         await base.OnConnectedAsync();
@@ -53,11 +54,12 @@ public class LocationHub : Hub<ILocationClient>
     {
         if (Guid.TryParse(Context.UserIdentifier, out var userId))
         {
-            var stillOnline = _presence.RemoveConnection(userId, Context.ConnectionId);
+            var changedAtUtc = DateTime.UtcNow;
+            var stillOnline = _presence.RemoveConnection(userId, Context.ConnectionId, changedAtUtc);
             if (!stillOnline && TryGetFamilyIdFromQuery(out var familyId))
             {
                 await Clients.OthersInGroup(FamilyGroupName(familyId))
-                    .PresenceChanged(new PresenceChangeDto(userId, IsOnline: false));
+                    .PresenceChanged(new PresenceChangeDto(userId, IsOnline: false, changedAtUtc));
             }
         }
 

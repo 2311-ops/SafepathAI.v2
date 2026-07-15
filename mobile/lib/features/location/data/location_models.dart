@@ -8,6 +8,7 @@ class LiveLocation {
     this.displayName,
     this.batteryPercent,
     this.isOnline = true,
+    this.lastSeenAtUtc,
     this.profileImageUrl,
     this.profileUpdatedAt,
   });
@@ -20,11 +21,13 @@ class LiveLocation {
   final int? batteryPercent;
   final DateTime recordedAtUtc;
   final bool isOnline;
+  final DateTime? lastSeenAtUtc;
   final String? profileImageUrl;
   final DateTime? profileUpdatedAt;
 
   factory LiveLocation.fromJson(Map<String, dynamic> json) {
     final profileUpdatedAtValue = json['profileUpdatedAt'] as String?;
+    final lastSeenAtValue = json['lastSeenAtUtc'] as String?;
     return LiveLocation(
       userId: json['userId'] as String,
       displayName: json['displayName'] as String?,
@@ -34,6 +37,9 @@ class LiveLocation {
       batteryPercent: (json['batteryPercent'] as num?)?.toInt(),
       recordedAtUtc: DateTime.parse(json['recordedAtUtc'] as String).toUtc(),
       isOnline: json['isOnline'] as bool? ?? true,
+      lastSeenAtUtc: lastSeenAtValue == null
+          ? null
+          : DateTime.tryParse(lastSeenAtValue)?.toUtc(),
       profileImageUrl: json['profileImageUrl'] as String?,
       profileUpdatedAt: profileUpdatedAtValue == null
           ? null
@@ -49,6 +55,7 @@ class LiveLocation {
     int? batteryPercent,
     DateTime? recordedAtUtc,
     bool? isOnline,
+    DateTime? lastSeenAtUtc,
     String? profileImageUrl,
     DateTime? profileUpdatedAt,
     // Standard nullable-merge (?? this.x) can't express "clear this field to
@@ -66,6 +73,7 @@ class LiveLocation {
       batteryPercent: batteryPercent ?? this.batteryPercent,
       recordedAtUtc: recordedAtUtc ?? this.recordedAtUtc,
       isOnline: isOnline ?? this.isOnline,
+      lastSeenAtUtc: lastSeenAtUtc ?? this.lastSeenAtUtc,
       profileImageUrl: clearProfileImage
           ? null
           : (profileImageUrl ?? this.profileImageUrl),
@@ -212,15 +220,24 @@ Duration _parseTimeAway(Object? value) {
 }
 
 class PresenceChange {
-  const PresenceChange({required this.userId, required this.isOnline});
+  PresenceChange({
+    required this.userId,
+    required this.isOnline,
+    DateTime? changedAtUtc,
+  }) : changedAtUtc = (changedAtUtc ?? DateTime.now().toUtc()).toUtc();
 
   final String userId;
   final bool isOnline;
+  final DateTime changedAtUtc;
 
   factory PresenceChange.fromJson(Map<String, dynamic> json) {
+    final changedAtValue = json['changedAtUtc'] as String?;
     return PresenceChange(
       userId: json['userId'] as String,
       isOnline: json['isOnline'] as bool,
+      changedAtUtc: changedAtValue == null
+          ? null
+          : DateTime.tryParse(changedAtValue)?.toUtc(),
     );
   }
 }

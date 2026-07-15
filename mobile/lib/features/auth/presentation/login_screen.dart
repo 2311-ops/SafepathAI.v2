@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../shared_widgets/google_sign_in_button.dart';
+import '../../../shared_widgets/onboarding_scaffold.dart';
 import '../../../shared_widgets/primary_button.dart';
-import '../../../shared_widgets/safepath_logo.dart';
 import '../../../shared_widgets/safepath_text_field.dart';
 import '../application/auth_controller.dart';
 import '../application/auth_state.dart';
@@ -70,78 +68,58 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Scaffold(
       appBar: AppBar(),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.lg,
-          ),
-          child: AutofillGroup(
-            child: Form(
-              key: _formKey,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SafePathLogo(size: 44),
-                  const SizedBox(height: AppSpacing.md),
-                  Text('Welcome back.', style: AppTypography.heading),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Good to see you again.',
-                    style: AppTypography.bodySecondary,
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  SafePathTextField(
-                    label: 'Email',
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    autofillHints: const [AutofillHints.email],
-                    textInputAction: TextInputAction.next,
-                    validator: _validateEmail,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  SafePathTextField(
-                    label: 'Password',
-                    controller: _passwordController,
-                    obscureText: true,
-                    errorText: errorMessage,
-                    autofillHints: const [AutofillHints.password],
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) {
-                      if (!isLoading) _onLogin();
-                    },
-                    validator: _validatePassword,
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  PrimaryButton(
-                    label: isLoading ? 'Logging in...' : 'Log in',
-                    onPressed: isLoading ? null : _onLogin,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  const GoogleSignInButton(),
-                  const SizedBox(height: AppSpacing.md),
-                  Center(
-                    child: TextButton(
-                      onPressed: () => context.push('/forgot-password'),
-                      child: Text(
-                        'Forgot password?',
-                        style: AppTypography.bodySecondary,
-                      ),
-                    ),
-                  ),
-                  Center(
-                    child: TextButton(
-                      onPressed: () => context.push('/register'),
-                      child: Text(
-                        "Don't have an account? Create one",
-                        style: AppTypography.bodySecondary,
-                      ),
-                    ),
-                  ),
-                ],
+      body: AutofillGroup(
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: OnboardingScaffold(
+            title: 'Welcome back.',
+            subtitle: 'Log in to continue protecting your family circle.',
+            children: [
+              SafePathTextField(
+                label: 'Email',
+                controller: _emailController,
+                prefixIcon: Icons.mail_outline,
+                keyboardType: TextInputType.emailAddress,
+                autofillHints: const [AutofillHints.email],
+                textInputAction: TextInputAction.next,
+                validator: _validateEmail,
               ),
-            ),
+              const SizedBox(height: 16),
+              SafePathTextField(
+                label: 'Password',
+                controller: _passwordController,
+                prefixIcon: Icons.lock_outline,
+                obscureText: true,
+                errorText: errorMessage,
+                autofillHints: const [AutofillHints.password],
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) {
+                  if (!isLoading) _onLogin();
+                },
+                validator: _validatePassword,
+              ),
+              const SizedBox(height: 24),
+              PrimaryButton(
+                label: isLoading ? 'Logging in...' : 'Log in',
+                onPressed: isLoading ? null : _onLogin,
+              ),
+              const SizedBox(height: 12),
+              const GoogleSignInButton(),
+              const SizedBox(height: 12),
+              Center(
+                child: TextButton(
+                  onPressed: () => context.push('/forgot-password'),
+                  child: const Text('Forgot password?'),
+                ),
+              ),
+              Center(
+                child: TextButton(
+                  onPressed: () => context.push('/register'),
+                  child: const Text("Don't have an account? Create one"),
+                ),
+              ),
+            ],
           ),
         ),
       ),

@@ -241,4 +241,6 @@ internal sealed class RecordingLocationBroadcastService : ILocationBroadcastServ
 internal sealed class FakePresenceQuery : IPresenceQuery
 {
     public bool IsOnline(Guid userId) => false;
+
+    public DateTime? LastSeenAtUtc(Guid userId) => null;
 }

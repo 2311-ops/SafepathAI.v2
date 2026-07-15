@@ -21,44 +21,47 @@ void main() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
-  testWidgets('Guardian login lands on Home with a reachable create-circle CTA', (
-    tester,
-  ) async {
-    final authApi = FakeAuthApi(initialSession: _fakeSession('guardian-user'));
-    final profileApi = FakeProfileApi(
-      userId: 'guardian-user',
-      role: Role.guardian,
-    );
-    final familyApi = FakeFamilyApi();
-    addTearDown(authApi.dispose);
+  testWidgets(
+    'Guardian login lands on Home with a reachable create-circle CTA',
+    (tester) async {
+      final authApi = FakeAuthApi(
+        initialSession: _fakeSession('guardian-user'),
+      );
+      final profileApi = FakeProfileApi(
+        userId: 'guardian-user',
+        role: Role.guardian,
+      );
+      final familyApi = FakeFamilyApi();
+      addTearDown(authApi.dispose);
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          authApiProvider.overrideWithValue(authApi),
-          familyApiProvider.overrideWithValue(familyApi),
-          profileApiProvider.overrideWithValue(profileApi),
-          locationPermissionServiceProvider.overrideWithValue(
-            FakeLocationPermissionService(),
-          ),
-        ],
-        child: const SafePathApp(showStartupSplash: false),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authApiProvider.overrideWithValue(authApi),
+            familyApiProvider.overrideWithValue(familyApi),
+            profileApiProvider.overrideWithValue(profileApi),
+            locationPermissionServiceProvider.overrideWithValue(
+              FakeLocationPermissionService(),
+            ),
+          ],
+          child: const SafePathApp(showStartupSplash: false),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    // A family-less Guardian now lands on MainShell's Map tab, which surfaces
-    // the role-aware "Create a circle" entry point (previously orphaned in the
-    // unrouted landing_stub_screen).
-    expect(find.text('No circle yet'), findsOneWidget);
-    expect(find.text('Create a circle'), findsOneWidget);
-    expect(find.text('Enter invite code'), findsNothing);
+      // A family-less Guardian now lands on MainShell's Map tab, which surfaces
+      // the role-aware "Create a circle" entry point (previously orphaned in the
+      // unrouted landing_stub_screen).
+      expect(find.text('No circle yet'), findsOneWidget);
+      expect(find.text('Create a circle'), findsOneWidget);
+      expect(find.text('Enter invite code'), findsNothing);
 
-    // End-to-end through the real router: the CTA opens CreateCircleScreen.
-    await tester.tap(find.byKey(const ValueKey('no-circle-create-cta')));
-    await tester.pumpAndSettle();
-    expect(find.text('Name your circle'), findsOneWidget);
-  });
+      // End-to-end through the real router: the CTA opens CreateCircleScreen.
+      await tester.tap(find.byKey(const ValueKey('no-circle-create-cta')));
+      await tester.pumpAndSettle();
+      expect(find.text('Name your circle'), findsOneWidget);
+    },
+  );
 
   testWidgets('Member login lands on Home with a reachable enter-code CTA', (
     tester,
@@ -124,7 +127,9 @@ void main() {
       expect(find.text('No circle yet'), findsNothing);
 
       await tester.tap(find.text('Caregiver'));
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
+      final continueButton = find.widgetWithText(ElevatedButton, 'Continue');
+      await tester.ensureVisible(continueButton);
+      await tester.tap(continueButton);
       await tester.pumpAndSettle();
 
       expect(profileApi.updateRoleCallCount, 1);
@@ -171,7 +176,9 @@ void main() {
       expect(find.text('No circle yet'), findsNothing);
 
       await tester.tap(find.text('Guardian / Parent'));
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
+      final continueButton = find.widgetWithText(ElevatedButton, 'Continue');
+      await tester.ensureVisible(continueButton);
+      await tester.tap(continueButton);
       await tester.pumpAndSettle();
 
       expect(profileApi.lastUpdatedRole, Role.guardian);

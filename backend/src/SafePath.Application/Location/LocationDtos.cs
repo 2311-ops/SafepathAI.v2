@@ -8,7 +8,7 @@ public record LocationUpdateDto(
     int? BatteryPercent,
     DateTime RecordedAtUtc);
 
-public record PresenceChangeDto(Guid UserId, bool IsOnline);
+public record PresenceChangeDto(Guid UserId, bool IsOnline, DateTime ChangedAtUtc);
 
 public record LowBatteryAlertDto(Guid UserId, string? DisplayName, int BatteryPercent);
 
@@ -23,6 +23,7 @@ public record MemberLiveLocationDto(
     int? BatteryPercent,
     DateTime? RecordedAtUtc,
     bool IsOnline,
+    DateTime? LastSeenAtUtc,
     string? ProfileImageUrl,
     DateTime? ProfileUpdatedAt);
 

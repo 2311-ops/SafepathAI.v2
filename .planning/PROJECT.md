@@ -74,7 +74,7 @@ guarantee; none of it may ever slow it down.
 
 ## Constraints
 
-- **Tech stack**: Flutter/Dart (mobile, Google Maps SDK, FCM), ASP.NET Core Web API + SignalR
+- **Tech stack**: Flutter/Dart (mobile, OpenStreetMap via flutter_map, FCM), ASP.NET Core Web API + SignalR
   (backend, Clean Architecture, Repository Pattern, DI, SOLID), Supabase (managed PostgreSQL) via
   Npgsql/EF Core, Python (Pandas/NumPy/Scikit-learn, Isolation Forest, XGBoost) for AI, Azure for
   backend/AI hosting — fixed by the brief, not open for re-litigation.

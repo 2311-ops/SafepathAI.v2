@@ -181,17 +181,51 @@ void main() {
         ),
       );
       hubClient.emitPresence(
-        const PresenceChange(userId: 'member-2', isOnline: false),
+        PresenceChange(
+          userId: 'member-2',
+          isOnline: false,
+          changedAtUtc: DateTime.utc(2026, 7, 12, 10, 4),
+        ),
       );
       await pumpEventQueue();
 
       final state = container.read(locationControllerProvider).value!;
       expect(state.memberPresence['member-2']?.isOnline, isFalse);
+      expect(
+        state.memberPresence['member-2']?.lastSeenAtUtc,
+        DateTime.utc(2026, 7, 12, 10, 4),
+      );
       expect(state.members['member-2']?.recordedAtUtc, recordedAt);
     },
   );
 
-  test('last seen text tracks the newest location ping', () async {
+  test('login connection refreshes self last seen immediately', () async {
+    final oldPing = DateTime.utc(2026, 7, 12, 9);
+    locationApi.liveLocationsToReturn = [
+      LiveLocation(
+        userId: 'self-user',
+        displayName: 'Me',
+        lat: 30.0,
+        lng: 31.0,
+        accuracyMeters: 12,
+        recordedAtUtc: oldPing,
+      ),
+    ];
+
+    final beforeConnect = DateTime.now().toUtc();
+    container.read(locationControllerProvider);
+    await pumpEventQueue();
+
+    final selfLastSeen = container
+        .read(locationControllerProvider)
+        .value!
+        .memberLastSeenAt('self-user');
+    expect(hubClient.connectCallCount, 1);
+    expect(selfLastSeen, isNotNull);
+    expect(selfLastSeen!.isBefore(beforeConnect), isFalse);
+  });
+
+  test('last seen text tracks location pings and login presence', () async {
     container.read(locationControllerProvider);
     await pumpEventQueue();
 
@@ -224,10 +258,33 @@ void main() {
     expect(location.recordedAtUtc, DateTime.utc(2026, 7, 12, 10, 10));
     expect(
       lastSeenText(
-        location.recordedAtUtc,
+        container
+            .read(locationControllerProvider)
+            .value!
+            .memberLastSeenAt('member-2'),
         now: DateTime.utc(2026, 7, 12, 10, 14),
       ),
       'Last seen 4 min ago',
+    );
+
+    hubClient.emitPresence(
+      PresenceChange(
+        userId: 'member-2',
+        isOnline: true,
+        changedAtUtc: DateTime.utc(2026, 7, 12, 10, 13),
+      ),
+    );
+    await pumpEventQueue();
+
+    expect(
+      lastSeenText(
+        container
+            .read(locationControllerProvider)
+            .value!
+            .memberLastSeenAt('member-2'),
+        now: DateTime.utc(2026, 7, 12, 10, 14),
+      ),
+      'Last seen 1 min ago',
     );
   });
 
@@ -243,7 +300,7 @@ void main() {
               member: MemberDetail(
                 name: 'Maya',
                 isOnline: false,
-                recordedAtUtc: DateTime.utc(2026, 7, 12, 10),
+                lastSeenAtUtc: DateTime.utc(2026, 7, 12, 10),
               ),
               now: DateTime.utc(2026, 7, 12, 10, 8),
             ),

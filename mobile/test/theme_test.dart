@@ -81,13 +81,15 @@ void main() {
   ) async {
     final theme = buildSafePathTheme();
 
-    expect(theme.colorScheme.primary, const Color(0xFF15807C));
-    expect(theme.scaffoldBackgroundColor, const Color(0xFFECF0EF));
+    expect(theme.colorScheme.primary, const Color(0xFF1F3B57));
+    expect(theme.colorScheme.secondary, const Color(0xFF2E7D7B));
+    expect(theme.scaffoldBackgroundColor, const Color(0xFFF4F8FA));
 
     // SOS red must be reachable via AppColors, reserved for emergency states.
     expect(AppColors.sosRed, const Color(0xFFDE3B40));
-    expect(AppColors.primaryTeal, const Color(0xFF15807C));
-    expect(AppColors.appBg, const Color(0xFFECF0EF));
+    expect(AppColors.primaryNavy, const Color(0xFF1F3B57));
+    expect(AppColors.primaryTeal, const Color(0xFF2E7D7B));
+    expect(AppColors.appBg, const Color(0xFFF4F8FA));
   });
 
   testWidgets('buildSafePathTheme uses Manrope for headings and JetBrains Mono '

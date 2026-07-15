@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/deep_link/deep_link_service.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
+import '../../../shared_widgets/onboarding_scaffold.dart';
 import '../../../shared_widgets/primary_button.dart';
 import '../../../shared_widgets/safepath_text_field.dart';
 import '../application/auth_controller.dart';
@@ -67,9 +65,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       });
     } finally {
       if (mounted) {
-        setState(() {
-          _isSending = false;
-        });
+        setState(() => _isSending = false);
       }
     }
   }
@@ -80,81 +76,46 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     return Scaffold(
       appBar: AppBar(),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.lg,
-          ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Reset your password.', style: AppTypography.heading),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  "We'll email you a link to get back in.",
-                  style: AppTypography.bodySecondary,
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                SafePathTextField(
-                  label: 'Email',
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  autofillHints: const [AutofillHints.email],
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _sendResetEmail(),
-                  validator: _validateEmail,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                if (resetLinkExpired) ...[
-                  const _AmberMessageBanner(
-                    message: 'This link has expired — request a new one.',
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                ],
-                if (_statusMessage != null) ...[
-                  Text(_statusMessage!, style: AppTypography.bodySecondary),
-                  const SizedBox(height: AppSpacing.md),
-                ],
-                if (_errorMessage != null) ...[
-                  _AmberMessageBanner(message: _errorMessage!),
-                  const SizedBox(height: AppSpacing.md),
-                ],
-                PrimaryButton(
-                  label: _isSending ? 'Sending link...' : 'Send reset link',
-                  onPressed: _isSending ? null : _sendResetEmail,
-                ),
-              ],
+      body: Form(
+        key: _formKey,
+        child: OnboardingScaffold(
+          title: 'Reset your password.',
+          subtitle: "We'll email you a secure link to get back in.",
+          children: [
+            SafePathTextField(
+              label: 'Email',
+              controller: _emailController,
+              prefixIcon: Icons.mail_outline,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => _sendResetEmail(),
+              validator: _validateEmail,
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AmberMessageBanner extends StatelessWidget {
-  const _AmberMessageBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.cautionBg,
-        border: Border.all(color: AppColors.cautionBorder),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        message,
-        style: const TextStyle(
-          color: AppColors.cautionText,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
+            const SizedBox(height: 20),
+            if (resetLinkExpired) ...[
+              const AuthMessageBanner(
+                message:
+                    'This link has expired. Request a new one to continue.',
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (_statusMessage != null) ...[
+              AuthMessageBanner(
+                message: _statusMessage!,
+                kind: AuthMessageKind.success,
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (_errorMessage != null) ...[
+              AuthMessageBanner(message: _errorMessage!),
+              const SizedBox(height: 16),
+            ],
+            PrimaryButton(
+              label: _isSending ? 'Sending link...' : 'Send reset link',
+              onPressed: _isSending ? null : _sendResetEmail,
+            ),
+          ],
         ),
       ),
     );

@@ -163,6 +163,8 @@ class HistoryTimelineScreen extends ConsumerWidget {
 
   static String _memberName(FamilyMemberView? member) {
     if (member == null) return 'your family member';
+    final displayName = member.displayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) return displayName;
     return member.role.wireValue;
   }
 
@@ -218,10 +220,39 @@ class _HistoryHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafePathCard(
+      radius: 20,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('History', style: AppTypography.heading),
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryTintBg,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.route_outlined,
+                  color: AppColors.primaryTeal,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Activity history', style: AppTypography.title),
+                    Text(
+                      'Review trips, stops, and distance by family member.',
+                      style: AppTypography.bodySecondary,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: AppSpacing.md),
           DropdownButtonFormField<String>(
             initialValue: selectedUserId,
@@ -230,7 +261,7 @@ class _HistoryHeader extends StatelessWidget {
               for (final member in members)
                 DropdownMenuItem(
                   value: member.userId,
-                  child: Text(member.role.wireValue),
+                  child: Text(_memberName(member)),
                 ),
             ],
             onChanged: (value) {
@@ -238,33 +269,56 @@ class _HistoryHeader extends StatelessWidget {
             },
           ),
           const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              IconButton(
-                tooltip: 'Previous day',
-                onPressed: onPreviousDay,
-                icon: const Icon(Icons.chevron_left),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.navyTintBg,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.hairline),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xs,
+                vertical: AppSpacing.xs,
               ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    _dateLabel(selectedDate),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.caption,
+              child: Row(
+                children: [
+                  IconButton.filledTonal(
+                    tooltip: 'Previous day',
+                    onPressed: onPreviousDay,
+                    icon: const Icon(Icons.chevron_left),
                   ),
-                ),
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        _dateLabel(selectedDate),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.ink,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ),
+                  ),
+                  IconButton.filledTonal(
+                    tooltip: 'Next day',
+                    onPressed: onNextDay,
+                    icon: const Icon(Icons.chevron_right),
+                  ),
+                ],
               ),
-              IconButton(
-                tooltip: 'Next day',
-                onPressed: onNextDay,
-                icon: const Icon(Icons.chevron_right),
-              ),
-            ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  static String _memberName(FamilyMemberView member) {
+    final displayName = member.displayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) return displayName;
+    return member.role.wireValue;
   }
 
   static String _dateLabel(DateTime date) {

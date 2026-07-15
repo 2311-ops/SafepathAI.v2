@@ -62,6 +62,7 @@ public class GetLiveLocationsQueryHandler : ICommandHandler<GetLiveLocationsQuer
             var profileImageUrl = canViewLocation && _profileImageUrlFactory is not null
                 ? await _profileImageUrlFactory.SignAsync(member.ProfileImagePath, cancellationToken)
                 : null;
+            var presenceLastSeenAtUtc = _presence.LastSeenAtUtc(member.UserId);
             var isRecent = canViewLocation && latestPing is not null && now - latestPing.RecordedAtUtc <= PingFreshnessWindow;
             results.Add(new MemberLiveLocationDto(
                 member.UserId,
@@ -72,6 +73,7 @@ public class GetLiveLocationsQueryHandler : ICommandHandler<GetLiveLocationsQuer
                 canViewLocation ? latestPing?.BatteryPercent : null,
                 canViewLocation ? latestPing?.RecordedAtUtc : null,
                 _presence.IsOnline(member.UserId) || isRecent,
+                presenceLastSeenAtUtc ?? (canViewLocation ? latestPing?.RecordedAtUtc : null),
                 profileImageUrl,
                 canViewLocation ? member.ProfileUpdatedAt : null));
         }

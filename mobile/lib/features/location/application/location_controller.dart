@@ -14,9 +14,10 @@ import '../data/location_hub_client.dart';
 import '../data/location_models.dart';
 
 class MemberPresence {
-  const MemberPresence({required this.isOnline});
+  const MemberPresence({required this.isOnline, this.lastSeenAtUtc});
 
   final bool isOnline;
+  final DateTime? lastSeenAtUtc;
 }
 
 class LocationState {
@@ -60,6 +61,11 @@ class LocationState {
 
   bool isMemberOnline(String userId) =>
       memberPresence[userId]?.isOnline ?? members[userId]?.isOnline ?? false;
+
+  DateTime? memberLastSeenAt(String userId) =>
+      memberPresence[userId]?.lastSeenAtUtc ??
+      members[userId]?.lastSeenAtUtc ??
+      members[userId]?.recordedAtUtc;
 }
 
 final positionStreamProvider = Provider<Stream<Position>>((ref) {
@@ -167,7 +173,10 @@ class LocationController extends AsyncNotifier<LocationState> {
       };
       final initialPresence = {
         for (final location in initialLocations)
-          location.userId: MemberPresence(isOnline: location.isOnline),
+          location.userId: MemberPresence(
+            isOnline: location.isOnline,
+            lastSeenAtUtc: location.lastSeenAtUtc ?? location.recordedAtUtc,
+          ),
       };
       final selfPosition = currentUserId == null
           ? null
@@ -194,6 +203,15 @@ class LocationController extends AsyncNotifier<LocationState> {
           }
         }
         return;
+      }
+      if (currentUserId != null) {
+        _applyPresence(
+          PresenceChange(
+            userId: currentUserId,
+            isOnline: true,
+            changedAtUtc: DateTime.now().toUtc(),
+          ),
+        );
       }
 
       final locationSubscription = hubClient.locationUpdates.listen(
@@ -358,13 +376,15 @@ class LocationController extends AsyncNotifier<LocationState> {
   void _applyLocation(LiveLocation location) {
     final currentUserId = ref.read(authApiProvider).currentSession?.user.id;
     final existing = _current.members[location.userId];
+    final isOnline =
+        location.isOnline ||
+        (_current.memberPresence[location.userId]?.isOnline ?? false);
     final mergedLocation = existing == null
         ? location
         : location.copyWith(
             displayName: location.displayName ?? existing.displayName,
-            isOnline:
-                _current.memberPresence[location.userId]?.isOnline ??
-                location.isOnline,
+            isOnline: isOnline,
+            lastSeenAtUtc: location.lastSeenAtUtc ?? location.recordedAtUtc,
             // Routine location ticks (hub LocationUpdated and the self
             // foreground fix) never carry profile-image fields —
             // LocationUpdateDto omits them by design. Without carrying the
@@ -383,10 +403,11 @@ class LocationController extends AsyncNotifier<LocationState> {
     final nextMembers = Map<String, LiveLocation>.from(_current.members)
       ..[location.userId] = mergedLocation;
     final nextPresence =
-        Map<String, MemberPresence>.from(_current.memberPresence)..putIfAbsent(
-          location.userId,
-          () => MemberPresence(isOnline: location.isOnline),
-        );
+        Map<String, MemberPresence>.from(_current.memberPresence)
+          ..[location.userId] = MemberPresence(
+            isOnline: mergedLocation.isOnline,
+            lastSeenAtUtc: location.lastSeenAtUtc ?? location.recordedAtUtc,
+          );
     state = AsyncData(
       _current.copyWith(
         selfPosition: location.userId == currentUserId
@@ -401,9 +422,12 @@ class LocationController extends AsyncNotifier<LocationState> {
   }
 
   void _applyPresence(PresenceChange change) {
-    final nextPresence = Map<String, MemberPresence>.from(
-      _current.memberPresence,
-    )..[change.userId] = MemberPresence(isOnline: change.isOnline);
+    final nextPresence =
+        Map<String, MemberPresence>.from(_current.memberPresence)
+          ..[change.userId] = MemberPresence(
+            isOnline: change.isOnline,
+            lastSeenAtUtc: change.changedAtUtc,
+          );
     state = AsyncData(
       _current.copyWith(memberPresence: nextPresence, clearError: true),
     );

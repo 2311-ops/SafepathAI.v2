@@ -74,6 +74,27 @@ class LiveMapScreen extends ConsumerWidget {
 
     final self = state?.selfPosition ?? locations.first;
     final cameraTarget = LatLng(self.lat, self.lng);
+    final memberDetails = [
+      for (final location in locations)
+        _VisibleMember(
+          location: location,
+          name: _memberName(location, state),
+          isOnline: state?.isMemberOnline(location.userId) ?? location.isOnline,
+          isSelf: location.userId == state?.selfPosition?.userId,
+          lastSeenAtUtc:
+              state?.memberLastSeenAt(location.userId) ??
+              location.lastSeenAtUtc ??
+              location.recordedAtUtc,
+          color: _memberColor(location.userId),
+        ),
+    ];
+    final onlineCount = locations
+        .where(
+          (location) =>
+              state?.isMemberOnline(location.userId) ?? location.isOnline,
+        )
+        .length;
+    final offlineCount = locations.length - onlineCount;
     final circleMarkers = [
       for (final location in locations)
         CircleMarker(
@@ -109,7 +130,10 @@ class LiveMapScreen extends ConsumerWidget {
                 name: _memberName(location, state),
                 isOnline:
                     state?.isMemberOnline(location.userId) ?? location.isOnline,
-                recordedAtUtc: location.recordedAtUtc,
+                lastSeenAtUtc:
+                    state?.memberLastSeenAt(location.userId) ??
+                    location.lastSeenAtUtc ??
+                    location.recordedAtUtc,
               ),
             ),
           ),
@@ -139,58 +163,21 @@ class LiveMapScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x180C3A3F),
-                          blurRadius: 16,
-                          offset: Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      child: Row(
-                        children: [
-                          MemberMapPin(
-                            label: 'You',
-                            identityColor: AppColors.primaryTeal,
-                            isSelf: true,
-                            size: 36,
-                            userId: state?.selfPosition?.userId,
-                            profileImageUrl:
-                                state?.selfPosition?.profileImageUrl,
-                            profileUpdatedAt:
-                                state?.selfPosition?.profileUpdatedAt,
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Your family, live',
-                                  style: AppTypography.title,
-                                ),
-                                Text(
-                                  '${locations.length} visible location${locations.length == 1 ? '' : 's'}',
-                                  style: AppTypography.bodySecondary,
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: 'Profile',
-                            icon: const Icon(Icons.person_outline),
-                            color: AppColors.ink,
-                            onPressed: () => context.push('/profile'),
-                          ),
-                          const LogoutAction(),
-                        ],
+                  _LiveMapOverlay(
+                    self: state?.selfPosition,
+                    onlineCount: onlineCount,
+                    offlineCount: offlineCount,
+                    onProfile: () => context.push('/profile'),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _MemberStatusRail(
+                    members: memberDetails,
+                    onMemberTap: (member) => showMemberDetailSheet(
+                      context,
+                      member: MemberDetail(
+                        name: member.name,
+                        isOnline: member.isOnline,
+                        lastSeenAtUtc: member.lastSeenAtUtc,
                       ),
                     ),
                   ),
@@ -264,48 +251,53 @@ class LiveMemberMarker extends StatelessWidget {
     ).opacity;
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Opacity(
-        opacity: opacity,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isSelf ? AppColors.primaryTeal : color,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.surface, width: 3),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x220C3A3F),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ],
+      child: Semantics(
+        button: true,
+        label: '$name, ${isOnline ? 'online' : 'offline'}, open details',
+        child: Opacity(
+          opacity: opacity,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isSelf ? AppColors.primaryTeal : color,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.surface, width: 3),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x220C3A3F),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: _hasAvatar
+                    ? ClipOval(
+                        child: CachedNetworkImage(
+                          imageUrl: location.profileImageUrl!,
+                          cacheKey:
+                              '${location.userId}-${location.profileUpdatedAt?.toIso8601String()}',
+                          width: 36,
+                          height: 36,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => _initials(),
+                          errorWidget: (context, url, error) => _initials(),
+                        ),
+                      )
+                    : _initials(),
               ),
-              child: _hasAvatar
-                  ? ClipOval(
-                      child: CachedNetworkImage(
-                        imageUrl: location.profileImageUrl!,
-                        cacheKey:
-                            '${location.userId}-${location.profileUpdatedAt?.toIso8601String()}',
-                        width: 36,
-                        height: 36,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => _initials(),
-                        errorWidget: (context, url, error) => _initials(),
-                      ),
-                    )
-                  : _initials(),
-            ),
-            const SizedBox(height: 2),
-            _MarkerNameLabel(name: name),
-            const SizedBox(height: 2),
-            _MarkerPresenceLabel(isOnline: isOnline),
-          ],
+              const SizedBox(height: 2),
+              _MarkerNameLabel(name: name),
+              const SizedBox(height: 2),
+              _MarkerPresenceLabel(isOnline: isOnline),
+            ],
+          ),
         ),
       ),
     );
@@ -318,6 +310,381 @@ class LiveMemberMarker extends StatelessWidget {
         color: Colors.white,
         fontWeight: FontWeight.w800,
         letterSpacing: 0,
+      ),
+    );
+  }
+}
+
+class _VisibleMember {
+  const _VisibleMember({
+    required this.location,
+    required this.name,
+    required this.isOnline,
+    required this.isSelf,
+    required this.lastSeenAtUtc,
+    required this.color,
+  });
+
+  final LiveLocation location;
+  final String name;
+  final bool isOnline;
+  final bool isSelf;
+  final DateTime? lastSeenAtUtc;
+  final Color color;
+}
+
+class _LiveMapOverlay extends StatelessWidget {
+  const _LiveMapOverlay({
+    required this.self,
+    required this.onlineCount,
+    required this.offlineCount,
+    required this.onProfile,
+  });
+
+  final LiveLocation? self;
+  final int onlineCount;
+  final int offlineCount;
+  final VoidCallback onProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) => Opacity(
+        opacity: value,
+        child: Transform.translate(
+          offset: Offset(0, 10 * (1 - value)),
+          child: child,
+        ),
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.surface.withValues(alpha: 0.96),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.hairline),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1C0C3A3F),
+              blurRadius: 22,
+              offset: Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              MemberMapPin(
+                label: 'You',
+                identityColor: AppColors.primaryTeal,
+                isSelf: true,
+                size: 40,
+                userId: self?.userId,
+                profileImageUrl: self?.profileImageUrl,
+                profileUpdatedAt: self?.profileUpdatedAt,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Your family, live', style: AppTypography.title),
+                    const SizedBox(height: AppSpacing.xs),
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.xs,
+                      children: [
+                        _StatusCountChip(
+                          icon: Icons.wifi_tethering,
+                          label: '$onlineCount online',
+                          isOnline: true,
+                        ),
+                        _StatusCountChip(
+                          icon: Icons.wifi_off,
+                          label: '$offlineCount offline',
+                          isOnline: false,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              IconButton.filledTonal(
+                tooltip: 'Profile',
+                icon: const Icon(Icons.person_outline),
+                onPressed: onProfile,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              const LogoutAction(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusCountChip extends StatelessWidget {
+  const _StatusCountChip({
+    required this.icon,
+    required this.label,
+    required this.isOnline,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool isOnline;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = isOnline ? AppColors.safe : AppColors.bodySecondary;
+    final background = isOnline ? AppColors.safeBg : AppColors.hairlineSoft;
+    final border = isOnline ? AppColors.safeBgBorder : AppColors.hairline;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: foreground),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              label,
+              style: AppTypography.caption.copyWith(
+                color: foreground,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MemberStatusRail extends StatelessWidget {
+  const _MemberStatusRail({required this.members, required this.onMemberTap});
+
+  final List<_VisibleMember> members;
+  final ValueChanged<_VisibleMember> onMemberTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 56,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: members.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+        itemBuilder: (context, index) => _MemberStatusCard(
+          member: members[index],
+          onTap: () => onMemberTap(members[index]),
+        ),
+      ),
+    );
+  }
+}
+
+class _MemberStatusCard extends StatelessWidget {
+  const _MemberStatusCard({required this.member, required this.onTap});
+
+  final _VisibleMember member;
+  final VoidCallback onTap;
+
+  bool get _hasAvatar =>
+      (member.location.profileImageUrl?.trim().isNotEmpty ?? false);
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label:
+          '${member.name}, ${member.isOnline ? 'online' : 'offline'}, ${lastSeenText(member.lastSeenAtUtc)}',
+      child: Material(
+        color: AppColors.surface.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(999),
+        elevation: 0,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            width: 136,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 6,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: member.isOnline
+                    ? AppColors.safeBgBorder
+                    : AppColors.hairline,
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0D0C3A3F),
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                _MemberAvatar(member: member, hasAvatar: _hasAvatar),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        member.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.body.copyWith(
+                          fontSize: 14,
+                          height: 1.1,
+                          color: AppColors.ink,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      _InlinePresence(isOnline: member.isOnline),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MemberAvatar extends StatelessWidget {
+  const _MemberAvatar({required this.member, required this.hasAvatar});
+
+  final _VisibleMember member;
+  final bool hasAvatar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: member.isSelf ? AppColors.primaryTeal : member.color,
+            shape: BoxShape.circle,
+          ),
+          child: hasAvatar
+              ? ClipOval(
+                  child: CachedNetworkImage(
+                    imageUrl: member.location.profileImageUrl!,
+                    cacheKey:
+                        '${member.location.userId}-${member.location.profileUpdatedAt?.toIso8601String()}',
+                    width: 34,
+                    height: 34,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => _AvatarInitial(member.name),
+                    errorWidget: (context, url, error) =>
+                        _AvatarInitial(member.name),
+                  ),
+                )
+              : _AvatarInitial(member.name),
+        ),
+        Positioned(
+          right: -1,
+          bottom: -1,
+          child: _PresenceDot(isOnline: member.isOnline, size: 12),
+        ),
+      ],
+    );
+  }
+}
+
+class _AvatarInitial extends StatelessWidget {
+  const _AvatarInitial(this.name);
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      name.isEmpty ? '?' : name.substring(0, 1).toUpperCase(),
+      style: AppTypography.body.copyWith(
+        fontSize: 14,
+        color: Colors.white,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0,
+      ),
+    );
+  }
+}
+
+class _InlinePresence extends StatelessWidget {
+  const _InlinePresence({required this.isOnline});
+
+  final bool isOnline;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = isOnline ? AppColors.safe : AppColors.bodySecondary;
+    return Row(
+      children: [
+        _PresenceDot(isOnline: isOnline, size: 8),
+        const SizedBox(width: AppSpacing.xs),
+        Flexible(
+          child: Text(
+            isOnline ? 'Online' : 'Offline',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.caption.copyWith(
+              fontSize: 11,
+              height: 1.1,
+              color: foreground,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PresenceDot extends StatelessWidget {
+  const _PresenceDot({required this.isOnline, required this.size});
+
+  final bool isOnline;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: isOnline ? AppColors.safe : AppColors.bodySecondary,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.surface, width: 2),
       ),
     );
   }

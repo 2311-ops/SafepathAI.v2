@@ -97,6 +97,7 @@ public class GetLiveLocationsQueryTests : IDisposable
         Assert.Equal(30.0444, member.Lat);
         Assert.Equal(31.2357, member.Lng);
         Assert.Equal(latest, member.RecordedAtUtc);
+        Assert.Equal(latest, member.LastSeenAtUtc);
         Assert.True(member.IsOnline);
 
         var noPing = result.Single(location => location.UserId == memberWithoutPingId);
@@ -294,6 +295,29 @@ public class GetLiveLocationsQueryTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_UsesPresenceTimestampForLastSeenWhenUserIsConnected()
+    {
+        await using var db = _factory.CreateContext();
+        var (familyId, callerId, memberId, _) = await SeedLiveLocationFamily(db);
+        var staleRecordedAt = DateTime.UtcNow.AddMinutes(-30);
+        var connectedAt = DateTime.UtcNow.AddSeconds(-5);
+        db.LocationPings.Add(NewPing(memberId, 30.0444, 31.2357, staleRecordedAt));
+        await db.SaveChangesAsync();
+        var handler = new GetLiveLocationsQueryHandler(
+            db,
+            new FamilyAuthorizationService(db),
+            new FakePresenceQuery(memberId, connectedAt),
+            new SharingAuthorizationService(db));
+
+        var result = await handler.Handle(new GetLiveLocationsQuery(callerId, familyId));
+
+        var member = result.Single(location => location.UserId == memberId);
+        Assert.Equal(staleRecordedAt, member.RecordedAtUtc);
+        Assert.Equal(connectedAt, member.LastSeenAtUtc);
+        Assert.True(member.IsOnline);
+    }
+
+    [Fact]
     public async Task Handle_ByNonMember_IsDeniedBeforeReturningLocationRows()
     {
         await using var db = _factory.CreateContext();
@@ -387,13 +411,23 @@ public class GetLiveLocationsQueryTests : IDisposable
 internal sealed class FakePresenceQuery : IPresenceQuery
 {
     private readonly HashSet<Guid> _onlineUserIds;
+    private readonly Dictionary<Guid, DateTime> _lastSeenByUserId = [];
 
     public FakePresenceQuery(params Guid[] onlineUserIds)
     {
         _onlineUserIds = onlineUserIds.ToHashSet();
     }
 
+    public FakePresenceQuery(Guid onlineUserId, DateTime lastSeenAtUtc)
+        : this(onlineUserId)
+    {
+        _lastSeenByUserId[onlineUserId] = lastSeenAtUtc;
+    }
+
     public bool IsOnline(Guid userId) => _onlineUserIds.Contains(userId);
+
+    public DateTime? LastSeenAtUtc(Guid userId) =>
+        _lastSeenByUserId.TryGetValue(userId, out var lastSeenAtUtc) ? lastSeenAtUtc : null;
 }
 
 internal sealed class FakeProfileImageStorage : IProfileImageStorage

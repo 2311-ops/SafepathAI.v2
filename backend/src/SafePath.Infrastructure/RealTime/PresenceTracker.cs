@@ -5,62 +5,62 @@ namespace SafePath.Infrastructure.RealTime;
 
 public class PresenceTracker : IPresenceQuery
 {
-    private readonly ConcurrentDictionary<Guid, HashSet<string>> _connections = new();
+    private readonly ConcurrentDictionary<Guid, PresenceState> _presence = new();
 
-    public bool AddConnection(Guid userId, string connectionId)
+    public bool AddConnection(Guid userId, string connectionId, DateTime changedAtUtc)
     {
         while (true)
         {
-            var connections = _connections.GetOrAdd(userId, _ => []);
+            var state = _presence.GetOrAdd(userId, _ => new PresenceState());
 
-            lock (connections)
+            lock (state.Connections)
             {
-                // The set we grabbed may have just been orphaned by a concurrent
-                // RemoveConnection that removed it from the dictionary after we
-                // read it but before we took the lock. Retry against the live entry.
-                if (_connections.TryGetValue(userId, out var current) && !ReferenceEquals(current, connections))
+                if (_presence.TryGetValue(userId, out var current) && !ReferenceEquals(current, state))
                 {
                     continue;
                 }
 
-                var wasOffline = connections.Count == 0;
-                connections.Add(connectionId);
+                var wasOffline = state.Connections.Count == 0;
+                state.Connections.Add(connectionId);
+                state.LastSeenAtUtc = changedAtUtc;
                 return wasOffline;
             }
         }
     }
 
-    public bool RemoveConnection(Guid userId, string connectionId)
+    public bool RemoveConnection(Guid userId, string connectionId, DateTime changedAtUtc)
     {
         while (true)
         {
-            if (!_connections.TryGetValue(userId, out var connections))
+            if (!_presence.TryGetValue(userId, out var state))
             {
                 return false;
             }
 
-            lock (connections)
+            lock (state.Connections)
             {
-                // Re-check we still own the current dictionary entry before mutating —
-                // a concurrent AddConnection/RemoveConnection may have replaced or
-                // removed it while we were waiting for the lock.
-                if (!_connections.TryGetValue(userId, out var current) || !ReferenceEquals(current, connections))
+                if (!_presence.TryGetValue(userId, out var current) || !ReferenceEquals(current, state))
                 {
                     continue;
                 }
 
-                connections.Remove(connectionId);
-                if (connections.Count > 0)
-                {
-                    return true;
-                }
-
-                _connections.TryRemove(new KeyValuePair<Guid, HashSet<string>>(userId, connections));
-                return false;
+                state.Connections.Remove(connectionId);
+                state.LastSeenAtUtc = changedAtUtc;
+                return state.Connections.Count > 0;
             }
         }
     }
 
     public bool IsOnline(Guid userId) =>
-        _connections.TryGetValue(userId, out var connections) && connections.Count > 0;
+        _presence.TryGetValue(userId, out var state) && state.Connections.Count > 0;
+
+    public DateTime? LastSeenAtUtc(Guid userId) =>
+        _presence.TryGetValue(userId, out var state) ? state.LastSeenAtUtc : null;
+
+    private sealed class PresenceState
+    {
+        public HashSet<string> Connections { get; } = [];
+
+        public DateTime? LastSeenAtUtc { get; set; }
+    }
 }

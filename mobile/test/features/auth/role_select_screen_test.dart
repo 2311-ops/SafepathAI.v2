@@ -43,7 +43,8 @@ void main() {
       routes: [
         GoRoute(
           path: '/register',
-          builder: (context, state) => const Scaffold(body: Text('register-reached')),
+          builder: (context, state) =>
+              const Scaffold(body: Text('register-reached')),
         ),
         GoRoute(
           path: '/register/role',
@@ -71,54 +72,68 @@ void main() {
     expect(find.text('register-reached'), findsOneWidget);
   });
 
-  testWidgets('confirming with a draft calls register() with its values and the selected role',
-      (tester) async {
-    fakeApi.registerShouldRequireVerification = true;
-    await tester.pumpWidget(
-      buildTestApp(
-        draft: const RegisterDraft(
-          email: 'ada@family.com',
-          password: 'correct-horse-1',
-          fullName: 'Ada Guardian',
+  testWidgets(
+    'confirming with a draft calls register() with its values and the selected role',
+    (tester) async {
+      fakeApi.registerShouldRequireVerification = true;
+      await tester.pumpWidget(
+        buildTestApp(
+          draft: const RegisterDraft(
+            email: 'ada@family.com',
+            password: 'correct-horse-1',
+            fullName: 'Ada Guardian',
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Who are you in this circle?'), findsOneWidget);
+      expect(find.text('Who are you in this circle?'), findsOneWidget);
 
-    await tester.tap(find.text('Caregiver'));
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Create your circle'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Caregiver'));
+      final createButton = find.widgetWithText(
+        ElevatedButton,
+        'Create your circle',
+      );
+      await tester.ensureVisible(createButton);
+      await tester.tap(createButton);
+      await tester.pumpAndSettle();
 
-    expect(fakeApi.registerCallCount, 1);
-    expect(fakeApi.lastRegisterEmail, 'ada@family.com');
-    expect(fakeApi.lastRegisterFullName, 'Ada Guardian');
-    expect(fakeApi.lastRegisterRole, Role.caregiver);
-  });
+      expect(fakeApi.registerCallCount, 1);
+      expect(fakeApi.lastRegisterEmail, 'ada@family.com');
+      expect(fakeApi.lastRegisterFullName, 'Ada Guardian');
+      expect(fakeApi.lastRegisterRole, Role.caregiver);
+    },
+  );
 
-  testWidgets('confirm button disables and relabels while the request is in flight',
-      (tester) async {
-    fakeApi.responseDelay = const Duration(milliseconds: 200);
-    await tester.pumpWidget(
-      buildTestApp(
-        draft: const RegisterDraft(
-          email: 'ada@family.com',
-          password: 'correct-horse-1',
-          fullName: 'Ada Guardian',
+  testWidgets(
+    'confirm button disables and relabels while the request is in flight',
+    (tester) async {
+      fakeApi.responseDelay = const Duration(milliseconds: 200);
+      await tester.pumpWidget(
+        buildTestApp(
+          draft: const RegisterDraft(
+            email: 'ada@family.com',
+            password: 'correct-horse-1',
+            fullName: 'Ada Guardian',
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Create your circle'));
-    await tester.pump();
+      final createButton = find.widgetWithText(
+        ElevatedButton,
+        'Create your circle',
+      );
+      await tester.ensureVisible(createButton);
+      await tester.tap(createButton);
+      await tester.pump();
 
-    final button = tester.widget<ElevatedButton>(
-      find.widgetWithText(ElevatedButton, 'Creating your circle...'),
-    );
-    expect(button.onPressed, isNull);
+      final button = tester.widget<ElevatedButton>(
+        find.widgetWithText(ElevatedButton, 'Creating your circle...'),
+      );
+      expect(button.onPressed, isNull);
 
-    await tester.pumpAndSettle();
-  });
+      await tester.pumpAndSettle();
+    },
+  );
 }

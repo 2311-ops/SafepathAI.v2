@@ -8,7 +8,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:mobile/features/auth/application/auth_controller.dart';
+import 'package:mobile/features/auth/application/auth_state.dart';
 import 'package:mobile/features/auth/presentation/register_screen.dart';
+
+class _FakeAuthController extends AuthController {
+  @override
+  AuthState build() => const AuthUnauthenticated();
+}
 
 void main() {
   setUpAll(() {
@@ -31,6 +38,7 @@ void main() {
       ],
     );
     return ProviderScope(
+      overrides: [authControllerProvider.overrideWith(_FakeAuthController.new)],
       child: MaterialApp.router(
         theme: ThemeData(splashFactory: NoSplash.splashFactory),
         routerConfig: router,
@@ -48,6 +56,7 @@ void main() {
       expect(find.text('EMAIL'), findsOneWidget);
       expect(find.text('PASSWORD'), findsOneWidget);
       expect(find.widgetWithText(ElevatedButton, 'Continue'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
     },
   );
 
@@ -62,7 +71,9 @@ void main() {
       await tester.enterText(fields.at(1), 'not-an-email');
       await tester.enterText(fields.at(2), 'password123');
 
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
+      final continueButton = find.widgetWithText(ElevatedButton, 'Continue');
+      await tester.ensureVisible(continueButton);
+      await tester.tap(continueButton);
       await tester.pumpAndSettle();
 
       expect(find.text('role-select-reached'), findsNothing);

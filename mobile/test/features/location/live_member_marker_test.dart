@@ -31,6 +31,7 @@ void main() {
         LiveMemberMarker(
           location: location,
           name: 'Sam Rivera',
+          isOnline: true,
           isSelf: false,
           color: Colors.purple,
           onTap: () {},
@@ -60,6 +61,7 @@ void main() {
         LiveMemberMarker(
           location: location,
           name: 'Sam Rivera',
+          isOnline: false,
           isSelf: false,
           color: Colors.purple,
           onTap: () {},
@@ -88,6 +90,7 @@ void main() {
         LiveMemberMarker(
           location: location,
           name: 'Sam Rivera',
+          isOnline: true,
           isSelf: false,
           color: Colors.purple,
           onTap: () => tapped = true,

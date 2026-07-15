@@ -20,6 +20,7 @@ class _SeededFamilyController extends FamilyController {
       FamilyMemberView(
         memberId: 'member-row-1',
         userId: 'member-1',
+        displayName: 'Maya Rivera',
         role: Role.member,
         permission: PermissionLevel.fullLocation,
         joinedAt: DateTime.utc(2026, 7, 12),
@@ -78,7 +79,9 @@ Widget _noCircleApp(Role? role) {
       historyControllerProvider.overrideWith(
         () => _SeededHistoryController(const HistoryState()),
       ),
-      profileControllerProvider.overrideWith(() => _SeededProfileController(role)),
+      profileControllerProvider.overrideWith(
+        () => _SeededProfileController(role),
+      ),
     ],
     child: const MaterialApp(home: HistoryTimelineScreen()),
   );
@@ -141,6 +144,7 @@ void main() {
     expect(find.text('TIME AWAY'), findsOneWidget);
     expect(find.text('2'), findsOneWidget);
     expect(find.text('STOPS'), findsOneWidget);
+    expect(find.text('Maya Rivera'), findsOneWidget);
     expect(find.text('Stop 1'), findsOneWidget);
     expect(find.text('On the move'), findsOneWidget);
     expect(find.text('Stop 2'), findsOneWidget);
@@ -184,7 +188,7 @@ void main() {
     expect(find.text('No history yet'), findsOneWidget);
     expect(
       find.text(
-        "Once location tracking starts, Member's stays and trips will show up here.",
+        "Once location tracking starts, Maya Rivera's stays and trips will show up here.",
       ),
       findsOneWidget,
     );

@@ -7,14 +7,16 @@ import 'app_typography.dart';
 /// screen in the app must consume this theme rather than hand-rolling
 /// colors/type locally.
 ThemeData buildSafePathTheme() {
-  final colorScheme = ColorScheme.fromSeed(
-    seedColor: AppColors.primaryTeal,
-    brightness: Brightness.light,
-  ).copyWith(
-    primary: AppColors.primaryTeal,
-    surface: AppColors.surface,
-    error: AppColors.sosRed,
-  );
+  final colorScheme =
+      ColorScheme.fromSeed(
+        seedColor: AppColors.primaryNavy,
+        brightness: Brightness.light,
+      ).copyWith(
+        primary: AppColors.primaryNavy,
+        secondary: AppColors.primaryTeal,
+        surface: AppColors.surface,
+        error: AppColors.sosRed,
+      );
 
   return ThemeData(
     useMaterial3: true,
@@ -41,9 +43,7 @@ ThemeData buildSafePathTheme() {
     cardTheme: CardThemeData(
       color: AppColors.surface,
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -68,18 +68,18 @@ ThemeData buildSafePathTheme() {
         borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: AppColors.caution, width: 1.5),
       ),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      prefixIconColor: AppColors.bodySecondary,
+      suffixIconColor: AppColors.bodySecondary,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primaryTeal,
+        minimumSize: const Size.fromHeight(52),
+        backgroundColor: AppColors.primaryNavy,
         foregroundColor: Colors.white,
         textStyle: AppTypography.ctaLabel,
         padding: const EdgeInsets.symmetric(vertical: 17),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -87,9 +87,36 @@ ThemeData buildSafePathTheme() {
         foregroundColor: AppColors.primaryTeal,
         side: const BorderSide(color: AppColors.primaryTeal, width: 1.5),
         textStyle: AppTypography.ctaLabel,
+        minimumSize: const Size.fromHeight(52),
         padding: const EdgeInsets.symmetric(vertical: 17),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.primaryTeal,
+        minimumSize: const Size(48, 48),
+        textStyle: AppTypography.body.copyWith(fontWeight: FontWeight.w700),
+      ),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppColors.primaryNavy
+              : AppColors.bodySecondary,
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppColors.navyTintBg
+              : AppColors.surface,
+        ),
+        side: WidgetStateProperty.resolveWith(
+          (states) => BorderSide(
+            color: states.contains(WidgetState.selected)
+                ? AppColors.primaryNavy
+                : AppColors.hairline,
+          ),
         ),
       ),
     ),
