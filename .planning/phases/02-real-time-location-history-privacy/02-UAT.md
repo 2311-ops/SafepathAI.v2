@@ -1,21 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 02-real-time-location-history-privacy
 source: [02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 02-04-SUMMARY.md, 02-05-SUMMARY.md, 02-06-SUMMARY.md, 02-07-SUMMARY.md, 02-08-SUMMARY.md, 02-09-SUMMARY.md, 02-10-SUMMARY.md, 02-11-SUMMARY.md, 02-12-SUMMARY.md, 02-13-SUMMARY.md, 02-14-SUMMARY.md, 02-15-SUMMARY.md, 02-16-SUMMARY.md, 02-17-SUMMARY.md, 02-18-SUMMARY.md, 02-19-SUMMARY.md, 02-VERIFICATION.md]
 started: 2026-07-14T00:46:32.923Z
-updated: 2026-07-15T00:00:00.000Z
+updated: 2026-07-16T00:00:00.000Z
 ---
 
 ## Current Test
 
-number: 73
-name: UAT 73 physical-device cold-start avatar retest
-expected: |
-  On a physical device signed into a family circle, upload a profile photo,
-  confirm the Live Map header and family marker update while the app is open,
-  fully close the app, reopen it, and inspect the same header and markers.
-  Repeat after replacing the photo and after removing it.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -458,12 +451,12 @@ expected: |
   replace, and reverts to the default initial after remove — all without an
   app reload, matching how the family member markers already behave (per UAT
   test 71).
-result: pending
+result: pass
 reported: "when i open the app it the new feature header avatar live-updates works but when closing it it bring back the wrong avatar"
 severity: major
 source: 02-VERIFICATION.md human_verification (re-verification after gap closure)
 note: "In-session live-update (the original UAT-72 bug) is confirmed FIXED — header avatar updates correctly while the app stays open. New distinct issue found: after closing and reopening the app, the header reverts to showing the wrong (stale/incorrect) avatar, i.e. the cold-start initial render path does not use the same up-to-date profile data as the live in-session update."
-resolution: "Automated data-path fixes are complete in 02-18 and 02-19. Awaiting physical-device close/reopen retest to confirm persistent image-cache behavior."
+resolution: "Automated data-path fixes are complete in 02-18 and 02-19. User confirmed physical-device retest (2026-07-16): upload/replace/remove each followed by full close-and-reopen, header showed the correct avatar (or default initials on remove) with no stale image."
 
 ### 74. Live Map markers display explicit ONLINE/OFFLINE status labels
 expected: |
@@ -489,9 +482,9 @@ evidence: |
 ## Summary
 
 total: 74
-passed: 73
+passed: 74
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
@@ -512,7 +505,7 @@ blocked: 0
   debug_session: .planning/debug/header-avatar-not-live-update.md
 
 - truth: "The header avatar updates to the new photo after upload, updates again after replace, and reverts to the default initial after remove — all without an app reload, matching how the family member markers already behave (per UAT test 71)."
-  status: pending
+  status: resolved
   reason: "User reported: when i open the app it the new feature header avatar live-updates works but when closing it it bring back the wrong avatar"
   severity: major
   test: 73
@@ -522,6 +515,6 @@ blocked: 0
       issue: "Resolved: MemberLiveLocationDto now has ProfileUpdatedAt."
     - path: "backend/src/SafePath.Application/Location/GetLiveLocationsQuery.cs"
       issue: "Resolved: GetLiveLocationsQueryHandler selects/passes user.ProfileUpdatedAt and gates location-derived recency."
-  missing:
-    - "Physical-device retest: upload, replace, and remove profile photo; after each change, fully close and reopen the app; confirm header and family markers show the latest photo or default initials with no stale cached image."
+  missing: []
   debug_session: .planning/debug/header-avatar-cold-start-stale.md
+  resolution: "User confirmed physical-device retest (2026-07-16): upload/replace/remove each followed by full close-and-reopen, header showed the correct avatar (or default initials on remove) with no stale image."
