@@ -170,12 +170,14 @@ class StartupSplashOverlay extends StatefulWidget {
 }
 
 class _StartupSplashOverlayState extends State<StartupSplashOverlay> {
-  static const _defaultDuration = Duration(milliseconds: 3500);
+  static const _defaultDuration = Duration(milliseconds: 1600);
+  static const _reducedMotionDuration = Duration(milliseconds: 260);
   static const _postFrameStartDelay = Duration(milliseconds: 120);
   static const _frameInterval = Duration(milliseconds: 16);
 
   bool _visible = true;
   bool _startScheduled = false;
+  bool _reduceMotion = false;
   double _progress = 0.0;
   final Stopwatch _stopwatch = Stopwatch();
   Timer? _startTimer;
@@ -184,6 +186,7 @@ class _StartupSplashOverlayState extends State<StartupSplashOverlay> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _reduceMotion = MediaQuery.of(context).disableAnimations;
     if (_startScheduled) return;
     _startScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -197,9 +200,14 @@ class _StartupSplashOverlayState extends State<StartupSplashOverlay> {
   void _startClock() {
     _stopwatch.start();
     _frameTimer = Timer.periodic(_frameInterval, (_) {
+      final duration = _reduceMotion
+          ? _reducedMotionDuration
+          : _defaultDuration;
       final nextProgress =
-          (_stopwatch.elapsedMilliseconds / _defaultDuration.inMilliseconds)
-              .clamp(0.0, 1.0);
+          (_stopwatch.elapsedMilliseconds / duration.inMilliseconds).clamp(
+            0.0,
+            1.0,
+          );
 
       if (!mounted) return;
       if (nextProgress >= 1.0) {
@@ -226,27 +234,31 @@ class _StartupSplashOverlayState extends State<StartupSplashOverlay> {
   Widget build(BuildContext context) {
     if (!_visible) return widget.child;
 
-    final lockupProgress = _intervalProgress(
-      begin: 0.0,
-      end: 0.32,
-      curve: Curves.easeOutQuart,
-    );
+    final lockupProgress = _reduceMotion
+        ? 1.0
+        : _intervalProgress(begin: 0.0, end: 0.32, curve: Curves.easeOutQuart);
 
     return Stack(
       children: [
         widget.child,
         Positioned.fill(
-          child: IgnorePointer(
-            child: Opacity(
-              opacity: _overlayOpacity,
-              child: _StartupSplashSurface(
-                progress: AlwaysStoppedAnimation<double>(_progress),
-                lockupOpacity: AlwaysStoppedAnimation<double>(lockupProgress),
-                scale: AlwaysStoppedAnimation<double>(
-                  0.92 + (0.08 * lockupProgress),
+          child: AbsorbPointer(
+            absorbing: true,
+            child: Semantics(
+              label: 'SafePath AI is opening',
+              child: Opacity(
+                opacity: _overlayOpacity,
+                child: _StartupSplashSurface(
+                  progress: AlwaysStoppedAnimation<double>(_progress),
+                  lockupOpacity: AlwaysStoppedAnimation<double>(lockupProgress),
+                  scale: AlwaysStoppedAnimation<double>(
+                    _reduceMotion ? 1.0 : 0.92 + (0.08 * lockupProgress),
+                  ),
+                  rise: AlwaysStoppedAnimation<double>(
+                    _reduceMotion ? 0.0 : 8 * (1 - lockupProgress),
+                  ),
+                  reduceMotion: _reduceMotion,
                 ),
-                rise: AlwaysStoppedAnimation<double>(8 * (1 - lockupProgress)),
-                reduceMotion: false,
               ),
             ),
           ),

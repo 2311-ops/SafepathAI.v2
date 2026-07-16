@@ -42,10 +42,10 @@ Now listening on: http://localhost:5059
 In a second terminal:
 
 ```powershell
+R9KL2033NWD
 cd D:\Projects\safepathai_V2\mobile
 adb -s R58M30TGNXV reverse tcp:5059 tcp:5059
 ```
-
 This lets the phone call the PC backend at `http://127.0.0.1:5059`.
 
 ## 4. Run The App On The Phone

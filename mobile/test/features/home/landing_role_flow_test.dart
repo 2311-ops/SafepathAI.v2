@@ -8,10 +8,12 @@ import 'package:mobile/app.dart';
 import 'package:mobile/features/auth/data/auth_api.dart';
 import 'package:mobile/features/auth/data/auth_models.dart';
 import 'package:mobile/features/family/data/family_api.dart';
+import 'package:mobile/features/location/application/permission_controller.dart';
 import 'package:mobile/features/profile/data/profile_api.dart';
 
 import '../../helpers/fake_auth_api.dart';
 import '../../helpers/fake_family_api.dart';
+import '../../helpers/fake_location_permission_service.dart';
 import '../../helpers/fake_profile_api.dart';
 
 void main() {
@@ -19,36 +21,49 @@ void main() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
-  testWidgets('Guardian login routes to the Guardian family setup flow', (
-    tester,
-  ) async {
-    final authApi = FakeAuthApi(initialSession: _fakeSession('guardian-user'));
-    final profileApi = FakeProfileApi(
-      userId: 'guardian-user',
-      role: Role.guardian,
-    );
-    final familyApi = FakeFamilyApi();
-    addTearDown(authApi.dispose);
+  testWidgets(
+    'Guardian login lands on Home with a reachable create-circle CTA',
+    (tester) async {
+      final authApi = FakeAuthApi(
+        initialSession: _fakeSession('guardian-user'),
+      );
+      final profileApi = FakeProfileApi(
+        userId: 'guardian-user',
+        role: Role.guardian,
+      );
+      final familyApi = FakeFamilyApi();
+      addTearDown(authApi.dispose);
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          authApiProvider.overrideWithValue(authApi),
-          familyApiProvider.overrideWithValue(familyApi),
-          profileApiProvider.overrideWithValue(profileApi),
-        ],
-        child: const SafePathApp(showStartupSplash: false),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authApiProvider.overrideWithValue(authApi),
+            familyApiProvider.overrideWithValue(familyApi),
+            profileApiProvider.overrideWithValue(profileApi),
+            locationPermissionServiceProvider.overrideWithValue(
+              FakeLocationPermissionService(),
+            ),
+          ],
+          child: const SafePathApp(showStartupSplash: false),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Your circle'), findsOneWidget);
-    expect(find.text('Create your family circle'), findsOneWidget);
-    expect(find.text('Create a circle'), findsOneWidget);
-    expect(find.text('Enter invite code'), findsNothing);
-  });
+      // A family-less Guardian now lands on MainShell's Map tab, which surfaces
+      // the role-aware "Create a circle" entry point (previously orphaned in the
+      // unrouted landing_stub_screen).
+      expect(find.text('No circle yet'), findsOneWidget);
+      expect(find.text('Create a circle'), findsOneWidget);
+      expect(find.text('Enter invite code'), findsNothing);
 
-  testWidgets('Member login routes to the Member join-family flow', (
+      // End-to-end through the real router: the CTA opens CreateCircleScreen.
+      await tester.tap(find.byKey(const ValueKey('no-circle-create-cta')));
+      await tester.pumpAndSettle();
+      expect(find.text('Name your circle'), findsOneWidget);
+    },
+  );
+
+  testWidgets('Member login lands on Home with a reachable enter-code CTA', (
     tester,
   ) async {
     final authApi = FakeAuthApi(
@@ -64,16 +79,25 @@ void main() {
           authApiProvider.overrideWithValue(authApi),
           familyApiProvider.overrideWithValue(familyApi),
           profileApiProvider.overrideWithValue(profileApi),
+          locationPermissionServiceProvider.overrideWithValue(
+            FakeLocationPermissionService(),
+          ),
         ],
         child: const SafePathApp(showStartupSplash: false),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Your circle'), findsOneWidget);
-    expect(find.text('Join a family circle'), findsOneWidget);
+    // A family-less Member lands on MainShell's Map tab with the "Enter invite
+    // code" entry point.
+    expect(find.text('No circle yet'), findsOneWidget);
     expect(find.text('Enter invite code'), findsOneWidget);
     expect(find.text('Create a circle'), findsNothing);
+
+    // End-to-end through the real router: the CTA opens AcceptInviteScreen.
+    await tester.tap(find.byKey(const ValueKey('no-circle-join-cta')));
+    await tester.pumpAndSettle();
+    expect(find.text("You've been invited"), findsOneWidget);
   });
 
   testWidgets(
@@ -90,6 +114,9 @@ void main() {
             authApiProvider.overrideWithValue(authApi),
             familyApiProvider.overrideWithValue(familyApi),
             profileApiProvider.overrideWithValue(profileApi),
+            locationPermissionServiceProvider.overrideWithValue(
+              FakeLocationPermissionService(),
+            ),
           ],
           child: const SafePathApp(showStartupSplash: false),
         ),
@@ -97,18 +124,23 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Who are you in this circle?'), findsOneWidget);
-      expect(find.text('Your circle'), findsNothing);
+      expect(find.text('No circle yet'), findsNothing);
 
       await tester.tap(find.text('Caregiver'));
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
+      final continueButton = find.widgetWithText(ElevatedButton, 'Continue');
+      await tester.ensureVisible(continueButton);
+      await tester.tap(continueButton);
       await tester.pumpAndSettle();
 
       expect(profileApi.updateRoleCallCount, 1);
       expect(profileApi.lastUpdatedRole, Role.caregiver);
       expect(authApi.updateRoleMetadataCallCount, 1);
       expect(authApi.lastUpdatedMetadataRole, Role.caregiver);
-      expect(find.text('Your circle'), findsOneWidget);
-      expect(find.text('Set up your circle'), findsOneWidget);
+      // A Caregiver (neither Guardian nor Member) lands on Home and is offered
+      // both entry points so no role is stranded without a way in.
+      expect(find.text('No circle yet'), findsOneWidget);
+      expect(find.text('Create a circle'), findsOneWidget);
+      expect(find.text('I have an invite code'), findsOneWidget);
     },
   );
 
@@ -131,6 +163,9 @@ void main() {
             authApiProvider.overrideWithValue(authApi),
             familyApiProvider.overrideWithValue(familyApi),
             profileApiProvider.overrideWithValue(profileApi),
+            locationPermissionServiceProvider.overrideWithValue(
+              FakeLocationPermissionService(),
+            ),
           ],
           child: const SafePathApp(showStartupSplash: false),
         ),
@@ -138,16 +173,20 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Who are you in this circle?'), findsOneWidget);
-      expect(find.text('Join a family circle'), findsNothing);
+      expect(find.text('No circle yet'), findsNothing);
 
       await tester.tap(find.text('Guardian / Parent'));
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
+      final continueButton = find.widgetWithText(ElevatedButton, 'Continue');
+      await tester.ensureVisible(continueButton);
+      await tester.tap(continueButton);
       await tester.pumpAndSettle();
 
       expect(profileApi.lastUpdatedRole, Role.guardian);
       expect(authApi.lastUpdatedMetadataRole, Role.guardian);
-      expect(find.text('Your circle'), findsOneWidget);
-      expect(find.text('Create your family circle'), findsOneWidget);
+      // Having chosen Guardian, they land on Home with the create-circle CTA.
+      expect(find.text('No circle yet'), findsOneWidget);
+      expect(find.text('Create a circle'), findsOneWidget);
+      expect(find.text('Enter invite code'), findsNothing);
     },
   );
 }

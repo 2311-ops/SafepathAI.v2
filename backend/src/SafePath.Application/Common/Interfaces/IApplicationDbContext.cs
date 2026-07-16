@@ -13,6 +13,8 @@ public interface IApplicationDbContext
     DbSet<Family> Families { get; }
     DbSet<FamilyMember> FamilyMembers { get; }
     DbSet<FamilyInvitation> FamilyInvitations { get; }
+    DbSet<LocationPing> LocationPings { get; }
+    DbSet<SharingPreference> SharingPreferences { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -7,11 +7,11 @@
 
 ### Authentication (AUTH)
 
-- [ ] **AUTH-01**: User can register with email and password
-- [ ] **AUTH-02**: User can log in via JWT (access + refresh tokens) and stay logged in across sessions
-- [ ] **AUTH-03**: User can log out
-- [ ] **AUTH-04**: User can reset their password via a one-time, expiring emailed link
-- [ ] **AUTH-05**: User is assigned a role (Guardian, Member, Caregiver, or org-level e.g. School Admin) during setup
+- [x] **AUTH-01**: User can register with email and password
+- [x] **AUTH-02**: User can log in via JWT (access + refresh tokens) and stay logged in across sessions
+- [x] **AUTH-03**: User can log out
+- [x] **AUTH-04**: User can reset their password via a one-time, expiring emailed link
+- [x] **AUTH-05**: User is assigned a role (Guardian, Member, Caregiver, or org-level e.g. School Admin) during setup
 - [x] **AUTH-06**: User can sign in with Google (Supabase-native OAuth) alongside email/password, from Welcome/Login/Register
 
 ### Family Groups (FAM)
@@ -24,17 +24,27 @@
 
 ### Real-Time Location Tracking (LOC)
 
-- [ ] **LOC-01**: User's live location updates continuously and appears on a shared family map
-- [ ] **LOC-02**: User sees each family member's last-seen timestamp and online/offline status
-- [ ] **LOC-03**: User sees a stale-location indicator with a visible accuracy radius when location data is old or imprecise
-- [ ] **LOC-04**: User sees a battery-usage transparency screen explaining what background tracking costs in battery
-- [ ] **LOC-05**: User sees an in-app permission-priming screen before the OS location-permission dialog appears
+- [x] **LOC-01**: User's live location updates continuously and appears on a shared family map
+- [x] **LOC-02**: User sees each family member's last-seen timestamp and online/offline status
+- [x] **LOC-03**: User sees a stale-location indicator with a visible accuracy radius when location data is old or imprecise
+- [x] **LOC-04**: User sees a battery-usage transparency screen explaining what background tracking costs in battery
+- [x] **LOC-05**: User sees an in-app permission-priming screen before the OS location-permission dialog appears
 
 ### Location History (HIST)
 
-- [ ] **HIST-01**: User can view a historical timeline of a family member's stays and movements
-- [ ] **HIST-02**: User can view a route visualization of past travel
-- [ ] **HIST-03**: User can view travel statistics (distance, time away, stops)
+- [x] **HIST-01**: User can view a historical timeline of a family member's stays and movements
+- [x] **HIST-02**: User can view a route visualization of past travel
+- [x] **HIST-03**: User can view travel statistics (distance, time away, stops)
+
+### User Profile & Map Identity (PROFILE)
+
+- [x] **PROFILE-01**: User can upload a profile picture, stored in Supabase Storage (private bucket) with only the image path/URL persisted in the database
+- [x] **PROFILE-02**: User can replace their existing profile picture
+- [x] **PROFILE-03**: User can remove their profile picture, reverting to the default avatar everywhere it's shown
+- [x] **PROFILE-04**: User can edit their display name, shown on their map marker and profile
+- [x] **PROFILE-05**: User can view their own profile (display name, profile picture, role)
+- [x] **PROFILE-06**: Live family map renders every visible family member as a custom marker with a circular avatar (or default avatar), display name above the marker, an online/offline indicator, and current location, updating in real time as they move
+- [x] **PROFILE-07**: Guardian view shows every family member's avatar, name, live location, and status; Member view shows the guardian and other approved family members' avatars, names, and live locations — scoped to the same Family Circle only
 
 ### Geofencing (GEO)
 
@@ -53,7 +63,7 @@
 
 ### Smart Notifications (NOTIF)
 
-- [ ] **NOTIF-01**: User receives a low-battery alert for themselves or a family member
+- [x] **NOTIF-01**: User receives a low-battery alert for themselves or a family member
 - [ ] **NOTIF-02**: User receives a geofence enter/exit alert
 - [ ] **NOTIF-03**: User receives an SOS alert
 - [ ] **NOTIF-04**: User receives an inactivity alert
@@ -75,11 +85,11 @@
 
 ### Privacy and Security (PRIV)
 
-- [ ] **PRIV-01**: All sensitive communication is end-to-end encrypted
-- [ ] **PRIV-02**: User can toggle sharing per data type (live location, history, wellness) and per recipient
-- [ ] **PRIV-03**: User can enable temporary, time-boxed location sharing that auto-stops
-- [ ] **PRIV-04**: User can export or delete their data from a Privacy Center
-- [ ] **PRIV-05**: Platform maintains a documented, verifiable no-data-resale commitment
+- [x] **PRIV-01**: All sensitive communication is end-to-end encrypted
+- [x] **PRIV-02**: User can toggle sharing per data type (live location, history, wellness) and per recipient
+- [x] **PRIV-03**: User can enable temporary, time-boxed location sharing that auto-stops
+- [x] **PRIV-04**: User can export or delete their data from a Privacy Center
+- [x] **PRIV-05**: Platform maintains a documented, verifiable no-data-resale commitment
 
 ### Walk-Me-Home Mode (WALK)
 
@@ -167,20 +177,27 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FAM-04 | Phase 1 | Complete |
 | FAM-05 | Phase 1 | Complete |
 | DESIGN-01 | Phase 1 | Complete |
-| LOC-01 | Phase 2 | Pending |
-| LOC-02 | Phase 2 | Pending |
-| LOC-03 | Phase 2 | Pending |
-| LOC-04 | Phase 2 | Pending |
-| LOC-05 | Phase 2 | Pending |
-| HIST-01 | Phase 2 | Pending |
-| HIST-02 | Phase 2 | Pending |
-| HIST-03 | Phase 2 | Pending |
-| NOTIF-01 | Phase 2 | Pending |
-| PRIV-01 | Phase 2 | Pending |
-| PRIV-02 | Phase 2 | Pending |
-| PRIV-03 | Phase 2 | Pending |
-| PRIV-04 | Phase 2 | Pending |
-| PRIV-05 | Phase 2 | Pending |
+| LOC-01 | Phase 2 | Complete |
+| LOC-02 | Phase 2 | Complete |
+| LOC-03 | Phase 2 | Complete |
+| LOC-04 | Phase 2 | Complete |
+| LOC-05 | Phase 2 | Complete |
+| HIST-01 | Phase 2 | Complete |
+| HIST-02 | Phase 2 | Complete |
+| HIST-03 | Phase 2 | Complete |
+| NOTIF-01 | Phase 2 | Complete |
+| PRIV-01 | Phase 2 | Complete |
+| PRIV-02 | Phase 2 | Complete |
+| PRIV-03 | Phase 2 | Complete |
+| PRIV-04 | Phase 2 | Complete |
+| PRIV-05 | Phase 2 | Complete |
+| PROFILE-01 | Phase 2 | Complete |
+| PROFILE-02 | Phase 2 | Complete |
+| PROFILE-03 | Phase 2 | Complete |
+| PROFILE-04 | Phase 2 | Complete |
+| PROFILE-05 | Phase 2 | Complete |
+| PROFILE-06 | Phase 2 | Complete |
+| PROFILE-07 | Phase 2 | Complete |
 | SOS-01 | Phase 3 | Pending |
 | SOS-02 | Phase 3 | Pending |
 | SOS-03 | Phase 3 | Pending |
@@ -223,10 +240,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Coverage:**
 
-- v1 requirements: 64 total
-- Mapped to phases: 64 (100%)
+- v1 requirements: 71 total
+- Mapped to phases: 71 (100%)
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-06*
 *Last updated: 2026-07-06 after roadmap creation (traceability populated; corrected v1 requirement count from 56 to 64 to match the actual requirement list above)*
+*Updated 2026-07-13: added PROFILE-01..07 (User Profile & Map Identity) as an additive post-close wave on Phase 2 — v1 requirement count now 71.*

@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
+import '../../../shared_widgets/google_sign_in_button.dart';
+import '../../../shared_widgets/onboarding_scaffold.dart';
 import '../../../shared_widgets/primary_button.dart';
-import '../../../shared_widgets/safepath_logo.dart';
 import '../../../shared_widgets/safepath_text_field.dart';
 
 /// The values entered on [RegisterScreen], carried forward to
@@ -101,54 +100,51 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.lg,
-          ),
-          child: AutofillGroup(
-            child: Form(
-              key: _formKey,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SafePathLogo(size: 44),
-                  const SizedBox(height: AppSpacing.md),
-                  Text('Create account', style: AppTypography.heading),
-                  const SizedBox(height: AppSpacing.xl),
-                  SafePathTextField(
-                    label: 'Full name',
-                    controller: _fullNameController,
-                    autofillHints: const [AutofillHints.name],
-                    textInputAction: TextInputAction.next,
-                    validator: _validateFullName,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  SafePathTextField(
-                    label: 'Email',
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    autofillHints: const [AutofillHints.email],
-                    textInputAction: TextInputAction.next,
-                    validator: _validateEmail,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  SafePathTextField(
-                    label: 'Password',
-                    controller: _passwordController,
-                    obscureText: true,
-                    autofillHints: const [AutofillHints.newPassword],
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => _onContinue(),
-                    validator: _validatePassword,
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  PrimaryButton(label: 'Continue', onPressed: _onContinue),
-                ],
+      body: AutofillGroup(
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: OnboardingScaffold(
+            stepLabel: 'STEP 1 / 2',
+            title: 'Create account',
+            subtitle:
+                'Start with the essentials. You will choose your role next.',
+            children: [
+              SafePathTextField(
+                label: 'Full name',
+                controller: _fullNameController,
+                prefixIcon: Icons.person_outline,
+                autofillHints: const [AutofillHints.name],
+                textInputAction: TextInputAction.next,
+                validator: _validateFullName,
               ),
-            ),
+              const SizedBox(height: 16),
+              SafePathTextField(
+                label: 'Email',
+                controller: _emailController,
+                prefixIcon: Icons.mail_outline,
+                keyboardType: TextInputType.emailAddress,
+                autofillHints: const [AutofillHints.email],
+                textInputAction: TextInputAction.next,
+                validator: _validateEmail,
+              ),
+              const SizedBox(height: 16),
+              SafePathTextField(
+                label: 'Password',
+                controller: _passwordController,
+                prefixIcon: Icons.lock_outline,
+                obscureText: true,
+                helperText: 'Use at least 8 characters.',
+                autofillHints: const [AutofillHints.newPassword],
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _onContinue(),
+                validator: _validatePassword,
+              ),
+              const SizedBox(height: 24),
+              PrimaryButton(label: 'Continue', onPressed: _onContinue),
+              const SizedBox(height: 12),
+              const GoogleSignInButton(),
+            ],
           ),
         ),
       ),

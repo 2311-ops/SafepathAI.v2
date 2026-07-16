@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme/app_colors.dart';
+import '../core/theme/app_typography.dart';
+
 /// SafePath primary CTA button — full-width, 17px vertical padding, 16px
 /// radius, teal fill, white 700/16 label (per `01-UI-SPEC.md` Copywriting
 /// Contract: "Primary CTA buttons specifically render at 700 weight, 16px").
@@ -32,8 +35,14 @@ class PrimaryButton extends StatelessWidget {
         onPressed: onPressed,
         style: hasOverride
             ? ElevatedButton.styleFrom(
-                backgroundColor: backgroundColor,
+                minimumSize: const Size.fromHeight(52),
+                backgroundColor: backgroundColor ?? AppColors.primaryNavy,
                 foregroundColor: foregroundColor,
+                textStyle: AppTypography.ctaLabel,
+                padding: const EdgeInsets.symmetric(vertical: 17),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               )
             : null,
         child: Text(label),

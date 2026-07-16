@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/application/auth_state.dart';
 
 /// "Continue with Google" — an outlined button (matches [SecondaryButton]'s
 /// `OutlinedButton` base for hierarchy consistency; it is a secondary action
-/// relative to each screen's primary CTA), used on Welcome and Login only
-/// (D-08-5 — deliberately excluded from Register).
+/// relative to each screen's primary CTA), used on Welcome, Login, and
+/// Register so every auth entry point can start the native Google flow.
 ///
 /// Watches [authControllerProvider] directly rather than taking an
 /// `isLoading` prop, so it disables itself and shows a spinner the instant
@@ -23,11 +24,7 @@ import '../features/auth/application/auth_state.dart';
 /// both null on Login, where the default theme styling already has
 /// sufficient contrast on the app's light background.
 class GoogleSignInButton extends ConsumerWidget {
-  const GoogleSignInButton({
-    super.key,
-    this.foregroundColor,
-    this.borderColor,
-  });
+  const GoogleSignInButton({super.key, this.foregroundColor, this.borderColor});
 
   final Color? foregroundColor;
   final Color? borderColor;
@@ -46,7 +43,9 @@ class GoogleSignInButton extends ConsumerWidget {
         child: OutlinedButton(
           onPressed: isLoading
               ? null
-              : () => ref.read(authControllerProvider.notifier).signInWithGoogle(),
+              : () => ref
+                    .read(authControllerProvider.notifier)
+                    .signInWithGoogle(),
           style: hasOverride
               ? OutlinedButton.styleFrom(
                   foregroundColor: foregroundColor,
@@ -72,7 +71,9 @@ class GoogleSignInButton extends ConsumerWidget {
                     const SizedBox(width: 10),
                     Text(
                       'Continue with Google',
-                      style: AppTypography.body.copyWith(color: foregroundColor),
+                      style: AppTypography.body.copyWith(
+                        color: foregroundColor ?? AppColors.primaryTeal,
+                      ),
                     ),
                   ],
                 ),

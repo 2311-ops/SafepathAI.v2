@@ -20,7 +20,7 @@ abstract final class AppTypography {
 
   /// 28px/800 — screen-level headlines.
   static TextStyle get heading => GoogleFonts.manrope(
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: FontWeight.w800,
     height: 1.2,
     letterSpacing: 0,
@@ -38,7 +38,7 @@ abstract final class AppTypography {
   /// 15px/600 — button labels (base weight; primary CTA uses 700 via
   /// [ctaLabel]), input field text, permission-row labels.
   static TextStyle get body => GoogleFonts.manrope(
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: FontWeight.w600,
     height: 1.4,
     color: AppColors.ink,
@@ -46,10 +46,19 @@ abstract final class AppTypography {
 
   /// 13px/500 — subtitles, helper/reassurance text, role-card descriptions.
   static TextStyle get bodySecondary => GoogleFonts.manrope(
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: FontWeight.w500,
     height: 1.4,
     color: AppColors.bodySecondary,
+  );
+
+  /// 20px/800 Manrope - route and activity stat values.
+  static TextStyle get statValue => GoogleFonts.manrope(
+    fontSize: 20,
+    fontWeight: FontWeight.w800,
+    height: 1.1,
+    letterSpacing: 0,
+    color: AppColors.ink,
   );
 
   /// Primary CTA button label — 700 weight/16px per UI-SPEC ("Primary CTA
@@ -67,7 +76,7 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w600,
     height: 1.3,
     letterSpacing: 0.06 * 12,
-    color: const Color(0xFF8A9893),
+    color: AppColors.bodySecondary,
   );
 
   /// 24px/800 JetBrains Mono — the invite share code display only.

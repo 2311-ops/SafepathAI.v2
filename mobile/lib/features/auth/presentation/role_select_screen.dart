@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared_widgets/onboarding_scaffold.dart';
 import '../../../shared_widgets/primary_button.dart';
 import '../../profile/application/profile_controller.dart';
 import '../application/auth_controller.dart';
@@ -111,60 +112,39 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) context.go('/register');
       });
-      return const Scaffold(body: SizedBox.shrink());
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
       appBar: AppBar(),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.lg,
+      body: OnboardingScaffold(
+        stepLabel: isOnboarding ? 'STEP 1 / 1' : 'STEP 2 / 2',
+        title: 'Who are you in this circle?',
+        subtitle:
+            'Choose the role that best matches how you will use SafePath AI.',
+        showLogo: !isOnboarding,
+        children: [
+          for (final option in _roleOptions) ...[
+            _RoleCard(
+              option: option,
+              selected: _selected == option.role,
+              onTap: () => setState(() => _selected = option.role),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          if (noticeMessage != null) ...[
+            AuthMessageBanner(message: noticeMessage),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          PrimaryButton(
+            label: isLoading
+                ? (isOnboarding
+                      ? 'Saving your role...'
+                      : 'Creating your circle...')
+                : (isOnboarding ? 'Continue' : 'Create your circle'),
+            onPressed: isLoading ? null : _onConfirm,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Who are you in this circle?', style: AppTypography.heading),
-              const SizedBox(height: AppSpacing.lg),
-              for (final option in _roleOptions) ...[
-                _RoleCard(
-                  option: option,
-                  selected: _selected == option.role,
-                  onTap: () => setState(() => _selected = option.role),
-                ),
-                const SizedBox(height: AppSpacing.md),
-              ],
-              if (noticeMessage != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.cautionBg,
-                    border: Border.all(color: AppColors.cautionBorder),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    noticeMessage,
-                    style: const TextStyle(
-                      color: AppColors.cautionText,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-              ],
-              PrimaryButton(
-                label: isLoading
-                    ? (isOnboarding
-                          ? 'Saving your role...'
-                          : 'Creating your circle...')
-                    : (isOnboarding ? 'Continue' : 'Create your circle'),
-                onPressed: isLoading ? null : _onConfirm,
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -183,47 +163,67 @@ class _RoleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? AppColors.primaryTeal : const Color(0xFFD7E0DE),
-            width: selected ? 2 : 1,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '${option.title}. ${option.description}',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          constraints: const BoxConstraints(minHeight: 72),
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.navyTintBg : AppColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: selected ? AppColors.primaryNavy : AppColors.hairline,
+              width: selected ? 2 : 1,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: AppColors.primaryNavy.withValues(alpha: 0.12),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : const [
+                    BoxShadow(
+                      color: Color(0x12000000),
+                      blurRadius: 8,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
           ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: AppColors.primaryTeal.withValues(alpha: 0.15),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              selected
-                  ? Icons.radio_button_checked
-                  : Icons.radio_button_unchecked,
-              color: selected ? AppColors.primaryTeal : AppColors.bodySecondary,
-            ),
-            const SizedBox(width: AppSpacing.xsMd),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(option.title, style: AppTypography.title),
-                  Text(option.description, style: AppTypography.bodySecondary),
-                ],
+          child: Row(
+            children: [
+              Icon(
+                selected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                color: selected
+                    ? AppColors.primaryNavy
+                    : AppColors.bodySecondary,
               ),
-            ),
-          ],
+              const SizedBox(width: AppSpacing.xsMd),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(option.title, style: AppTypography.title),
+                    const SizedBox(height: 2),
+                    Text(
+                      option.description,
+                      style: AppTypography.bodySecondary,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

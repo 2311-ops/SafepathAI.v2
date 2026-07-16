@@ -161,7 +161,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    const message = 'This link has expired — request a new one.';
+    const message = 'This link has expired. Request a new one to continue.';
     expect(find.text(message), findsOneWidget);
     final text = tester.widget<Text>(find.text(message));
     expect(text.style?.color, AppColors.cautionText);

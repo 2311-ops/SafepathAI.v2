@@ -2,44 +2,44 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 01.1
-current_phase_name: animated-logo-splash-screen
-status: executing
-stopped_at: Completed 01.1-01-PLAN.md
-last_updated: "2026-07-10T22:45:42.868Z"
-last_activity: 2026-07-10
-last_activity_desc: Phase 01.1 execution started
+current_phase: 3
+current_phase_name: Core Value
+status: planning
+stopped_at: Completed 02-19-PLAN.md
+last_updated: "2026-07-16T13:03:11.302Z"
+last_activity: 2026-07-16
+last_activity_desc: Phase 02 complete, transitioned to Phase 3
 progress:
   total_phases: 8
-  completed_phases: 1
-  total_plans: 16
-  completed_plans: 15
-  percent: 13
+  completed_phases: 3
+  total_plans: 35
+  completed_plans: 35
+  percent: 38
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-06)
+See: .planning/PROJECT.md (updated 2026-07-16)
 
 **Core value:** The SOS system must always work — a single tap or covert Silent/Duress trigger reliably delivers an immediate alert with live location to a user's designated guardians within seconds, bypassing every routine and AI pipeline.
-**Current focus:** Phase 01.1 — animated-logo-splash-screen
+**Current focus:** Phase 3 — SOS Fast Path (Core Value)
 
 ## Current Position
 
-Phase: 01.1 (animated-logo-splash-screen) — EXECUTING
-Plan: 2 of 2
-Status: Ready to execute
-Last activity: 2026-07-10 — Phase 01.1 execution started
+Phase: 3 — SOS Fast Path (Core Value)
+Plan: Not started
+Status: Phase 02 plans complete; ready for verification/Phase 3 planning
+Last activity: 2026-07-16 — Phase 02 complete, transitioned to Phase 3
 
-Progress: [#---------] 14%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed: 19
 - Average duration: - min
 - Total execution time: 0 hours
 
@@ -47,7 +47,7 @@ Progress: [#---------] 14%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 02 | 19 | - | - |
 
 **Recent Trend:**
 
@@ -64,6 +64,25 @@ Progress: [#---------] 14%
 | Phase 01-backend-auth-foundation P13 | review-fix | 3 tasks | ownership/delete/db |
 | Phase 01-backend-auth-foundation P14 | review-fix | 3 tasks | deep links/reset UX/tests |
 | Phase 01.1-animated-logo-splash-screen P01 | 15min | 2 tasks | 3 files |
+| Phase 01.1-animated-logo-splash-screen P02 | 35min | 4 tasks | tests/auth/splash |
+| Phase 02-real-time-location-history-privacy P01 | multi-session | 4 tasks | 19 files |
+| Phase 02-real-time-location-history-privacy P02 | 8min | 3 tasks | 24 files |
+| Phase 02-real-time-location-history-privacy P03 | 9min | 3 tasks | 25 files |
+| Phase 02-real-time-location-history-privacy P06 | 18min | 3 tasks | 22 files |
+| Phase 02-real-time-location-history-privacy P04 | 7min | 3 tasks | 10 files |
+| Phase 02 P07 | 12min | 3 tasks | 12 files |
+| Phase 02-real-time-location-history-privacy P05 | 8min | 3 tasks | 18 files |
+| Phase 02-real-time-location-history-privacy P08 | 9min | 3 tasks | 12 files |
+| Phase 02-real-time-location-history-privacy P09 | 11min | 3 tasks | 12 files |
+| Phase 02-real-time-location-history-privacy P10 | 17min | 2 tasks | 5 files |
+| Phase 02-real-time-location-history-privacy P11 | 7min | 2 tasks | 3 files |
+| Phase 02-real-time-location-history-privacy P13 | 48min | 3 tasks | 14 files |
+| Phase 02 P14 | 10min | 3 tasks | 19 files |
+| Phase 02 P15 | ~2h30m | 3 tasks | 12 files |
+| Phase 02 P16 | ~10min | 4 tasks | 7 files |
+| Phase 02 P17 | 7min | 1 tasks | 2 files |
+| Phase 02-real-time-location-history-privacy P18 | 25min | 2 tasks | 4 files |
+| Phase 02 P19 | 20min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -90,6 +109,43 @@ Recent decisions affecting current work:
 - [Phase 01-13]: Added Guardian ownership transfer and delete-family workflows, plus FK/cascade migration and an explicit RLS/Data API deny posture for family tables.
 - [Phase 01-14]: Added invite deep-link handling with pending-invite restoration after auth, distinct decline behavior, and amber expired-reset-link messaging while preserving SOS red exclusively for emergency surfaces.
 - [Phase 01.1-01]: Splash providers use Notifier/NotifierProvider + set() (matching deep_link_service.dart convention) instead of legacy StateProvider, which is unavailable in this project's flutter_riverpod 3.3.2
+- [Phase 02-01]: Approved and retained signalr_netcore 1.4.4 after package legitimacy review and physical-device smoke verification.
+- [Phase 02-01]: SignalR hub user identity is normalized through SupabaseUserIdProvider using the JWT sub claim, matching the backend application user ID model.
+- [Phase 02-01]: Temporary Task 4 smoke-only hub method and Flutter smoke entrypoint were removed before close-out; permanent verification is the integration guard plus recorded device smoke evidence.
+- [Phase 02-02]: Location DTOs live under SafePath.Application.Location; Application handlers own the feature contracts while Infrastructure hub/client code consumes them.
+- [Phase 02-02]: Live-location presence combines IPresenceQuery connection state with a 2-minute ping freshness window, preserving connected-but-stale rendering via RecordedAtUtc.
+- [Phase 02-02]: ReportLocationCommand validates coordinates, non-future timestamps, non-negative accuracy, and battery percent 0-100 before persisting raw pings.
+- [Phase 02-03]: SharingPreference is additive to FAM-04 PermissionLevel; privacy sharing consent and member permissions remain separate authorization axes.
+- [Phase 02-03]: Missing sharing rows default to shared-with-family, explicit recipient rows override default rows, and expired rows are denied at authorization time.
+- [Phase 02-03]: Privacy preference updates force OwnerUserId to the authenticated caller; clients cannot set another user's owner id.
+- [Phase 02-03]: Temporary sharing expiry uses a hosted BackgroundService plus authorization-time expiry checks; no queue or cryptography library was added.
+- [Phase 02-06]: Google Maps API keys are wired through build-time placeholders rather than hardcoded secrets; provide MAPS_API_KEY_ANDROID and MAPS_API_KEY_IOS in local/device builds.
+- [Phase 02-06]: Mobile location permission prompting uses an injectable Geolocator permission service so requestPermission is strictly CTA-gated and testable.
+- [Phase 02-06]: LocationController opens the hub only after authenticated auth state plus loaded family state, then tears down on sign-out.
+- [Phase 02-04]: TimeAway is defined as elapsed time between first and last ping in the bounded history range, or zero with fewer than two pings.
+- [Phase 02-04]: History and travel-stats reads enforce RequireMembership, target-in-family re-scope, and SharedDataType.History before any LocationPing range read.
+- [Phase 02-04]: StopDetection uses DwellTimeDefaults plus averaged dwell-cluster coordinates as the representative stop point.
+- [Phase 02]: [Phase 02-07]: Mobile LiveLocation now mirrors backend MemberLiveLocationDto displayName/isOnline while keeping hub PresenceChanged as an independent state signal. — Required so the member detail sheet can show names/status without collapsing presence and staleness.
+- [Phase 02]: [Phase 02-07]: LowBattery is implemented as a typed mobile hub stream and caution banner ahead of the absent backend 02-05 event. — The 02-07 plan required the client surface, but 02-05-SUMMARY.md and the backend event are not present yet.
+- [Phase 02-05]: LowBatteryAlertTracker is injected through an Application interface so the falling-edge tracker remains an Infrastructure singleton without breaking Clean Architecture.
+- [Phase 02-05]: Low-battery alerts reuse the LiveLocation eligible-recipient filter before hub fan-out, so disabled sharing suppresses battery alerts to that recipient.
+- [Phase 02-05]: Privacy export/delete endpoints derive the caller from ICurrentUserService only; export includes caller location/sharing rows and delete hard-deletes only caller LocationPings.
+- [Phase 02-08]: HistoryController derives familyId from FamilyController instead of duplicating family discovery in the location feature.
+- [Phase 02-08]: Mobile history routes render with google_maps_flutter Polyline inside route_stats_sheet.dart; Activity remains shell-hosted rather than adding a separate /activity route.
+- [Phase 02]: [Phase 02-09]: PrivacyController derives familyId from FamilyController and uses server-backed PATCH toggles with rollback on failure.
+- [Phase 02]: [Phase 02-09]: Privacy export uses existing share_plus JSON text sharing; delete uses Ink/700 confirmation friction and no SOS-red token.
+- [Phase 02]: [Phase 02-10]: LOC-05 is enforced at both /home routing and LocationController bootstrap; non-granted permission reaches priming before MainShell/LiveMapScreen and before live API, SignalR, or Geolocator streaming.
+- [Phase 02]: [Phase 02-11]: Temporary sharing controls are recipient-scoped inside each Privacy Center recipient row, so presets and Custom pass that row's memberId to PrivacyController.startTemporaryShare.
+- [Phase 02]: [Phase 02-11]: Custom temporary sharing defaults to hours, supports minutes/hours, validates non-numeric/non-positive/greater-than-7-day values, and passes the parsed Duration.
+- [Phase 02-13]: Supabase Storage bucket is `avatar` (singular), not the originally planned `avatars`; backend uses configurable `Supabase:AvatarBucket` defaulting to `avatar`, while object paths remain traversal-proof as `avatars/{serverGuid}/avatar.jpg`.
+- [Phase 02-13]: ImageSharp 4.0.0 requires an uncommitted Six Labors license file or `SIXLABORS_LICENSE_KEY` at build time; `.gitignore` excludes `sixlabors.lic`, and no license material is committed.
+- [Phase 02-14]: Profile writes stay `/me`-only and derive `CallerUserId` exclusively from `ICurrentUserService`; signed avatar URLs use a shared 1-hour `ProfileImageUrlFactory`; `ProfileUpdated` broadcasts only on profile changes while `LocationUpdateDto` remains lean.
+- [Phase ?]: [Phase 02-16]: LiveLocation.copyWith gained an explicit clearProfileImage flag (mirroring clearError/clearLowBatteryAlert) so a removed profile photo actually clears the marker avatar instead of falling back via the usual ?? merge; LocationController._applyProfileUpdate stamps a fresh local profileUpdatedAt on avatar changes to bust the CachedNetworkImage cache key since the ProfileUpdated hub payload carries no timestamp. live_map_screen.dart's marker widget was promoted from private _LiveMemberMarker to public LiveMemberMarker so it is directly testable.
+- [Phase ?]: [Phase 02-15]: Profile entry point is a single Live Map app-bar action (both normal and no-circle empty states) rather than a new bottom-nav tab; ProfileAvatar placed under shared_widgets so 02-16's map markers can reuse it.
+- [Phase ?]: Header MemberMapPin reads userId/profileImageUrl/profileUpdatedAt from state?.selfPosition (not the self fallback variable), keeping label 'You' fixed — closing UAT test 72 for the Live Map header identity avatar — The header pin was a hardcoded const MemberMapPin, structurally immune to Riverpod rebuilds; family member markers (LiveMemberMarker) already read live avatar data from LiveLocation, but the header identity was left out
+- [Phase ?]: [Phase 02-18]: MemberLiveLocationDto.ProfileUpdatedAt is gated identically to ProfileImageUrl behind the existing canViewLocation sharing check (no new authorization call); appended as the last positional DTO parameter to preserve the single existing construction site.
+- [Phase 02]: [Phase 02-19]: Ping-derived IsOnline recency is treated as LiveLocation data and is false when canViewLocation is false. — Closes CR-01 / PRIV-02 by preventing recent location pings from contributing to IsOnline for viewers denied LiveLocation sharing.
+- [Phase 02]: [Phase 02-19]: Independent IPresenceQuery.IsOnline connection presence remains visible under denied LiveLocation sharing, preserving D-03. — The plan explicitly preserves the accepted non-location connection-presence signal while gating only ping-derived recency.
 
 ### Pending Todos
 
@@ -114,6 +170,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-10T22:45:42.853Z
-Stopped at: Completed 01.1-01-PLAN.md
+Last session: 2026-07-16
+Stopped at: Phase 02 complete (UAT 74/74 passed, security threat register 74/74 closed), ready to plan Phase 3
 Resume file: None

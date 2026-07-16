@@ -120,6 +120,7 @@ namespace SafePath.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Role")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<Guid>("UserId")
@@ -137,6 +138,76 @@ namespace SafePath.Infrastructure.Persistence.Migrations
                     b.ToTable("FamilyMembers", (string)null);
                 });
 
+            modelBuilder.Entity("SafePath.Domain.Entities.LocationPing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("AccuracyMeters")
+                        .HasColumnType("double precision");
+
+                    b.Property<int?>("BatteryPercent")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("ReceivedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("RecordedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "RecordedAtUtc");
+
+                    b.ToTable("LocationPings", (string)null);
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.SharingPreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DataType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RecipientMemberId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecipientMemberId");
+
+                    b.HasIndex("FamilyId", "OwnerUserId");
+
+                    b.HasIndex("OwnerUserId", "DataType");
+
+                    b.ToTable("SharingPreferences", (string)null);
+                });
+
             modelBuilder.Entity("SafePath.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -145,6 +216,10 @@ namespace SafePath.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -156,8 +231,14 @@ namespace SafePath.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("ProfileImagePath")
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<DateTime?>("ProfileUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Role")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
@@ -184,6 +265,29 @@ namespace SafePath.Infrastructure.Persistence.Migrations
                         .HasForeignKey("FamilyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.LocationPing", b =>
+                {
+                    b.HasOne("SafePath.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.SharingPreference", b =>
+                {
+                    b.HasOne("SafePath.Domain.Entities.Family", null)
+                        .WithMany()
+                        .HasForeignKey("FamilyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SafePath.Domain.Entities.FamilyMember", null)
+                        .WithMany()
+                        .HasForeignKey("RecipientMemberId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 #pragma warning restore 612, 618
         }

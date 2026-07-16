@@ -30,3 +30,4 @@ debug_screens/
 .env
 *.env
 client_secret_*.json
+sixlabors.lic

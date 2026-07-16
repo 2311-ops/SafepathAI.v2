@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
-import '../../../core/theme/app_typography.dart';
+import '../../../shared_widgets/onboarding_scaffold.dart';
 import '../../../shared_widgets/primary_button.dart';
 import '../../../shared_widgets/safepath_text_field.dart';
 import '../application/auth_controller.dart';
@@ -65,84 +63,49 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
     return Scaffold(
       appBar: AppBar(),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.lg,
-          ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Set a new password', style: AppTypography.heading),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  isRecovery
-                      ? 'Your recovery session is active. Choose a new password now.'
-                      : 'Open the reset link from your email on this device to unlock this screen.',
-                  style: AppTypography.bodySecondary,
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                SafePathTextField(
-                  label: 'New password',
-                  controller: _passwordController,
-                  obscureText: true,
-                  autofillHints: const [AutofillHints.newPassword],
-                  textInputAction: TextInputAction.next,
-                  validator: _validatePassword,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                SafePathTextField(
-                  label: 'Confirm password',
-                  controller: _confirmController,
-                  obscureText: true,
-                  autofillHints: const [AutofillHints.newPassword],
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) {
-                    if (isRecovery && !isLoading) _onSubmit();
-                  },
-                  validator: _validateConfirm,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                if (errorMessage != null) ...[
-                  _AmberMessageBanner(message: errorMessage),
-                  const SizedBox(height: AppSpacing.md),
-                ],
-                PrimaryButton(
-                  label: isLoading ? 'Updating...' : 'Update password',
-                  onPressed: isRecovery && !isLoading ? _onSubmit : null,
-                ),
-              ],
+      body: Form(
+        key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        child: OnboardingScaffold(
+          stepLabel: 'PASSWORD RESET',
+          title: 'Set a new password',
+          subtitle: isRecovery
+              ? 'Your recovery session is active. Choose a secure password now.'
+              : 'Open the reset link from your email on this device to unlock this screen.',
+          children: [
+            SafePathTextField(
+              label: 'New password',
+              controller: _passwordController,
+              prefixIcon: Icons.lock_outline,
+              obscureText: true,
+              helperText: 'Use at least 8 characters.',
+              autofillHints: const [AutofillHints.newPassword],
+              textInputAction: TextInputAction.next,
+              validator: _validatePassword,
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AmberMessageBanner extends StatelessWidget {
-  const _AmberMessageBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.cautionBg,
-        border: Border.all(color: AppColors.cautionBorder),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        message,
-        style: const TextStyle(
-          color: AppColors.cautionText,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
+            const SizedBox(height: 16),
+            SafePathTextField(
+              label: 'Confirm password',
+              controller: _confirmController,
+              prefixIcon: Icons.verified_user_outlined,
+              obscureText: true,
+              autofillHints: const [AutofillHints.newPassword],
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) {
+                if (isRecovery && !isLoading) _onSubmit();
+              },
+              validator: _validateConfirm,
+            ),
+            const SizedBox(height: 20),
+            if (errorMessage != null) ...[
+              AuthMessageBanner(message: errorMessage),
+              const SizedBox(height: 16),
+            ],
+            PrimaryButton(
+              label: isLoading ? 'Updating...' : 'Update password',
+              onPressed: isRecovery && !isLoading ? _onSubmit : null,
+            ),
+          ],
         ),
       ),
     );
