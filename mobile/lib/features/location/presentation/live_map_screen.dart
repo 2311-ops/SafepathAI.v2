@@ -246,9 +246,11 @@ class LiveMemberMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final opacity = stalenessFor(
-      DateTime.now().toUtc().difference(location.recordedAtUtc),
-    ).opacity;
+    final opacity = isSelf
+        ? 1.0
+        : stalenessFor(
+            DateTime.now().toUtc().difference(location.recordedAtUtc),
+          ).opacity;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 Phase: 3 — SOS Fast Path (Core Value)
 Plan: Not started
 Status: Phase 02 plans complete; ready for verification/Phase 3 planning
-Last activity: 2026-07-16 — Phase 02 complete, transitioned to Phase 3
+Last activity: 2026-07-16 - Completed quick task 260716-ue7: Fix transparent person marker icon on live map
 
 Progress: [██████████] 100%
 
@@ -159,6 +159,12 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 - Phase 4 (Geofencing): exact dwell-time/hysteresis parameters and Android's April 2026 background-location policy wording need re-verification at build time.
 - Phase 5 (AI): cold-start fallback design (two-tier prediction, synthetic history seeding) needs concrete design during planning.
 - Phase 6 (Duress): security-under-coercion threat modeling for the Silent/Duress secret storage is domain-specific and underspecified beyond the general pattern.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260716-ue7 | Fix transparent person marker icon on live map | 2026-07-16 | 5cc9cd8 | [260716-ue7-fix-transparent-person-marker-icon-on-li](./quick/260716-ue7-fix-transparent-person-marker-icon-on-li/) |
 
 ## Deferred Items
 
