@@ -22,20 +22,21 @@ guarantee; none of it may ever slow it down.
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Real-time location tracking: live map, last-seen status, online/offline indicators — Phase 02
+- ✓ Location history: timeline view, route visualization, travel statistics — Phase 02
+- ✓ Privacy by design (location scope): user-controlled/temporary sharing, granular per-recipient privacy settings, verifiable no-data-resale policy copy, one-tap export/delete of location data — Phase 02
+- ✓ User profile identity: display name + profile photo, editable, propagating live to the map header and family member markers via SignalR `ProfileUpdated` — Phase 02 (emerged mid-phase, not in original requirement list)
 
 ### Active
 
 - [ ] Secure authentication & role-based family groups (Guardian, Member, Caregiver, org roles e.g. School Admin)
 - [ ] Family group management: create circles, invite/accept/reject members, per-member permissions
-- [ ] Real-time location tracking: live map, last-seen status, online/offline indicators
-- [ ] Location history: timeline view, route visualization, travel statistics
 - [ ] Geofencing: safe zones (Home/School/University/Workplace), enter/exit notifications, zone activity log
 - [ ] Always-visible in-app SOS system: one-tap alert with live location to guardians/emergency contacts, bypassing the routine batching pipeline
-- [ ] Smart notifications: low battery, geofence, SOS, inactivity alerts
+- [ ] Smart notifications: low battery (delivered — Phase 02), geofence, SOS, inactivity alerts
 - [ ] AI analytics: anomaly detection (Isolation Forest), ETA prediction (XGBoost), safety scoring, activity analysis — each paired with a plain-language explanation via the Explainability Layer
 - [ ] Family dashboard & analytics: family overview, activity charts, location heatmaps, safety metrics
-- [ ] Privacy by design: end-to-end encrypted communication, user-controlled/temporary sharing, granular privacy settings, verifiable no-data-resale, one-tap export/delete
+- [ ] Privacy by design (remaining): end-to-end encrypted communication (messaging, not location — not yet addressed)
 - [ ] Walk-Me-Home mode: proactive ETA-based session that auto-escalates to the SOS pipeline on overrun
 - [ ] Silent/Duress SOS: covert trigger (decoy PIN/gesture) firing the same alert pipeline behind a normal-looking decoy screen
 - [ ] Mutual Visibility Ledger: logs and surfaces every location view back to the person who was viewed
@@ -100,6 +101,10 @@ guarantee; none of it may ever slow it down.
 | Supabase owns authentication; backend owns app authorization/profile state | Comprehensive Phase 1 review found architecture drift risk around custom JWT remnants and `/me` role sourcing | Backend validates Supabase JWTs, `/me` reads app role/profile from `Users`, custom `AuthResult` removed |
 | Phase 1 supports one active family per user | Mobile Phase 1 has no family switcher, so multiple active memberships created ambiguous restore/navigation behavior | Enforced in command handlers and with a filtered unique index on active `FamilyMembers.UserId` |
 | Family tables are backend API owned for Phase 1 | RLS is defense in depth, but EF/backend handlers are the source of authorization for family workflows | Migration enables RLS and revokes Data API grants for family tables; backend handlers keep Guardian/member checks |
+| Mid-Phase-02 migration from `google_maps_flutter` to `flutter_map`/OpenStreetMap | Project direction change (2026-07-13) away from a Google Maps SDK/billing dependency | All map surfaces (live map, route history) rebuilt on flutter_map/OSM; no `google_maps_flutter` references remain; see `02-OSM-MIGRATION-IMPACT.md` |
+| Location sharing enforced by a server-side double gate: active family membership + enabled/unexpired `SharingPreference` | Client-only toggles are trivially bypassable; privacy-first positioning requires the server, not the UI, to be the enforcement boundary | Enforced in `ReportLocationCommand`, `GetLiveLocationsQuery`, and `GetLocationHistoryQuery`; verified in Phase 02 security review (74/74 threats closed) |
+| Profile avatars stored via a private Supabase Storage bucket with backend-issued signed URLs only — mobile never calls `supabase_flutter` Storage directly | Keeps the backend as the sole trust boundary for upload validation (re-encode, size/dimension limits, path derived from server-side user Guid) | Implemented across Phases 02-13–02-16; verified via UAT and security threat register (no direct Storage access from client) |
+| Foreground-only location tracking for Phase 02 (no background/Always permission) | Matches `geolocator`-only foreground scope decided for this milestone; background tracking deferred | Android/iOS manifests carry no background location strings; verified in UAT test 24 |
 
 ## Evolution
 
@@ -119,4 +124,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-10 after Phase 1 comprehensive-review fixes*
+*Last updated: 2026-07-16 after Phase 02 (real-time location, history & privacy) completion*
