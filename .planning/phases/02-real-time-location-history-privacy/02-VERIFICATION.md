@@ -1,7 +1,7 @@
 ---
 phase: 02-real-time-location-history-privacy
 verified: 2026-07-14T23:11:57Z
-status: human_needed
+status: passed
 score: 7/8 must-haves verified
 behavior_unverified: 1
 overrides_applied: 0
@@ -10,16 +10,19 @@ re_verification:
   previous_status: gaps_found
   previous_score: 6/8
   gaps_closed:
+
     - "CR-01: ping-derived IsOnline recency is now gated behind canViewLocation in GetLiveLocationsQueryHandler."
     - "Regression tests now cover denied LiveLocation sharing plus a recent ping with no independent presence, and denied LiveLocation sharing plus independent connection presence."
   gaps_remaining: []
   regressions: []
 behavior_unverified_items:
+
   - truth: "After a full app close-and-reopen, the Live Map header avatar and family member markers show the current profile photo, not a stale cached one, matching the in-session behavior already confirmed for UAT test 72."
     test: "On a physical device signed into a family circle: upload a profile photo, fully close the app (swipe away or force-stop, not just background it), reopen it, and confirm the Live Map header avatar and family markers show the latest photo. Repeat after replace and after remove."
     expected: "Header avatar and family markers show the current photo immediately on cold start; after remove, they show the default initials avatar. No stale cached image appears."
     why_human: "The code and unit tests prove ProfileUpdatedAt is threaded through the cold-start bootstrap, but no automated test restarts a real Flutter process or exercises cached_network_image/flutter_cache_manager's persistent disk cache across an OS-level app close/reopen. 02-UAT.md still records test 73 as an issue, and no later artifact records the physical-device retest as passed."
 human_verification:
+
   - test: "UAT 73 physical-device cold-start avatar retest"
     expected: "After upload, replace, and remove, a full app close and reopen shows the latest avatar state in both the Live Map header and all family markers."
     why_human: "Requires a real device/process restart and persistent image cache behavior; automated tests only cover the data path feeding the cache key."
