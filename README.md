@@ -19,7 +19,7 @@ Last documented: 2026-07-12.
 | Backend | ASP.NET Core 9 API with Supabase JWT validation, EF Core persistence, family/invite endpoints, and integration tests |
 | Phase 1 | Backend & Auth Foundation verified |
 | Phase 01.1 | Animated Logo Splash Screen verified |
-| Next product phase | Phase 2: Real-Time Location, History & Privacy |
+| phase 2 | Phase 2: Real-Time Location, History & Privacy , done|
 
 ## Repository Layout
 
