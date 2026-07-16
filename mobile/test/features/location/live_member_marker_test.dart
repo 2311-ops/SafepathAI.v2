@@ -103,4 +103,78 @@ void main() {
 
     expect(tapped, isTrue);
   });
+
+  testWidgets('self marker stays fully opaque when its ping is stale', (
+    tester,
+  ) async {
+    final location = LiveLocation(
+      userId: 'member-1',
+      displayName: 'You',
+      lat: 30.05,
+      lng: 31.24,
+      accuracyMeters: 12,
+      recordedAtUtc: DateTime.now().toUtc().subtract(const Duration(hours: 2)),
+    );
+
+    await tester.pumpWidget(
+      wrap(
+        LiveMemberMarker(
+          location: location,
+          name: 'You',
+          isOnline: true,
+          isSelf: true,
+          color: Colors.purple,
+          onTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final opacityWidget = tester
+        .widget<Opacity>(
+          find.descendant(
+            of: find.byType(LiveMemberMarker),
+            matching: find.byType(Opacity),
+          ),
+        );
+
+    expect(opacityWidget.opacity, 1.0);
+  });
+
+  testWidgets('family member marker still fades when its ping is stale', (
+    tester,
+  ) async {
+    final location = LiveLocation(
+      userId: 'member-2',
+      displayName: 'Sam Rivera',
+      lat: 30.05,
+      lng: 31.24,
+      accuracyMeters: 12,
+      recordedAtUtc: DateTime.now().toUtc().subtract(const Duration(hours: 2)),
+    );
+
+    await tester.pumpWidget(
+      wrap(
+        LiveMemberMarker(
+          location: location,
+          name: 'Sam Rivera',
+          isOnline: true,
+          isSelf: false,
+          color: Colors.purple,
+          onTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final opacityWidget = tester
+        .widget<Opacity>(
+          find.descendant(
+            of: find.byType(LiveMemberMarker),
+            matching: find.byType(Opacity),
+          ),
+        );
+
+    expect(opacityWidget.opacity, lessThan(1.0));
+  });
 }
