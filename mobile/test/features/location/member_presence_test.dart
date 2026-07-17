@@ -301,6 +301,7 @@ void main() {
                 name: 'Maya',
                 isOnline: false,
                 lastSeenAtUtc: DateTime.utc(2026, 7, 12, 10),
+                batteryPercent: 72,
               ),
               now: DateTime.utc(2026, 7, 12, 10, 8),
             ),
@@ -316,5 +317,6 @@ void main() {
     expect(find.text('Maya'), findsOneWidget);
     expect(find.text('OFFLINE'), findsOneWidget);
     expect(find.text('Last seen 8 min ago'), findsOneWidget);
+    expect(find.text('72%'), findsOneWidget);
   });
 }

@@ -16,6 +16,7 @@ import '../../family/application/family_controller.dart';
 import '../application/location_controller.dart';
 import '../application/staleness.dart';
 import '../data/location_models.dart';
+import 'battery_indicator.dart';
 import 'low_battery_banner.dart';
 import 'member_detail_sheet.dart';
 
@@ -113,9 +114,11 @@ class LiveMapScreen extends ConsumerWidget {
           // Widened from the 44x44 tap-target-only box so the always-visible
           // name and online/offline labels have room beneath the avatar;
           // flutter_map has no overflow anchor, so the declared box must
-          // contain the whole Column[avatar, labels] (research §5).
+          // contain the whole Column[avatar, labels] (research §5). Height
+          // raised 88->108 to also fit the battery readout row (LOC-04)
+          // without a RenderFlex overflow.
           width: 104,
-          height: 88,
+          height: 108,
           alignment: Alignment.center,
           child: LiveMemberMarker(
             location: location,
@@ -134,6 +137,7 @@ class LiveMapScreen extends ConsumerWidget {
                     state?.memberLastSeenAt(location.userId) ??
                     location.lastSeenAtUtc ??
                     location.recordedAtUtc,
+                batteryPercent: location.batteryPercent,
               ),
             ),
           ),
@@ -178,6 +182,7 @@ class LiveMapScreen extends ConsumerWidget {
                         name: member.name,
                         isOnline: member.isOnline,
                         lastSeenAtUtc: member.lastSeenAtUtc,
+                        batteryPercent: member.location.batteryPercent,
                       ),
                     ),
                   ),
@@ -298,6 +303,8 @@ class LiveMemberMarker extends StatelessWidget {
               _MarkerNameLabel(name: name),
               const SizedBox(height: 2),
               _MarkerPresenceLabel(isOnline: isOnline),
+              const SizedBox(height: 2),
+              BatteryIndicator(percent: location.batteryPercent),
             ],
           ),
         ),

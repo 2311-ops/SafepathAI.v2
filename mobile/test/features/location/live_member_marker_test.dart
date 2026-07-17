@@ -177,4 +177,62 @@ void main() {
 
     expect(opacityWidget.opacity, lessThan(1.0));
   });
+
+  testWidgets('renders the battery percent when known', (tester) async {
+    final location = LiveLocation(
+      userId: 'member-2',
+      displayName: 'Sam Rivera',
+      lat: 30.05,
+      lng: 31.24,
+      accuracyMeters: 12,
+      recordedAtUtc: DateTime.now().toUtc(),
+      batteryPercent: 72,
+    );
+
+    await tester.pumpWidget(
+      wrap(
+        LiveMemberMarker(
+          location: location,
+          name: 'Sam Rivera',
+          isOnline: true,
+          isSelf: false,
+          color: Colors.purple,
+          onTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('72%'), findsOneWidget);
+  });
+
+  testWidgets('shows no battery figure when battery percent is unknown', (
+    tester,
+  ) async {
+    final location = LiveLocation(
+      userId: 'member-2',
+      displayName: 'Sam Rivera',
+      lat: 30.05,
+      lng: 31.24,
+      accuracyMeters: 12,
+      recordedAtUtc: DateTime.now().toUtc(),
+      batteryPercent: null,
+    );
+
+    await tester.pumpWidget(
+      wrap(
+        LiveMemberMarker(
+          location: location,
+          name: 'Sam Rivera',
+          isOnline: true,
+          isSelf: false,
+          color: Colors.purple,
+          onTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.textContaining('%'), findsNothing);
+  });
 }

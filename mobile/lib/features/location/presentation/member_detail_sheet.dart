@@ -3,17 +3,20 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import 'battery_indicator.dart';
 
 class MemberDetail {
   const MemberDetail({
     required this.name,
     required this.isOnline,
     required this.lastSeenAtUtc,
+    this.batteryPercent,
   });
 
   final String name;
   final bool isOnline;
   final DateTime? lastSeenAtUtc;
+  final int? batteryPercent;
 }
 
 Future<void> showMemberDetailSheet(
@@ -80,6 +83,8 @@ class MemberDetailSheet extends StatelessWidget {
               lastSeenText(member.lastSeenAtUtc, now: now),
               style: AppTypography.bodySecondary,
             ),
+            const SizedBox(height: AppSpacing.sm),
+            BatteryIndicator(percent: member.batteryPercent),
           ],
         ),
       ),
