@@ -20,11 +20,35 @@ import 'battery_indicator.dart';
 import 'low_battery_banner.dart';
 import 'member_detail_sheet.dart';
 
-class LiveMapScreen extends ConsumerWidget {
-  const LiveMapScreen({super.key});
+class LiveMapScreen extends ConsumerStatefulWidget {
+  const LiveMapScreen({super.key, @visibleForTesting this.mapController});
+
+  /// Test seam: a test-owned [MapController] so a widget test can read the
+  /// resulting camera position after a rail-card tap. Production callers
+  /// keep constructing `const LiveMapScreen()` and get a State-owned
+  /// controller instead.
+  @visibleForTesting
+  final MapController? mapController;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LiveMapScreen> createState() => _LiveMapScreenState();
+}
+
+class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
+  late final bool _ownsController = widget.mapController == null;
+  late final MapController _mapController =
+      widget.mapController ?? MapController();
+
+  @override
+  void dispose() {
+    if (_ownsController) {
+      _mapController.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final asyncState = ref.watch(locationControllerProvider);
     final state = asyncState.value;
     final familyState = ref.watch(familyControllerProvider).value;
@@ -148,6 +172,7 @@ class LiveMapScreen extends ConsumerWidget {
       body: Stack(
         children: [
           FlutterMap(
+            mapController: _mapController,
             options: MapOptions(initialCenter: cameraTarget, initialZoom: 15),
             children: [
               TileLayer(
@@ -176,14 +201,9 @@ class LiveMapScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.sm),
                   _MemberStatusRail(
                     members: memberDetails,
-                    onMemberTap: (member) => showMemberDetailSheet(
-                      context,
-                      member: MemberDetail(
-                        name: member.name,
-                        isOnline: member.isOnline,
-                        lastSeenAtUtc: member.lastSeenAtUtc,
-                        batteryPercent: member.location.batteryPercent,
-                      ),
+                    onMemberTap: (member) => _mapController.move(
+                      LatLng(member.location.lat, member.location.lng),
+                      17,
                     ),
                   ),
                   if (state?.lowBatteryAlert != null) ...[
@@ -496,6 +516,7 @@ class _MemberStatusRail extends StatelessWidget {
         itemCount: members.length,
         separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
         itemBuilder: (context, index) => _MemberStatusCard(
+          key: ValueKey('member-card-${members[index].location.userId}'),
           member: members[index],
           onTap: () => onMemberTap(members[index]),
         ),
@@ -505,7 +526,11 @@ class _MemberStatusRail extends StatelessWidget {
 }
 
 class _MemberStatusCard extends StatelessWidget {
-  const _MemberStatusCard({required this.member, required this.onTap});
+  const _MemberStatusCard({
+    super.key,
+    required this.member,
+    required this.onTap,
+  });
 
   final _VisibleMember member;
   final VoidCallback onTap;
