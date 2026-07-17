@@ -6,9 +6,9 @@ current_phase: 3
 current_phase_name: Core Value
 status: planning
 stopped_at: Completed 02-19-PLAN.md
-last_updated: "2026-07-17T15:06:28.000Z"
+last_updated: "2026-07-17T15:54:41.000Z"
 last_activity: 2026-07-17
-last_activity_desc: "Completed quick task 260717-oq0: Display each family member's live battery on the Live Map"
+last_activity_desc: "Completed quick task 260717-pwh: Rail-card tap on the Live Map now recenters the map instead of opening the member detail sheet"
 progress:
   total_phases: 8
   completed_phases: 3
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 Phase: 3 — SOS Fast Path (Core Value)
 Plan: Not started
 Status: Phase 02 plans complete; ready for verification/Phase 3 planning
-Last activity: 2026-07-17 - Completed quick task 260717-oq0: Display each family member's live battery on the Live Map
+Last activity: 2026-07-17 - Completed quick task 260717-pwh: Rail-card tap on the Live Map now recenters the map instead of opening the member detail sheet
 
 Progress: [██████████] 100%
 
@@ -146,6 +146,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 02-18]: MemberLiveLocationDto.ProfileUpdatedAt is gated identically to ProfileImageUrl behind the existing canViewLocation sharing check (no new authorization call); appended as the last positional DTO parameter to preserve the single existing construction site.
 - [Phase 02]: [Phase 02-19]: Ping-derived IsOnline recency is treated as LiveLocation data and is false when canViewLocation is false. — Closes CR-01 / PRIV-02 by preventing recent location pings from contributing to IsOnline for viewers denied LiveLocation sharing.
 - [Phase 02]: [Phase 02-19]: Independent IPresenceQuery.IsOnline connection presence remains visible under denied LiveLocation sharing, preserving D-03. — The plan explicitly preserves the accepted non-location connection-presence signal while gating only ping-derived recency.
+- [Quick 260717-pwh]: LiveMapScreen converted from ConsumerWidget to ConsumerStatefulWidget owning a MapController; rail-card tap now recenters the map camera (zoom 17) instead of opening the member detail sheet, while marker-pin tap keeps opening it — two complementary interactions (locate-on-map vs. details).
 
 ### Pending Todos
 
@@ -166,6 +167,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 |---|-------------|------|--------|-----------|
 | 260716-ue7 | Fix transparent person marker icon on live map | 2026-07-16 | 5cc9cd8 | [260716-ue7-fix-transparent-person-marker-icon-on-li](./quick/260716-ue7-fix-transparent-person-marker-icon-on-li/) |
 | 260717-oq0 | Display each family member's live battery on the Live Map | 2026-07-17 | 4701da1 | [260717-oq0-display-each-family-member-s-live-batter](./quick/260717-oq0-display-each-family-member-s-live-batter/) |
+| 260717-pwh | Rail-card tap on the Live Map recenters the map instead of opening the member sheet | 2026-07-17 | 4ddb746 | [260717-pwh-on-the-live-map-screen-tapping-a-family-](./quick/260717-pwh-on-the-live-map-screen-tapping-a-family-/) |
 
 ## Deferred Items
 
