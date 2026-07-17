@@ -13,6 +13,7 @@ import 'package:mobile/features/family/presentation/create_circle_screen.dart';
 import 'package:mobile/features/location/application/location_controller.dart';
 import 'package:mobile/features/location/data/location_models.dart';
 import 'package:mobile/features/location/presentation/live_map_screen.dart';
+import 'package:mobile/features/location/presentation/member_detail_sheet.dart';
 import 'package:mobile/features/profile/application/profile_controller.dart';
 import 'package:mobile/features/profile/data/user_profile.dart';
 import 'package:mobile/shared_widgets/member_map_pin.dart';
@@ -296,6 +297,47 @@ void main() {
         'https://example.com/avatar/self-user.jpg',
       );
       expect(headerPin.profileUpdatedAt, isNotNull);
+    },
+  );
+
+  testWidgets(
+    'tapping a rail card recenters the map on that member and does not open '
+    'the detail sheet',
+    (tester) async {
+      final controller = MapController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            familyControllerProvider.overrideWith(
+              _PopulatedFamilyController.new,
+            ),
+            locationControllerProvider.overrideWith(
+              _PopulatedLocationController.new,
+            ),
+            profileControllerProvider.overrideWith(
+              () => _SeededProfileController(Role.guardian),
+            ),
+          ],
+          child: MaterialApp(
+            home: LiveMapScreen(mapController: controller),
+          ),
+        ),
+      );
+      // flutter_map issues real network tile requests that never resolve in
+      // the test harness; pumpAndSettle would hang waiting on them, so build
+      // the tree with a fixed-duration pump instead (mirrors the populated
+      // map test above).
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.byKey(const ValueKey('member-card-other-user')));
+      await tester.pump();
+
+      expect(controller.camera.center.latitude, closeTo(30.0500, 1e-9));
+      expect(controller.camera.center.longitude, closeTo(31.2400, 1e-9));
+      expect(controller.camera.zoom, closeTo(17, 1e-9));
+      expect(find.byType(MemberDetailSheet), findsNothing);
     },
   );
 }
