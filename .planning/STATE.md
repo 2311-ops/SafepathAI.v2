@@ -169,6 +169,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260717-oq0 | Display each family member's live battery on the Live Map | 2026-07-17 | 4701da1 | [260717-oq0-display-each-family-member-s-live-batter](./quick/260717-oq0-display-each-family-member-s-live-batter/) |
 | 260717-pwh | Rail-card tap on the Live Map recenters the map instead of opening the member sheet | 2026-07-17 | 4ddb746 | [260717-pwh-on-the-live-map-screen-tapping-a-family-](./quick/260717-pwh-on-the-live-map-screen-tapping-a-family-/) |
 | 260720-1ou | Restyle OSM attribution text to be as visually minimal as possible while ODbL-compliant | 2026-07-19 | 0dd46cf | [260720-1ou-restyle-osm-attribution-text-to-be-as-vi](./quick/260720-1ou-restyle-osm-attribution-text-to-be-as-vi/) |
+| 260720-25t | Limit map zoom-out on the Live Map (minZoom 9) and route-history map (minZoom 5) so neither collapses to a world view | 2026-07-19 | bb2bad6 | [260720-25t-limit-map-zoom-out-on-the-live-map-so-it](./quick/260720-25t-limit-map-zoom-out-on-the-live-map-so-it/) |
 
 ## Deferred Items
 
