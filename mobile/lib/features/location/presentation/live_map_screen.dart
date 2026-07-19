@@ -174,7 +174,15 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
         children: [
           FlutterMap(
             mapController: _mapController,
-            options: MapOptions(initialCenter: cameraTarget, initialZoom: 15),
+            options: MapOptions(
+              initialCenter: cameraTarget,
+              initialZoom: 15,
+              // OSM zoom runs ~0 (whole world) to ~19 (building level); 9 is
+              // roughly a large metro/regional extent, so pinch- or
+              // programmatic zoom-out on the family Live Map bottoms out at
+              // "can see my region" instead of collapsing to a world view.
+              minZoom: 9,
+            ),
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',

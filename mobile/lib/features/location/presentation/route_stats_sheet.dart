@@ -87,6 +87,13 @@ class RouteStatsSheet extends StatelessWidget {
                         options: MapOptions(
                           initialCenter: initial,
                           initialZoom: routePoints.length >= 2 ? 13 : 15,
+                          // Deliberately more permissive than the Live Map's
+                          // minZoom 9: this map bounds a completed travel
+                          // route that may span a wide area, so it needs
+                          // room to zoom out further to fit it on screen.
+                          // Zoom 5 (~country/multi-state extent) still
+                          // prevents a world-view collapse.
+                          minZoom: 5,
                         ),
                         children: [
                           TileLayer(
