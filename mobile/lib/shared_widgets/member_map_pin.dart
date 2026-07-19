@@ -43,24 +43,26 @@ class MemberMapPin extends StatefulWidget {
 
 class _MemberMapPinState extends State<MemberMapPin>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _pulseController;
-  late final Animation<double> _pulseOpacity;
+  AnimationController? _pulseController;
+  Animation<double>? _pulseOpacity;
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    )..repeat(reverse: true);
-    _pulseOpacity = Tween<double>(begin: 1, end: 0.3).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
+    if (widget.isSelf) {
+      _pulseController = AnimationController(
+        vsync: this,
+        duration: const Duration(seconds: 1),
+      )..repeat(reverse: true);
+      _pulseOpacity = Tween<double>(begin: 1, end: 0.3).animate(
+        CurvedAnimation(parent: _pulseController!, curve: Curves.easeInOut),
+      );
+    }
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
+    _pulseController?.dispose();
     super.dispose();
   }
 
@@ -146,21 +148,23 @@ class _MemberMapPinState extends State<MemberMapPin>
                         )
                       : _initialsText(),
                 ),
-                if (isLiveSelf)
+                if (isLiveSelf && _pulseOpacity != null)
                   Positioned(
                     right: (visualSize - pinSize) / 2,
                     top: (visualSize - pinSize) / 2,
-                    child: FadeTransition(
-                      opacity: _pulseOpacity,
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: AppColors.safe,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.surface,
-                            width: 2,
+                    child: RepaintBoundary(
+                      child: FadeTransition(
+                        opacity: _pulseOpacity!,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: AppColors.safe,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.surface,
+                              width: 2,
+                            ),
                           ),
                         ),
                       ),
