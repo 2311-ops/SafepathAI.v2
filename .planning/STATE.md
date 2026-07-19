@@ -6,9 +6,9 @@ current_phase: 3
 current_phase_name: Core Value
 status: planning
 stopped_at: Completed 02-19-PLAN.md
-last_updated: "2026-07-17T15:54:41.000Z"
-last_activity: 2026-07-17
-last_activity_desc: "Completed quick task 260717-pwh: Rail-card tap on the Live Map now recenters the map instead of opening the member detail sheet"
+last_updated: "2026-07-20T00:00:00.000Z"
+last_activity: 2026-07-20
+last_activity_desc: "Completed quick task 260720-3tm: Fixed low-battery banner dismiss button tap target by removing VisualDensity.compact"
 progress:
   total_phases: 8
   completed_phases: 3
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 Phase: 3 — SOS Fast Path (Core Value)
 Plan: Not started
 Status: Phase 02 plans complete; ready for verification/Phase 3 planning
-Last activity: 2026-07-17 - Completed quick task 260717-pwh: Rail-card tap on the Live Map now recenters the map instead of opening the member detail sheet
+Last activity: 2026-07-20 - Completed quick task 260720-3tm: Fixed low-battery banner dismiss button tap target by removing VisualDensity.compact
 
 Progress: [██████████] 100%
 
@@ -171,6 +171,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260720-1ou | Restyle OSM attribution text to be as visually minimal as possible while ODbL-compliant | 2026-07-19 | 0dd46cf | [260720-1ou-restyle-osm-attribution-text-to-be-as-vi](./quick/260720-1ou-restyle-osm-attribution-text-to-be-as-vi/) |
 | 260720-25t | Limit map zoom-out on the Live Map (minZoom 9) and route-history map (minZoom 5) so neither collapses to a world view | 2026-07-19 | bb2bad6 | [260720-25t-limit-map-zoom-out-on-the-live-map-so-it](./quick/260720-25t-limit-map-zoom-out-on-the-live-map-so-it/) |
 | 260720-33j | Gate MemberMapPin's pulse AnimationController on isSelf and isolate its repaint with a RepaintBoundary | 2026-07-20 | cbf36d9 | [260720-33j-in-membermappin-only-create-start-the-pu](./quick/260720-33j-in-membermappin-only-create-start-the-pu/) |
+| 260720-3tm | Fix low-battery banner dismiss button tap target (removed VisualDensity.compact) | 2026-07-20 | 447c756 | [260720-3tm-fix-low-battery-banner-dismiss-button-to](./quick/260720-3tm-fix-low-battery-banner-dismiss-button-to/) |
 
 ## Deferred Items
 
