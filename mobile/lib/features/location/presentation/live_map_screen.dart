@@ -19,6 +19,7 @@ import '../data/location_models.dart';
 import 'battery_indicator.dart';
 import 'low_battery_banner.dart';
 import 'member_detail_sheet.dart';
+import 'osm_attribution.dart';
 
 class LiveMapScreen extends ConsumerStatefulWidget {
   const LiveMapScreen({super.key, @visibleForTesting this.mapController});
@@ -181,9 +182,7 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
               ),
               CircleLayer(circles: circleMarkers),
               MarkerLayer(markers: markers),
-              const SimpleAttributionWidget(
-                source: Text('OpenStreetMap contributors'),
-              ),
+              const OsmAttribution(),
             ],
           ),
           SafeArea(

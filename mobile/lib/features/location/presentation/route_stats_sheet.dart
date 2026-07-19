@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared_widgets/stat_tile.dart';
 import '../data/location_models.dart';
+import 'osm_attribution.dart';
 
 Future<void> showRouteStatsSheet({
   required BuildContext context,
@@ -106,9 +107,7 @@ class RouteStatsSheet extends StatelessWidget {
                               ],
                             ),
                           MarkerLayer(markers: markers),
-                          const SimpleAttributionWidget(
-                            source: Text('OpenStreetMap contributors'),
-                          ),
+                          const OsmAttribution(),
                         ],
                       ),
                     ),
