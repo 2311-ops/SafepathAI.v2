@@ -31,6 +31,10 @@ void main() {
       findsOneWidget,
     );
 
+    final buttonSize = tester.getSize(find.byType(IconButton));
+    expect(buttonSize.width, greaterThanOrEqualTo(44.0));
+    expect(buttonSize.height, greaterThanOrEqualTo(44.0));
+
     await tester.tap(find.byIcon(Icons.close));
     await tester.pump();
 

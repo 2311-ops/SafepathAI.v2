@@ -61,7 +61,6 @@ class LowBatteryBanner extends StatelessWidget {
             ),
             IconButton(
               tooltip: 'Dismiss low battery alert',
-              visualDensity: VisualDensity.compact,
               onPressed: onDismissed,
               icon: const Icon(Icons.close, color: AppColors.cautionText),
             ),
