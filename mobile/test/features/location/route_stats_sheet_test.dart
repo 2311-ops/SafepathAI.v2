@@ -65,6 +65,9 @@ void main() {
       expect(find.text('DISTANCE'), findsOneWidget);
       expect(find.text('TIME AWAY'), findsOneWidget);
       expect(find.text('STOPS'), findsOneWidget);
+
+      final map = tester.widget<FlutterMap>(find.byType(FlutterMap));
+      expect(map.options.minZoom, closeTo(5, 1e-9));
     },
   );
 }

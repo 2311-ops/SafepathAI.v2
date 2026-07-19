@@ -258,6 +258,36 @@ void main() {
   );
 
   testWidgets(
+    'Live Map enforces a regional zoom-out floor (minZoom 9)',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            familyControllerProvider.overrideWith(
+              _PopulatedFamilyController.new,
+            ),
+            locationControllerProvider.overrideWith(
+              _PopulatedLocationController.new,
+            ),
+            profileControllerProvider.overrideWith(
+              () => _SeededProfileController(Role.guardian),
+            ),
+          ],
+          child: const MaterialApp(home: LiveMapScreen()),
+        ),
+      );
+      // flutter_map issues real network tile requests that never resolve in
+      // the test harness; pumpAndSettle would hang waiting on them, so build
+      // the tree with a fixed-duration pump instead (mirrors the populated
+      // map test above).
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final map = tester.widget<FlutterMap>(find.byType(FlutterMap));
+      expect(map.options.minZoom, closeTo(9, 1e-9));
+    },
+  );
+
+  testWidgets(
     'header identity pin live-updates from LocationState.selfPosition (UAT 72)',
     (tester) async {
       await tester.pumpWidget(
