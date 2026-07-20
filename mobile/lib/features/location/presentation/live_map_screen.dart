@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -36,12 +38,38 @@ class LiveMapScreen extends ConsumerStatefulWidget {
 }
 
 class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
+  // Low-frequency wall-clock re-evaluation ticker (F-544). Flutter widgets
+  // do not rebuild purely because time passed — isMemberStale is derived
+  // from DateTime.now(), so without this timer a member who becomes stale
+  // while the map sits open (no other state change) would never visually
+  // flip from ONLINE to STALE. 30s is well below kStaleThreshold (3 min),
+  // keeping the transition timely while the full-screen rebuild cost stays
+  // negligible (consistent with the repaint-cost discipline established in
+  // quick task 260720-33j).
+  static const Duration _stalenessTick = Duration(seconds: 30);
+
   late final bool _ownsController = widget.mapController == null;
   late final MapController _mapController =
       widget.mapController ?? MapController();
+  Timer? _stalenessTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _stalenessTimer = Timer.periodic(_stalenessTick, (_) {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
+    // Cancel synchronously before the map-controller disposal below,
+    // mirroring the synchronous-cancel discipline already used in
+    // LocationController — a pending periodic Timer left past widget
+    // disposal trips flutter_test's "Timer still pending after widget tree
+    // was disposed" invariant.
+    _stalenessTimer?.cancel();
+    _stalenessTimer = null;
     if (_ownsController) {
       _mapController.dispose();
     }
@@ -106,6 +134,7 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
           location: location,
           name: _memberName(location, state),
           isOnline: state?.isMemberOnline(location.userId) ?? location.isOnline,
+          isStale: state?.isMemberStale(location.userId) ?? false,
           isSelf: location.userId == state?.selfPosition?.userId,
           lastSeenAtUtc:
               state?.memberLastSeenAt(location.userId) ??
@@ -150,6 +179,7 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
             name: _memberName(location, state),
             isOnline:
                 state?.isMemberOnline(location.userId) ?? location.isOnline,
+            isStale: state?.isMemberStale(location.userId) ?? false,
             isSelf: location.userId == state?.selfPosition?.userId,
             color: _memberColor(location.userId),
             onTap: () => showMemberDetailSheet(
@@ -158,6 +188,7 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
                 name: _memberName(location, state),
                 isOnline:
                     state?.isMemberOnline(location.userId) ?? location.isOnline,
+                isStale: state?.isMemberStale(location.userId) ?? false,
                 lastSeenAtUtc:
                     state?.memberLastSeenAt(location.userId) ??
                     location.lastSeenAtUtc ??
@@ -262,6 +293,7 @@ class LiveMemberMarker extends StatelessWidget {
     required this.location,
     required this.name,
     required this.isOnline,
+    this.isStale = false,
     required this.isSelf,
     required this.color,
     required this.onTap,
@@ -270,6 +302,7 @@ class LiveMemberMarker extends StatelessWidget {
   final LiveLocation location;
   final String name;
   final bool isOnline;
+  final bool isStale;
   final bool isSelf;
   final Color color;
   final VoidCallback onTap;
@@ -289,7 +322,8 @@ class LiveMemberMarker extends StatelessWidget {
       onTap: onTap,
       child: Semantics(
         button: true,
-        label: '$name, ${isOnline ? 'online' : 'offline'}, open details',
+        label:
+            '$name, ${isOnline ? (isStale ? 'stale' : 'online') : 'offline'}, open details',
         child: Opacity(
           opacity: opacity,
           child: Column(
@@ -329,7 +363,7 @@ class LiveMemberMarker extends StatelessWidget {
               const SizedBox(height: 2),
               _MarkerNameLabel(name: name),
               const SizedBox(height: 2),
-              _MarkerPresenceLabel(isOnline: isOnline),
+              _MarkerPresenceLabel(isOnline: isOnline, isStale: isStale),
               const SizedBox(height: 2),
               BatteryIndicator(percent: location.batteryPercent),
             ],
@@ -356,6 +390,7 @@ class _VisibleMember {
     required this.location,
     required this.name,
     required this.isOnline,
+    this.isStale = false,
     required this.isSelf,
     required this.lastSeenAtUtc,
     required this.color,
@@ -364,6 +399,7 @@ class _VisibleMember {
   final LiveLocation location;
   final String name;
   final bool isOnline;
+  final bool isStale;
   final bool isSelf;
   final DateTime? lastSeenAtUtc;
   final Color color;
@@ -550,7 +586,7 @@ class _MemberStatusCard extends StatelessWidget {
     return Semantics(
       button: true,
       label:
-          '${member.name}, ${member.isOnline ? 'online' : 'offline'}, ${lastSeenText(member.lastSeenAtUtc)}',
+          '${member.name}, ${member.isOnline ? (member.isStale ? 'stale' : 'online') : 'offline'}, ${lastSeenText(member.lastSeenAtUtc)}',
       child: Material(
         color: AppColors.surface.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(999),
@@ -602,7 +638,10 @@ class _MemberStatusCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      _InlinePresence(isOnline: member.isOnline),
+                      _InlinePresence(
+                        isOnline: member.isOnline,
+                        isStale: member.isStale,
+                      ),
                     ],
                   ),
                 ),
@@ -653,7 +692,11 @@ class _MemberAvatar extends StatelessWidget {
         Positioned(
           right: -1,
           bottom: -1,
-          child: _PresenceDot(isOnline: member.isOnline, size: 12),
+          child: _PresenceDot(
+            isOnline: member.isOnline,
+            isStale: member.isStale,
+            size: 12,
+          ),
         ),
       ],
     );
@@ -680,20 +723,32 @@ class _AvatarInitial extends StatelessWidget {
 }
 
 class _InlinePresence extends StatelessWidget {
-  const _InlinePresence({required this.isOnline});
+  const _InlinePresence({required this.isOnline, this.isStale = false});
 
   final bool isOnline;
+  final bool isStale;
 
   @override
   Widget build(BuildContext context) {
-    final foreground = isOnline ? AppColors.safe : AppColors.bodySecondary;
+    final Color foreground;
+    final String label;
+    if (!isOnline) {
+      foreground = AppColors.bodySecondary;
+      label = 'Offline';
+    } else if (isStale) {
+      foreground = AppColors.primaryNavy;
+      label = 'Stale';
+    } else {
+      foreground = AppColors.safe;
+      label = 'Online';
+    }
     return Row(
       children: [
-        _PresenceDot(isOnline: isOnline, size: 8),
+        _PresenceDot(isOnline: isOnline, isStale: isStale, size: 8),
         const SizedBox(width: AppSpacing.xs),
         Flexible(
           child: Text(
-            isOnline ? 'Online' : 'Offline',
+            label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTypography.caption.copyWith(
@@ -711,19 +766,32 @@ class _InlinePresence extends StatelessWidget {
 }
 
 class _PresenceDot extends StatelessWidget {
-  const _PresenceDot({required this.isOnline, required this.size});
+  const _PresenceDot({
+    required this.isOnline,
+    this.isStale = false,
+    required this.size,
+  });
 
   final bool isOnline;
+  final bool isStale;
   final double size;
 
   @override
   Widget build(BuildContext context) {
+    final Color color;
+    if (!isOnline) {
+      color = AppColors.bodySecondary;
+    } else if (isStale) {
+      color = AppColors.primaryNavy;
+    } else {
+      color = AppColors.safe;
+    }
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: isOnline ? AppColors.safe : AppColors.bodySecondary,
+        color: color,
         shape: BoxShape.circle,
         border: Border.all(color: AppColors.surface, width: 2),
       ),
@@ -735,16 +803,35 @@ class _PresenceDot extends StatelessWidget {
 /// sheet already shows this state on tap; keeping it here prevents the map
 /// surface from relying on color-only interpretation.
 class _MarkerPresenceLabel extends StatelessWidget {
-  const _MarkerPresenceLabel({required this.isOnline});
+  const _MarkerPresenceLabel({required this.isOnline, this.isStale = false});
 
   final bool isOnline;
+  final bool isStale;
 
   @override
   Widget build(BuildContext context) {
-    final foreground = isOnline ? AppColors.safe : AppColors.bodySecondary;
-    final background = isOnline ? AppColors.safeBg : AppColors.hairlineSoft;
-    final border = isOnline ? AppColors.safeBgBorder : AppColors.hairline;
-    final label = isOnline ? 'ONLINE' : 'OFFLINE';
+    final Color foreground;
+    final Color background;
+    final Color border;
+    final String label;
+    if (!isOnline) {
+      foreground = AppColors.bodySecondary;
+      background = AppColors.hairlineSoft;
+      border = AppColors.hairline;
+      label = 'OFFLINE';
+    } else if (isStale) {
+      // Neutral navy/slate — never SOS-red, never the caution/amber
+      // low-battery palette (F-544 threat register T-544-01/02 scope).
+      foreground = AppColors.primaryNavy;
+      background = AppColors.navyTintBg;
+      border = AppColors.hairline;
+      label = 'STALE';
+    } else {
+      foreground = AppColors.safe;
+      background = AppColors.safeBg;
+      border = AppColors.safeBgBorder;
+      label = 'ONLINE';
+    }
 
     return DecoratedBox(
       decoration: BoxDecoration(

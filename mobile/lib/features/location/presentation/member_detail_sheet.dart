@@ -9,12 +9,14 @@ class MemberDetail {
   const MemberDetail({
     required this.name,
     required this.isOnline,
+    this.isStale = false,
     required this.lastSeenAtUtc,
     this.batteryPercent,
   });
 
   final String name;
   final bool isOnline;
+  final bool isStale;
   final DateTime? lastSeenAtUtc;
   final int? batteryPercent;
 }
@@ -75,7 +77,7 @@ class MemberDetailSheet extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                _StatusBadge(isOnline: member.isOnline),
+                _StatusBadge(isOnline: member.isOnline, isStale: member.isStale),
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -93,29 +95,53 @@ class MemberDetailSheet extends StatelessWidget {
 }
 
 class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.isOnline});
+  const _StatusBadge({required this.isOnline, this.isStale = false});
 
   final bool isOnline;
+  final bool isStale;
 
   @override
   Widget build(BuildContext context) {
-    final text = isOnline ? 'ONLINE' : 'OFFLINE';
+    final String text;
+    final String semanticsLabel;
+    final Color background;
+    final Color border;
+    final Color foreground;
+    if (!isOnline) {
+      text = 'OFFLINE';
+      semanticsLabel = 'Offline';
+      background = AppColors.hairlineSoft;
+      border = AppColors.hairline;
+      foreground = AppColors.bodySecondary;
+    } else if (isStale) {
+      // Neutral navy/slate — never SOS-red, never the caution/amber
+      // low-battery palette (F-544 threat register T-544-01/02 scope).
+      text = 'STALE';
+      semanticsLabel = 'Stale';
+      background = AppColors.navyTintBg;
+      border = AppColors.hairline;
+      foreground = AppColors.primaryNavy;
+    } else {
+      text = 'ONLINE';
+      semanticsLabel = 'Online';
+      background = AppColors.safeBg;
+      border = AppColors.safeBgBorder;
+      foreground = AppColors.safe;
+    }
     return Semantics(
-      label: isOnline ? 'Online' : 'Offline',
+      label: semanticsLabel,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: isOnline ? AppColors.safeBg : AppColors.hairlineSoft,
+          color: background,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: isOnline ? AppColors.safeBgBorder : AppColors.hairline,
-          ),
+          border: Border.all(color: border),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           child: Text(
             text,
             style: AppTypography.caption.copyWith(
-              color: isOnline ? AppColors.safe : AppColors.bodySecondary,
+              color: foreground,
               letterSpacing: 0.6,
             ),
           ),

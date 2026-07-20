@@ -392,4 +392,37 @@ void main() {
     expect(find.text('Last seen 8 min ago'), findsOneWidget);
     expect(find.text('72%'), findsOneWidget);
   });
+
+  testWidgets(
+    'member detail sheet shows the STALE badge for online-but-stale members',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showMemberDetailSheet(
+                context,
+                member: MemberDetail(
+                  name: 'Maya',
+                  isOnline: true,
+                  isStale: true,
+                  lastSeenAtUtc: DateTime.utc(2026, 7, 12, 10),
+                  batteryPercent: 72,
+                ),
+                now: DateTime.utc(2026, 7, 12, 10, 8),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('STALE'), findsOneWidget);
+      expect(find.text('ONLINE'), findsNothing);
+      expect(find.text('OFFLINE'), findsNothing);
+    },
+  );
 }

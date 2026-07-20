@@ -178,6 +178,38 @@ void main() {
     expect(opacityWidget.opacity, lessThan(1.0));
   });
 
+  testWidgets('renders the STALE label for an online-but-stale member', (
+    tester,
+  ) async {
+    final location = LiveLocation(
+      userId: 'member-2',
+      displayName: 'Sam Rivera',
+      lat: 30.05,
+      lng: 31.24,
+      accuracyMeters: 12,
+      recordedAtUtc: DateTime.now().toUtc(),
+    );
+
+    await tester.pumpWidget(
+      wrap(
+        LiveMemberMarker(
+          location: location,
+          name: 'Sam Rivera',
+          isOnline: true,
+          isStale: true,
+          isSelf: false,
+          color: Colors.purple,
+          onTap: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('STALE'), findsOneWidget);
+    expect(find.text('ONLINE'), findsNothing);
+    expect(find.text('OFFLINE'), findsNothing);
+  });
+
   testWidgets('renders the battery percent when known', (tester) async {
     final location = LiveLocation(
       userId: 'member-2',
