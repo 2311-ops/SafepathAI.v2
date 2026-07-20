@@ -8,7 +8,7 @@ status: planning
 stopped_at: Completed 02-19-PLAN.md
 last_updated: "2026-07-20T00:00:00.000Z"
 last_activity: 2026-07-20
-last_activity_desc: "Completed quick task 260720-3u4: Added Semantics label to MemberMapPin so screen readers announce label + status"
+last_activity_desc: "Completed quick task 260720-4dq: Fixed F-01 battery percent not refreshing independent of GPS movement"
 progress:
   total_phases: 8
   completed_phases: 3
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 Phase: 3 — SOS Fast Path (Core Value)
 Plan: Not started
 Status: Phase 02 plans complete; ready for verification/Phase 3 planning
-Last activity: 2026-07-20 - Completed quick task 260720-3u4: Added Semantics label to MemberMapPin so screen readers announce label + status
+Last activity: 2026-07-20 - Completed quick task 260720-4dq: Fixed F-01 battery percent not refreshing independent of GPS movement
 
 Progress: [██████████] 100%
 
@@ -173,6 +173,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260720-33j | Gate MemberMapPin's pulse AnimationController on isSelf and isolate its repaint with a RepaintBoundary | 2026-07-20 | cbf36d9 | [260720-33j-in-membermappin-only-create-start-the-pu](./quick/260720-33j-in-membermappin-only-create-start-the-pu/) |
 | 260720-3tm | Fix low-battery banner dismiss button tap target (removed VisualDensity.compact) | 2026-07-20 | 447c756 | [260720-3tm-fix-low-battery-banner-dismiss-button-to](./quick/260720-3tm-fix-low-battery-banner-dismiss-button-to/) |
 | 260720-3u4 | Add Semantics labels to MemberMapPin so screen readers announce label + status | 2026-07-20 | 49e62c0 | [260720-3u4-add-semantics-labels-to-membermappin-so-](./quick/260720-3u4-add-semantics-labels-to-membermappin-so-/) |
+| 260720-4dq | Fix F-01: battery percent doesn't refresh independent of GPS movement in LocationController | 2026-07-20 | 8f2731c | [260720-4dq-fix-f-01-battery-percent-doesn-t-refresh](./quick/260720-4dq-fix-f-01-battery-percent-doesn-t-refresh/) |
 
 ## Deferred Items
 
