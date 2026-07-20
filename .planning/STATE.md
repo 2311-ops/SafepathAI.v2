@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 Phase: 3 — SOS Fast Path (Core Value)
 Plan: Not started
 Status: Phase 02 plans complete; ready for verification/Phase 3 planning
-Last activity: 2026-07-20 - Completed quick task 260720-4dq: Fixed F-01 battery percent not refreshing independent of GPS movement
+Last activity: 2026-07-20 - Completed quick task 260720-544: Fixed the online-but-stale gap in location presence (added isMemberStale + Live Map staleness UI)
 
 Progress: [██████████] 100%
 
@@ -174,6 +174,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260720-3tm | Fix low-battery banner dismiss button tap target (removed VisualDensity.compact) | 2026-07-20 | 447c756 | [260720-3tm-fix-low-battery-banner-dismiss-button-to](./quick/260720-3tm-fix-low-battery-banner-dismiss-button-to/) |
 | 260720-3u4 | Add Semantics labels to MemberMapPin so screen readers announce label + status | 2026-07-20 | 49e62c0 | [260720-3u4-add-semantics-labels-to-membermappin-so-](./quick/260720-3u4-add-semantics-labels-to-membermappin-so-/) |
 | 260720-4dq | Fix F-01: battery percent doesn't refresh independent of GPS movement in LocationController | 2026-07-20 | 8f2731c | [260720-4dq-fix-f-01-battery-percent-doesn-t-refresh](./quick/260720-4dq-fix-f-01-battery-percent-doesn-t-refresh/) |
+| 260720-544 | Fix the online-but-stale gap in location presence: online/offline status is derived purely from SignalR socket connection, not data freshness. Add staleness detection to distinguish connected-but-stale from connected-and-fresh. | 2026-07-20 | 9db3dbd | [260720-544-fix-the-online-but-stale-gap-in-location](./quick/260720-544-fix-the-online-but-stale-gap-in-location/) |
 
 ## Deferred Items
 
