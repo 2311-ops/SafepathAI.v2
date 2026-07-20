@@ -44,6 +44,27 @@ void main() {
     });
   });
 
+  group('isStaleAge', () {
+    test('is fresh just below kStaleThreshold', () {
+      expect(
+        isStaleAge(const Duration(minutes: 2, seconds: 59)),
+        isFalse,
+      );
+    });
+
+    test('is stale exactly at kStaleThreshold', () {
+      expect(isStaleAge(const Duration(minutes: 3)), isTrue);
+    });
+
+    test('is stale above kStaleThreshold', () {
+      expect(isStaleAge(const Duration(minutes: 10)), isTrue);
+    });
+
+    test('treats a negative age (clock skew) as fresh', () {
+      expect(isStaleAge(const Duration(seconds: -5)), isFalse);
+    });
+  });
+
   group('accuracyCircleRadius', () {
     test('renders highly accurate fixes with a 24px minimum radius', () {
       expect(accuracyCircleRadius(8), 24);

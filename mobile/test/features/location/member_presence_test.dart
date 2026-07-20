@@ -288,6 +288,79 @@ void main() {
     );
   });
 
+  group('LocationState.isMemberStale', () {
+    test('online and fresh is not stale', () {
+      final state = LocationState(
+        memberPresence: {
+          'member-2': MemberPresence(
+            isOnline: true,
+            lastSeenAtUtc: DateTime.utc(2026, 7, 12, 10, 0),
+          ),
+        },
+      );
+
+      expect(
+        state.isMemberStale(
+          'member-2',
+          now: DateTime.utc(2026, 7, 12, 10, 1),
+        ),
+        isFalse,
+      );
+    });
+
+    test('online and old is stale', () {
+      final state = LocationState(
+        memberPresence: {
+          'member-2': MemberPresence(
+            isOnline: true,
+            lastSeenAtUtc: DateTime.utc(2026, 7, 12, 10, 0),
+          ),
+        },
+      );
+
+      expect(
+        state.isMemberStale(
+          'member-2',
+          now: DateTime.utc(2026, 7, 12, 10, 3),
+        ),
+        isTrue,
+      );
+    });
+
+    test('offline and old is not stale', () {
+      final state = LocationState(
+        memberPresence: {
+          'member-2': MemberPresence(
+            isOnline: false,
+            lastSeenAtUtc: DateTime.utc(2026, 7, 12, 10, 0),
+          ),
+        },
+      );
+
+      expect(
+        state.isMemberStale(
+          'member-2',
+          now: DateTime.utc(2026, 7, 12, 10, 10),
+        ),
+        isFalse,
+      );
+    });
+
+    test('online with no last-seen data is not stale', () {
+      final state = const LocationState(
+        memberPresence: {'member-2': MemberPresence(isOnline: true)},
+      );
+
+      expect(
+        state.isMemberStale(
+          'member-2',
+          now: DateTime.utc(2026, 7, 12, 10, 10),
+        ),
+        isFalse,
+      );
+    });
+  });
+
   testWidgets('member detail sheet shows name, status badge, and last seen', (
     tester,
   ) async {

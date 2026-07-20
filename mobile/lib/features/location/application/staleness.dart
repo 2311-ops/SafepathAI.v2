@@ -38,6 +38,25 @@ StalenessBand stalenessFor(Duration age) {
   );
 }
 
+/// The "connected but no fresh reading" threshold used by
+/// [LocationState.isMemberStale] to distinguish online-and-fresh from
+/// online-but-stale. Chosen to sit just above the existing 2-minute first
+/// opacity-fade band in [stalenessFor] (so the marker begins to visually
+/// fade slightly before the explicit "stale" label appears — a coherent
+/// progression) and is a reasonable "we should have heard something by now"
+/// window given the 5-minute movement-independent battery-refresh cadence
+/// in `LocationController`. Complementary to, not a replacement for, the
+/// continuous opacity bands above.
+const Duration kStaleThreshold = Duration(minutes: 3);
+
+/// Pure boolean staleness check: is [age] at or beyond [threshold]?
+/// Negative ages (clock skew / future timestamps) are clamped to zero and
+/// treated as fresh, mirroring [stalenessFor]'s existing normalization.
+bool isStaleAge(Duration age, {Duration threshold = kStaleThreshold}) {
+  final normalized = age.isNegative ? Duration.zero : age;
+  return normalized >= threshold;
+}
+
 double accuracyCircleRadius(double accuracyMeters) {
   if (accuracyMeters.isNaN || accuracyMeters.isInfinite) return 24;
   return accuracyMeters < 24 ? 24 : accuracyMeters;

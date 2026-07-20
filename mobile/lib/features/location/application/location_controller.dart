@@ -9,6 +9,7 @@ import '../../auth/application/auth_state.dart';
 import '../../auth/data/auth_api.dart';
 import '../../family/application/family_controller.dart';
 import 'permission_controller.dart';
+import 'staleness.dart';
 import '../data/location_api.dart';
 import '../data/location_hub_client.dart';
 import '../data/location_models.dart';
@@ -66,6 +67,19 @@ class LocationState {
       memberPresence[userId]?.lastSeenAtUtc ??
       members[userId]?.lastSeenAtUtc ??
       members[userId]?.recordedAtUtc;
+
+  /// True only for a socket-connected member whose last-seen data is at
+  /// least [kStaleThreshold] old — the "online but stale" gap (F-544).
+  /// An offline member is never stale (offline already communicates the
+  /// gap), and an online member with no last-seen evidence yet is treated
+  /// as fresh rather than stale.
+  bool isMemberStale(String userId, {DateTime? now}) {
+    if (!isMemberOnline(userId)) return false;
+    final lastSeen = memberLastSeenAt(userId);
+    if (lastSeen == null) return false;
+    final age = (now ?? DateTime.now().toUtc()).toUtc().difference(lastSeen);
+    return isStaleAge(age);
+  }
 }
 
 final positionStreamProvider = Provider<Stream<Position>>((ref) {
