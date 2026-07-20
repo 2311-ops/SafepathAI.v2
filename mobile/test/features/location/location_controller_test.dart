@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
@@ -355,6 +356,90 @@ void main() {
     expect(state.selfPosition?.lng, 31.2357);
     expect(state.members['self-user']?.lat, 30.0444);
   });
+
+  // Regression for F-01: battery percent only refreshed inside
+  // _reportPosition(), which only fires on new GPS fixes from
+  // positionStreamProvider (distanceFilter: 10). A stationary device never
+  // emits a new fix, so the periodic battery-refresh timer must be able to
+  // re-trigger the same report flow using the last known position.
+  test(
+    'periodically refreshes battery and re-reports the last known position '
+    'without a new GPS fix (F-01)',
+    () {
+      fakeAsync((async) {
+        container.read(locationControllerProvider);
+        async.flushMicrotasks();
+
+        final recordedAt = DateTime.utc(2026, 7, 12, 10, 30);
+        positions.add(
+          _position(lat: 30.0444, lng: 31.2357, timestamp: recordedAt),
+        );
+        async.flushMicrotasks();
+
+        expect(hubClient.reportLocationCallCount, 1);
+
+        // Advance the fake clock past the refresh interval WITHOUT emitting
+        // a new position fix — only the periodic timer should trigger this.
+        async.elapse(const Duration(minutes: 5));
+        async.flushMicrotasks();
+
+        expect(hubClient.reportLocationCallCount, 2);
+        expect(hubClient.lastReportedLocation?.latitude, 30.0444);
+        expect(hubClient.lastReportedLocation?.longitude, 31.2357);
+        expect(hubClient.lastReportedLocation?.batteryPercent, 72);
+      });
+    },
+  );
+
+  test(
+    'does not fire a battery refresh before any position has ever been '
+    'reported (F-01)',
+    () {
+      fakeAsync((async) {
+        container.read(locationControllerProvider);
+        async.flushMicrotasks();
+
+        expect(hubClient.reportLocationCallCount, 0);
+
+        async.elapse(const Duration(minutes: 5));
+        async.flushMicrotasks();
+
+        // No last-known position yet -> the timer callback is a no-op.
+        expect(hubClient.reportLocationCallCount, 0);
+      });
+    },
+  );
+
+  test(
+    'cancels the periodic battery-refresh timer on disconnect (no lingering '
+    'callback after teardown) (F-01)',
+    () {
+      fakeAsync((async) {
+        container.read(locationControllerProvider);
+        async.flushMicrotasks();
+
+        positions.add(
+          _position(
+            lat: 30.0444,
+            lng: 31.2357,
+            timestamp: DateTime.utc(2026, 7, 12, 10, 30),
+          ),
+        );
+        async.flushMicrotasks();
+        expect(hubClient.reportLocationCallCount, 1);
+
+        authApi.signOut();
+        async.flushMicrotasks();
+
+        // If the timer were still alive, elapsing well past the interval
+        // would produce another report.
+        async.elapse(const Duration(minutes: 10));
+        async.flushMicrotasks();
+
+        expect(hubClient.reportLocationCallCount, 1);
+      });
+    },
+  );
 
   test('updates family member pins from hub LocationUpdated events', () async {
     container.read(locationControllerProvider);

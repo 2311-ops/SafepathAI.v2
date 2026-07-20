@@ -82,13 +82,27 @@ final batteryLevelProvider = FutureProvider.autoDispose<int?>((ref) async {
 });
 
 class LocationController extends AsyncNotifier<LocationState> {
+  // Movement-independent battery refresh interval. _reportPosition() (which
+  // re-reads batteryLevelProvider) only fires on GPS position-stream events,
+  // and positionStreamProvider's distanceFilter: 10 means a stationary
+  // device never emits — so without this timer, the battery percent shown
+  // on the Live Map pin / member sheet goes stale indefinitely while the
+  // phone sits still (F-01).
+  static const Duration _batteryRefreshInterval = Duration(minutes: 5);
+
   StreamSubscription<Position>? _positionSubscription;
   StreamSubscription<LiveLocation>? _locationSubscription;
   StreamSubscription<PresenceChange>? _presenceSubscription;
   StreamSubscription<LowBatteryAlert>? _lowBatterySubscription;
   StreamSubscription<ProfileUpdate>? _profileUpdatesSubscription;
+  Timer? _batteryRefreshTimer;
   LocationHubClient? _hubClient;
   String? _connectedFamilyId;
+  // Last raw Position seen from the position stream. state.value?.selfPosition
+  // only carries a LiveLocation (lat/lng), not a Position object, so this is
+  // tracked separately purely to give the periodic battery-refresh timer
+  // something to resend through the existing _reportPosition flow.
+  Position? _lastKnownPosition;
   int _generation = 0;
   int _bootstrapToken = 0;
   int? _hubOwnerToken;
@@ -124,6 +138,16 @@ class LocationController extends AsyncNotifier<LocationState> {
     });
     ref.onDispose(() {
       unawaited(_stop(clearState: false));
+    });
+    // Dedicated, purely-synchronous timer teardown. `_stop()` above is
+    // fire-and-forget and only guaranteed to run synchronously up to its
+    // first `await`; registering this separately guarantees the periodic
+    // battery-refresh timer (F-01) is always cancelled within the
+    // synchronous `ref.onDispose` callback itself, with no dependency on
+    // `_stop()`'s internal await ordering.
+    ref.onDispose(() {
+      _batteryRefreshTimer?.cancel();
+      _batteryRefreshTimer = null;
     });
 
     Future.microtask(_bootstrap);
@@ -244,6 +268,11 @@ class LocationController extends AsyncNotifier<LocationState> {
       _lowBatterySubscription = lowBatterySubscription;
       _profileUpdatesSubscription = profileUpdatesSubscription;
       _positionSubscription = positionSubscription;
+      _batteryRefreshTimer?.cancel();
+      _batteryRefreshTimer = Timer.periodic(
+        _batteryRefreshInterval,
+        (_) => unawaited(_refreshBatteryOnly()),
+      );
     } on LocationApiException catch (error) {
       if (bootstrapToken != _bootstrapToken || generation != _generation) {
         return;
@@ -286,6 +315,15 @@ class LocationController extends AsyncNotifier<LocationState> {
     final hubClient = _hubClient;
     _hubClient = null;
     _hubOwnerToken = null;
+    // Cancel the periodic timer synchronously, before any `await` below.
+    // `_stop()` is invoked fire-and-forget (`unawaited(_stop(...))`) from
+    // `ref.onDispose`, so only code before the first `await` is guaranteed
+    // to run as part of that synchronous dispose call — a Timer left
+    // pending past that point trips flutter_test's
+    // "Timer still pending after widget tree was disposed" invariant check.
+    _batteryRefreshTimer?.cancel();
+    _batteryRefreshTimer = null;
+    _lastKnownPosition = null;
     await _positionSubscription?.cancel();
     await _locationSubscription?.cancel();
     await _presenceSubscription?.cancel();
@@ -303,6 +341,7 @@ class LocationController extends AsyncNotifier<LocationState> {
   }
 
   Future<void> _reportPosition(Position position) async {
+    _lastKnownPosition = position;
     final familyId = _connectedFamilyId;
     final currentUserId = ref.read(authApiProvider).currentSession?.user.id;
     if (familyId == null ||
@@ -344,6 +383,19 @@ class LocationController extends AsyncNotifier<LocationState> {
         recordedAtUtc: position.timestamp.toUtc(),
       ),
     );
+  }
+
+  /// Movement-independent battery refresh (F-01). Fired every
+  /// [_batteryRefreshInterval] while connected; re-sends the last known
+  /// position through the same [_reportPosition] flow used for real GPS
+  /// fixes so the re-read battery percent flows through the existing
+  /// hub report/broadcast pipeline. No-op if no position has been seen yet
+  /// or the pipeline is no longer connected (guarded inside
+  /// [_reportPosition] via `_canReport`).
+  Future<void> _refreshBatteryOnly() async {
+    final position = _lastKnownPosition;
+    if (position == null) return;
+    await _reportPosition(position);
   }
 
   bool _ownsBootstrap(String familyId, int bootstrapToken, int generation) {

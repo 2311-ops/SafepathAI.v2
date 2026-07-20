@@ -139,6 +139,15 @@ void main() {
 
     expect(find.text('Map'), findsOneWidget);
     expect(find.text('Let your family see you are safe'), findsNothing);
+
+    // A granted permission fully connects LocationController, which now
+    // (F-01) starts a periodic battery-refresh Timer for as long as it's
+    // connected. flutter_test's pending-timer invariant check runs before
+    // `addTearDown` callbacks fire, so — unlike widget-owned State timers,
+    // which are cancelled when the tree is unmounted earlier in the same
+    // check — this ProviderContainer-owned timer must be torn down
+    // explicitly inside the test body itself.
+    harness.dispose();
   });
 }
 
@@ -200,7 +209,14 @@ class _RouterHarness {
     await tester.pump();
   }
 
+  bool _disposed = false;
+
+  // Idempotent: some tests call this explicitly (to tear down before
+  // flutter_test's pending-timer invariant check runs) in addition to the
+  // addTearDown-registered call, so double-invocation must be a no-op.
   void dispose() {
+    if (_disposed) return;
+    _disposed = true;
     container.dispose();
     authApi.dispose();
     hubClient.dispose();
