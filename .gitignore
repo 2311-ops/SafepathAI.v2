@@ -25,6 +25,8 @@ backend-api.*.log
 debug_screens/
 .claude/*.lock
 .planning/research/.cache/
+.planning/tmp/
+backend/logs/
 
 # Secrets — never commit
 .env
