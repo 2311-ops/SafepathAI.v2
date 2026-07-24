@@ -51,7 +51,8 @@ This phase owns the plain SOS path only: trigger, delivery, offline retry, respo
 - **D-25:** Build the first backup trigger using Flutter's official `quick_actions` plugin, because one API covers Android App Shortcuts and iOS Home Screen Quick Actions.
 - **D-26:** Android Quick Settings tile and iOS Widget/App Intent entry points are fast-follow/later, not the first Phase 03 backup trigger.
 - **D-27:** The backup shortcut fires SOS immediately when invoked. Do not require the 3-second arming hold after the OS-level shortcut.
-- **D-28:** Silent/Duress is explicitly out of Phase 03 scope and remains Phase 6. Phase 03 may design the backend pipeline so a later `kind = visible | duress` field can reuse it, but must not implement decoy UI, duress secret storage, or covert behavior now.
+- **D-28:** Silent/Duress is explicitly out of Phase 03 scope and remains Phase 6. Phase 03 must not implement decoy UI, duress secret storage, or covert behavior now.
+- **D-29:** Confirmed: the Phase 03 SOS entity/schema includes a `kind = visible | duress` field from the start (defaulting to/only ever set to `visible` in this phase), purely so Phase 6 can add the Silent/Duress path without a schema migration or breaking change. This is a forward-compatible data-shape choice only — it authorizes no duress logic, decoy UI, or covert behavior in Phase 03.
 
 ### the agent's Discretion
 Planner/researcher may choose implementation details that preserve the decisions above, existing Clean Architecture boundaries, existing Riverpod/go_router mobile patterns, and the cost preference for free/no-cost options first.

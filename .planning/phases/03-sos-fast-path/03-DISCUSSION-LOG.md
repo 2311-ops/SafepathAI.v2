@@ -87,9 +87,11 @@
 | Repeat 3-second hold | Re-arm after shortcut opens app | no |
 | Include Silent/Duress | Build covert/decoy behavior in Phase 03 | no |
 | Defer Silent/Duress to Phase 6 | Keep Phase 03 to plain SOS pipeline | yes |
+| Add `kind = visible \| duress` schema field now | Forward-compat data shape only, no duress logic/UI | yes |
+| Leave schema Phase-6-only, no forward-compat field | Add the field later when Phase 6 starts | no |
 
-**User's choice:** Use `quick_actions`; fire immediately; keep Silent/Duress in Phase 6.
-**Notes:** User cited `quick_actions` as official/maintained under Flutter packages and noted Phase 03 should stay plain/undisguised.
+**User's choice:** Use `quick_actions`; fire immediately; keep Silent/Duress in Phase 6; add the `kind` field now as schema-only forward compatibility.
+**Notes:** User cited `quick_actions` as official/maintained under Flutter packages and noted Phase 03 should stay plain/undisguised. The `kind` field was explicitly reviewed and confirmed as a deliberate decision (not an implicit side-note) — it costs nothing now and avoids a Phase 6 schema migration, but authorizes zero duress behavior in Phase 03.
 
 ---
 
