@@ -88,117 +88,124 @@ class _MemberMapPinState extends State<MemberMapPin>
     final pinSize = widget.size;
     final visualSize = circleSize > pinSize ? circleSize : pinSize;
     final isLiveSelf = widget.isSelf && band.badgeText == null;
+    final statusPhrase = band.badgeText ?? 'current location';
+    final semanticsLabel = '${widget.label}, $statusPhrase';
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Opacity(
-          opacity: band.opacity,
-          child: SizedBox(
-            width: visualSize,
-            height: visualSize,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: circleSize,
-                  height: circleSize,
-                  decoration: BoxDecoration(
-                    color: widget.identityColor.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: widget.identityColor.withValues(alpha: 0.40),
-                      width: 1.5,
+    return Semantics(
+      container: true,
+      excludeSemantics: true,
+      label: semanticsLabel,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Opacity(
+            opacity: band.opacity,
+            child: SizedBox(
+              width: visualSize,
+              height: visualSize,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: circleSize,
+                    height: circleSize,
+                    decoration: BoxDecoration(
+                      color: widget.identityColor.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: widget.identityColor.withValues(alpha: 0.40),
+                        width: 1.5,
+                      ),
                     ),
                   ),
-                ),
-                Container(
-                  width: pinSize,
-                  height: pinSize,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: widget.isSelf
-                        ? AppColors.primaryTeal
-                        : widget.identityColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.surface, width: 3),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x220C3A3F),
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: _hasAvatar
-                      ? ClipOval(
-                          child: CachedNetworkImage(
-                            imageUrl: widget.profileImageUrl!,
-                            cacheKey:
-                                '${widget.userId ?? widget.label}-${widget.profileUpdatedAt?.toIso8601String()}',
-                            width: pinSize,
-                            height: pinSize,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => _initialsText(),
-                            errorWidget: (context, url, error) =>
-                                _initialsText(),
+                  Container(
+                    width: pinSize,
+                    height: pinSize,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: widget.isSelf
+                          ? AppColors.primaryTeal
+                          : widget.identityColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.surface, width: 3),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x220C3A3F),
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: _hasAvatar
+                        ? ClipOval(
+                            child: CachedNetworkImage(
+                              imageUrl: widget.profileImageUrl!,
+                              cacheKey:
+                                  '${widget.userId ?? widget.label}-${widget.profileUpdatedAt?.toIso8601String()}',
+                              width: pinSize,
+                              height: pinSize,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => _initialsText(),
+                              errorWidget: (context, url, error) =>
+                                  _initialsText(),
+                            ),
                           ),
-                        )
-                      : _initialsText(),
-                ),
-                if (isLiveSelf)
-                  Positioned(
-                    right: (visualSize - pinSize) / 2,
-                    top: (visualSize - pinSize) / 2,
-                    child: FadeTransition(
-                      opacity: _pulseOpacity,
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: AppColors.safe,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.surface,
-                            width: 2,
+                        : _initialsText(),
+                  ),
+                  if (isLiveSelf)
+                    Positioned(
+                      right: (visualSize - pinSize) / 2,
+                      top: (visualSize - pinSize) / 2,
+                      child: FadeTransition(
+                        opacity: _pulseOpacity,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: AppColors.safe,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.surface,
+                              width: 2,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        if (band.badgeText != null) ...[
-          const SizedBox(height: 4),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: band.badgeIsAmber
-                  ? AppColors.cautionBg
-                  : AppColors.surface,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: band.badgeIsAmber
-                    ? AppColors.cautionBorder
-                    : AppColors.hairline,
+                ],
               ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              child: Text(
-                band.badgeText!,
-                style: AppTypography.caption.copyWith(
+          ),
+          if (band.badgeText != null) ...[
+            const SizedBox(height: 4),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: band.badgeIsAmber
+                    ? AppColors.cautionBg
+                    : AppColors.surface,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
                   color: band.badgeIsAmber
-                      ? AppColors.cautionText
-                      : AppColors.bodySecondary,
-                  letterSpacing: 0.6,
+                      ? AppColors.cautionBorder
+                      : AppColors.hairline,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                child: Text(
+                  band.badgeText!,
+                  style: AppTypography.caption.copyWith(
+                    color: band.badgeIsAmber
+                        ? AppColors.cautionText
+                        : AppColors.bodySecondary,
+                    letterSpacing: 0.6,
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
