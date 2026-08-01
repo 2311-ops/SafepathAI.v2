@@ -195,8 +195,7 @@ Reuses the existing locked 4pt scale from `mobile/lib/core/theme/app_spacing.dar
 | Token | Value | Usage |
 |-------|-------|-------|
 | xs | 4px | Icon-to-label gaps (channel status chip icon-to-text) |
-| sm | 8px | Compact spacing (recipient row internal gaps) |
-| xs-md | 12px | Card internal row gaps (delivery status card rows) |
+| sm | 8px | Compact spacing (recipient row internal gaps, delivery status card internal row gaps) |
 | md | 16px | Default spacing, button vertical padding |
 | lg | 24px | Section padding on full-screen session screens |
 | xl | 32px | Gap between the live-location card and the action button row |
@@ -211,14 +210,15 @@ Reuses the existing locked 4pt scale from `mobile/lib/core/theme/app_spacing.dar
 
 Extends `AppTypography` with new roles this phase requires; does not modify existing roles.
 
+Exactly 4 declared sizes (12, 16, 28–30, 44) and exactly 2 declared weights (600, 800) — no size or weight outside this set is introduced by this phase.
+
 | Role | Size | Weight | Line Height | Notes |
 |------|------|--------|-------------|-------|
+| Caption (existing) | 12px | 600 (JetBrains Mono) | 1.3 | Two usages, same metrics: (1) delivery-status chips, **uppercase** (matches Phase 1's PENDING/ACTIVE badge convention); (2) the "Alert active · {elapsed} elapsed" inline strip text on the Delivering state header, **sentence-case, not uppercase** — reuses this role's 12px/600/mono metrics rather than introducing a separate "Countdown inline" size, so the uppercase transform is applied per-usage, not baked into the role |
 | Body (existing) | 16px | 600 (Manrope) | 1.4 | Reused for status-row labels |
+| **On-red body** (new — same size/weight as Body, different color only, not a new size) | 16px | 600 (Manrope) | 1.4 | White (`Colors.white`) instead of `AppColors.ink`, for any body text placed on the SOS-red session chrome — see the Contrast note in the Session State Machine section for where this is and isn't safe to use directly |
 | Heading (existing) | 28–30px | 800 (Manrope) | 1.2 | Reused for session-screen headlines ("Alert canceled", "Alert active") |
-| Caption (existing) | 12px | 600 (JetBrains Mono, uppercase) | 1.3 | Reused for delivery-status chips (matches Phase 1's PENDING/ACTIVE badge convention) |
-| **Countdown large** (new) | 44px | 700 (JetBrains Mono, **tabular figures**) | 1.0 | Live-location streaming window countdown (`mm:ss`) on both sender Live-active and responder screens — must not jitter as digits change; JetBrains Mono is already monospaced so no extra `FontFeature` needed beyond default rendering |
-| **Countdown inline** (new) | 14px | 600 (JetBrains Mono) | 1.3 | "Alert active · {elapsed} elapsed" strip text |
-| **On-red body** (new — same size/weight as Body, different color only) | 16px | 600 (Manrope) | 1.4 | White (`Colors.white`) instead of `AppColors.ink`, for any body text placed on the SOS-red session chrome — see the Contrast note in the Session State Machine section for where this is and isn't safe to use directly |
+| **Countdown large** (new) | 44px | 800 (JetBrains Mono, **tabular figures**) | 1.0 | Live-location streaming window countdown (`mm:ss`) on both sender Live-active and responder screens — must not jitter as digits change; weight matches the Heading role's 800 (previously specified as 700 — corrected so the phase introduces no third weight) rendered in mono instead of Manrope; JetBrains Mono is already monospaced so no extra `FontFeature` needed beyond default rendering |
 
 ---
 
