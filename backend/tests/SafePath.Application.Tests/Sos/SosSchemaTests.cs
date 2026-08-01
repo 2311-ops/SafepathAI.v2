@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SafePath.Application.Tests.Common;
 using SafePath.Domain.Entities;
 using SafePath.Domain.Enums;
+using SafePath.Infrastructure.Persistence;
 using Xunit;
 
 namespace SafePath.Application.Tests.Sos;
@@ -14,13 +15,12 @@ public class SosSchemaTests : IDisposable
     public async Task CreateContext_MaterialisesAllSosTables()
     {
         await using var db = _factory.CreateContext();
+        var (familyId, userId) = await SeedFamilyAndUser(db);
 
-        var familyId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
-
+        var sessionId = Guid.NewGuid();
         db.SosSessions.Add(new SosSession
         {
-            Id = Guid.NewGuid(),
+            Id = sessionId,
             FamilyId = familyId,
             TriggeredByUserId = userId,
             TriggeredAtUtc = DateTime.UtcNow,
@@ -29,7 +29,8 @@ public class SosSchemaTests : IDisposable
         db.SosDeliveryAttempts.Add(new SosDeliveryAttempt
         {
             Id = Guid.NewGuid(),
-            SosSessionId = Guid.NewGuid(),
+            SosSessionId = sessionId,
+            RecipientUserId = userId,
             Channel = AlertChannel.SignalR,
         });
         db.EmergencyContacts.Add(new EmergencyContact
@@ -68,9 +69,8 @@ public class SosSchemaTests : IDisposable
     public async Task SosSession_RejectsDuplicateId()
     {
         await using var db = _factory.CreateContext();
+        var (familyId, userId) = await SeedFamilyAndUser(db);
         var duplicateId = Guid.NewGuid();
-        var familyId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
 
         db.SosSessions.Add(new SosSession
         {
@@ -92,14 +92,14 @@ public class SosSchemaTests : IDisposable
             ReceivedAtUtc = DateTime.UtcNow,
         });
 
-        await Assert.ThrowsAnyAsync<Exception>(() => db2.SaveChangesAsync());
+        await Assert.ThrowsAnyAsync<DbUpdateException>(() => db2.SaveChangesAsync());
     }
 
     [Fact]
     public async Task UserDeviceToken_AllowsMultipleTokensPerUser()
     {
         await using var db = _factory.CreateContext();
-        var userId = Guid.NewGuid();
+        var (_, userId) = await SeedFamilyAndUser(db);
 
         db.UserDeviceTokens.AddRange(
             new UserDeviceToken
@@ -124,6 +124,18 @@ public class SosSchemaTests : IDisposable
         await db.SaveChangesAsync();
 
         Assert.Equal(2, db.UserDeviceTokens.Count(t => t.UserId == userId));
+    }
+
+    private static async Task<(Guid FamilyId, Guid UserId)> SeedFamilyAndUser(ApplicationDbContext db)
+    {
+        var familyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        db.Users.Add(new User { Id = userId, Email = "sos-test@example.com", FullName = "Sos Test", Role = Role.Guardian, CreatedAt = DateTime.UtcNow });
+        db.Families.Add(new Family { Id = familyId, Name = "SOS Test Family", CreatedByUserId = userId, CreatedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        return (familyId, userId);
     }
 
     public void Dispose() => _factory.Dispose();

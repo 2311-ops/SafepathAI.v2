@@ -17,6 +17,10 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<FamilyInvitation> FamilyInvitations => Set<FamilyInvitation>();
     public DbSet<LocationPing> LocationPings => Set<LocationPing>();
     public DbSet<SharingPreference> SharingPreferences => Set<SharingPreference>();
+    public DbSet<SosSession> SosSessions => Set<SosSession>();
+    public DbSet<SosDeliveryAttempt> SosDeliveryAttempts => Set<SosDeliveryAttempt>();
+    public DbSet<EmergencyContact> EmergencyContacts => Set<EmergencyContact>();
+    public DbSet<UserDeviceToken> UserDeviceTokens => Set<UserDeviceToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,6 +30,10 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new FamilyInvitationConfiguration());
         modelBuilder.ApplyConfiguration(new LocationPingConfiguration());
         modelBuilder.ApplyConfiguration(new SharingPreferenceConfiguration());
+        modelBuilder.ApplyConfiguration(new SosSessionConfiguration());
+        modelBuilder.ApplyConfiguration(new SosDeliveryAttemptConfiguration());
+        modelBuilder.ApplyConfiguration(new EmergencyContactConfiguration());
+        modelBuilder.ApplyConfiguration(new UserDeviceTokenConfiguration());
 
         base.OnModelCreating(modelBuilder);
     }

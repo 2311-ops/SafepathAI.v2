@@ -15,6 +15,10 @@ public interface IApplicationDbContext
     DbSet<FamilyInvitation> FamilyInvitations { get; }
     DbSet<LocationPing> LocationPings { get; }
     DbSet<SharingPreference> SharingPreferences { get; }
+    DbSet<SosSession> SosSessions { get; }
+    DbSet<SosDeliveryAttempt> SosDeliveryAttempts { get; }
+    DbSet<EmergencyContact> EmergencyContacts { get; }
+    DbSet<UserDeviceToken> UserDeviceTokens { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
