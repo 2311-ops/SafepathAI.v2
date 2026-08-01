@@ -64,8 +64,7 @@ class _MemberMapPinState extends State<MemberMapPin>
     super.dispose();
   }
 
-  bool get _hasAvatar =>
-      (widget.profileImageUrl?.trim().isNotEmpty ?? false);
+  bool get _hasAvatar => (widget.profileImageUrl?.trim().isNotEmpty ?? false);
 
   Widget _initialsText() {
     return Text(
@@ -149,7 +148,7 @@ class _MemberMapPinState extends State<MemberMapPin>
                               errorWidget: (context, url, error) =>
                                   _initialsText(),
                             ),
-                          ),
+                          )
                         : _initialsText(),
                   ),
                   if (isLiveSelf)
