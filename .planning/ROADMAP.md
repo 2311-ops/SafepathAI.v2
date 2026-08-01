@@ -183,7 +183,19 @@ Plans:
   4. Responders see the user's location streaming live for a fixed window after the SOS trigger (SOS-04)
   5. User can self-cancel a false alarm through a channel that runs in parallel to — and never delays — the guardian alert, and can also trigger SOS via an OS-level backup shortcut (side-button sequence, Accessibility shortcut, or lock-screen widget) (SOS-05, SOS-06)
 
-**Plans**: TBD
+**Plans**: 9 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — backend: SOS schema, applied migration, and the idempotent trigger endpoint with per-channel delivery rows (SOS-01/02/03)
+- [ ] 03-02-PLAN.md — mobile: 3-second press-and-hold SOS button (DESIGN-02) into a full-screen sender emergency session
+- [ ] 03-03-PLAN.md — backend: dedicated AlertHub, SOS-only multi-channel fan-out, acknowledge and parallel self-cancel (SOS-02/05, NOTIF-03)
+- [ ] 03-04-PLAN.md — mobile: guardian full-screen responder screen, alert-hub client, and honest per-recipient/per-channel delivery status
+- [ ] 03-05-PLAN.md — backend: emergency contacts, SMS fallback behind ISmsGateway (Twilio + zero-cost logging default), signature-validated delivery webhook
+- [ ] 03-06-PLAN.md — FCM multi-device push with responder deep-link from backgrounded and terminated app states (SOS-02, NOTIF-03)
+- [ ] 03-07-PLAN.md — mobile: offline queue/retry with app-kill resume, emergency-contact management screen, and local fallback actions (SOS-03)
+- [ ] 03-08-PLAN.md — live-location streaming window with a server-authoritative end time, surviving lock/backgrounding (SOS-04)
+- [ ] 03-09-PLAN.md — mobile: 2-second hold-to-cancel with de-escalated canceled states, plus the quick_actions OS backup trigger (SOS-05/06)
+
 **UI hint**: yes
 
 ### Phase 4: Geofencing
