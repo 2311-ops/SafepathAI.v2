@@ -36,3 +36,40 @@ public record SosSessionDto(
     DateTime? LiveWindowEndsAtUtc,
     DateTime? CanceledAtUtc,
     IReadOnlyList<SosRecipientStatusDto> Recipients);
+
+/// <summary>
+/// Pushed to the family alert group whenever a single (recipient, channel) delivery row's status
+/// changes. Lets a connected client update one row of the delivery matrix without re-fetching the
+/// whole session.
+/// </summary>
+public record SosDeliveryStatusChangedDto(
+    Guid SosSessionId,
+    Guid? RecipientUserId,
+    Guid? EmergencyContactId,
+    AlertChannel Channel,
+    SosDeliveryStatus Status,
+    DateTime AtUtc);
+
+/// <summary>
+/// Pushed to the family alert group when the triggering user cancels their own SOS session
+/// (D-05, D-24). Cancellation is a parallel follow-up notice, never a retraction of the
+/// original <see cref="SosSessionDto.Recipients"/> delivery history.
+/// </summary>
+public record SosCanceledDto(
+    Guid SosSessionId,
+    Guid CanceledByUserId,
+    string CanceledByDisplayName,
+    DateTime CanceledAtUtc);
+
+/// <summary>
+/// Live-location window update pushed during an active SOS session. Declared now so the
+/// Infrastructure-layer IAlertClient contract is stable across this plan and plan 03-08 (which
+/// is the first to actually populate it).
+/// </summary>
+public record SosLocationUpdateDto(
+    Guid SosSessionId,
+    double Latitude,
+    double Longitude,
+    double? AccuracyMeters,
+    DateTime RecordedAtUtc,
+    DateTime WindowEndsAtUtc);

@@ -31,6 +31,7 @@ public static class DependencyInjection
         services.AddSingleton<LowBatteryAlertTracker>();
         services.AddSingleton<ILowBatteryAlertTracker>(provider => provider.GetRequiredService<LowBatteryAlertTracker>());
         services.AddScoped<ILocationBroadcastService, LocationBroadcastService>();
+        services.AddScoped<IAlertBroadcastService, AlertBroadcastService>();
         services.AddHostedService<SharingPreferenceSweepService>();
         services.AddSingleton<IProfileImageValidator, ImageSharpProfileImageValidator>();
         services.AddHttpClient<IProfileImageStorage, SupabaseProfileImageStorage>((_, client) =>
