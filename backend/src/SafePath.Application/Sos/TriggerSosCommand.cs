@@ -26,11 +26,16 @@ public class TriggerSosCommandHandler : ICommandHandler<TriggerSosCommand, Trigg
 {
     private readonly IApplicationDbContext _db;
     private readonly IFamilyAuthorizationService _authorization;
+    private readonly ISosAlertDispatcher _dispatcher;
 
-    public TriggerSosCommandHandler(IApplicationDbContext db, IFamilyAuthorizationService authorization)
+    public TriggerSosCommandHandler(
+        IApplicationDbContext db,
+        IFamilyAuthorizationService authorization,
+        ISosAlertDispatcher dispatcher)
     {
         _db = db;
         _authorization = authorization;
+        _dispatcher = dispatcher;
     }
 
     public async Task<TriggerSosResult> Handle(TriggerSosCommand command, CancellationToken cancellationToken = default)
@@ -77,6 +82,18 @@ public class TriggerSosCommandHandler : ICommandHandler<TriggerSosCommand, Trigg
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        // Fan-out starts only after the commit the idempotency check above depends on, and is
+        // never awaited inline — a slow/failing channel must never delay the sender's
+        // confirmation (Core Value). Faults are observed via a fire-and-forget continuation
+        // rather than left to become an unobserved task exception; SosAlertDispatcher already
+        // isolates per-channel failures internally, so this is a last-resort guard only.
+        var dispatch = _dispatcher.DispatchAsync(session.Id, cancellationToken);
+        _ = dispatch.ContinueWith(
+            static _ => { /* swallow: dispatcher owns per-channel failure handling */ },
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
 
         var dto = await SosSessionProjection.ProjectAsync(_db, session, cancellationToken);
         return new TriggerSosResult(dto, WasExistingSession: false);

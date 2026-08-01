@@ -18,7 +18,7 @@ public class TriggerSosCommandHandlerTests : IDisposable
     {
         await using var db = _factory.CreateContext();
         var (familyId, callerId, _) = await SeedFamily(db);
-        var handler = new TriggerSosCommandHandler(db, new FamilyAuthorizationService(db));
+        var handler = new TriggerSosCommandHandler(db, new FamilyAuthorizationService(db), new NoOpSosAlertDispatcher());
         var sosSessionId = Guid.NewGuid();
 
         await handler.Handle(new TriggerSosCommand(
@@ -33,7 +33,7 @@ public class TriggerSosCommandHandlerTests : IDisposable
     {
         await using var db = _factory.CreateContext();
         var (familyId, callerId, _) = await SeedFamily(db);
-        var handler = new TriggerSosCommandHandler(db, new FamilyAuthorizationService(db));
+        var handler = new TriggerSosCommandHandler(db, new FamilyAuthorizationService(db), new NoOpSosAlertDispatcher());
         var sosSessionId = Guid.NewGuid();
         var command = new TriggerSosCommand(sosSessionId, callerId, familyId, 30.0444, 31.2357, 10, DateTime.UtcNow);
 
@@ -53,7 +53,7 @@ public class TriggerSosCommandHandlerTests : IDisposable
     {
         await using var db = _factory.CreateContext();
         var (familyId, callerId, _) = await SeedFamily(db, extraGuardians: 2);
-        var handler = new TriggerSosCommandHandler(db, new FamilyAuthorizationService(db));
+        var handler = new TriggerSosCommandHandler(db, new FamilyAuthorizationService(db), new NoOpSosAlertDispatcher());
 
         await handler.Handle(new TriggerSosCommand(
             Guid.NewGuid(), callerId, familyId, null, null, null, DateTime.UtcNow));
@@ -69,7 +69,7 @@ public class TriggerSosCommandHandlerTests : IDisposable
     {
         await using var db = _factory.CreateContext();
         var (familyId, callerId, _) = await SeedFamily(db, callerRole: Role.Guardian, extraGuardians: 1);
-        var handler = new TriggerSosCommandHandler(db, new FamilyAuthorizationService(db));
+        var handler = new TriggerSosCommandHandler(db, new FamilyAuthorizationService(db), new NoOpSosAlertDispatcher());
 
         await handler.Handle(new TriggerSosCommand(
             Guid.NewGuid(), callerId, familyId, null, null, null, DateTime.UtcNow));
@@ -83,7 +83,7 @@ public class TriggerSosCommandHandlerTests : IDisposable
     {
         await using var db = _factory.CreateContext();
         var (familyId, _, _) = await SeedFamily(db);
-        var handler = new TriggerSosCommandHandler(db, new FamilyAuthorizationService(db));
+        var handler = new TriggerSosCommandHandler(db, new FamilyAuthorizationService(db), new NoOpSosAlertDispatcher());
         var outsiderId = Guid.NewGuid();
 
         await Assert.ThrowsAsync<FamilyAuthorizationDeniedException>(() => handler.Handle(new TriggerSosCommand(
@@ -97,7 +97,7 @@ public class TriggerSosCommandHandlerTests : IDisposable
     {
         await using var db = _factory.CreateContext();
         var (familyId, callerId, _) = await SeedFamily(db);
-        var handler = new TriggerSosCommandHandler(db, new FamilyAuthorizationService(db));
+        var handler = new TriggerSosCommandHandler(db, new FamilyAuthorizationService(db), new NoOpSosAlertDispatcher());
 
         await handler.Handle(new TriggerSosCommand(
             Guid.NewGuid(), callerId, familyId, 30.0444, 31.2357, 10, DateTime.UtcNow));
@@ -110,7 +110,7 @@ public class TriggerSosCommandHandlerTests : IDisposable
     {
         await using var db = _factory.CreateContext();
         var (familyId, callerId, _) = await SeedFamily(db);
-        var handler = new TriggerSosCommandHandler(db, new FamilyAuthorizationService(db));
+        var handler = new TriggerSosCommandHandler(db, new FamilyAuthorizationService(db), new NoOpSosAlertDispatcher());
 
         await Assert.ThrowsAsync<ArgumentException>(() => handler.Handle(new TriggerSosCommand(
             Guid.NewGuid(), callerId, familyId, 91, 31.2357, 10, DateTime.UtcNow)));
@@ -159,4 +159,14 @@ public class TriggerSosCommandHandlerTests : IDisposable
     }
 
     public void Dispose() => _factory.Dispose();
+}
+
+/// <summary>
+/// No-op ISosAlertDispatcher test double for handler tests that only care about persistence
+/// behaviour, not fan-out — AlertFanOutTests.cs covers the dispatcher itself.
+/// </summary>
+internal sealed class NoOpSosAlertDispatcher : ISosAlertDispatcher
+{
+    public Task DispatchAsync(Guid sosSessionId, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
 }

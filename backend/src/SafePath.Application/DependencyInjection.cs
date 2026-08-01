@@ -37,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<GetSharingMatrixQuery, SharingMatrixDto>, GetSharingMatrixQueryHandler>();
         services.AddScoped<ICommandHandler<ExportMyDataQuery, MyDataExportDto>, ExportMyDataQueryHandler>();
         services.AddScoped<ICommandHandler<DeleteMyDataCommand, DeleteMyDataResult>, DeleteMyDataCommandHandler>();
+        services.AddScoped<ISosAlertDispatcher, SosAlertDispatcher>();
         services.AddScoped<ICommandHandler<TriggerSosCommand, TriggerSosResult>, TriggerSosCommandHandler>();
         services.AddScoped<ICommandHandler<GetSosSessionQuery, GetSosSessionResult>, GetSosSessionQueryHandler>();
 
