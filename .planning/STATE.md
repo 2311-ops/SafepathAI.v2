@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 3
-current_phase_name: Core Value
-status: planning
-stopped_at: Phase 03 UI-SPEC approved
-last_updated: "2026-08-01T09:06:51.459Z"
-last_activity: 2026-07-24
-last_activity_desc: Gathered Phase 03 SOS Fast Path context decisions
+current_phase: 03
+current_phase_name: sos-fast-path
+status: executing
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-08-01T20:20:41.754Z"
+last_activity: 2026-08-01
+last_activity_desc: Phase 03 execution resumed (wave continue)
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 35
-  completed_plans: 35
+  total_plans: 44
+  completed_plans: 36
   percent: 38
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-16)
 
 **Core value:** The SOS system must always work — a single tap or covert Silent/Duress trigger reliably delivers an immediate alert with live location to a user's designated guardians within seconds, bypassing every routine and AI pipeline.
-**Current focus:** Phase 3 — SOS Fast Path (Core Value)
+**Current focus:** Phase 03 — sos-fast-path
 
 ## Current Position
 
-Phase: 3 — SOS Fast Path (Core Value)
-Plan: Not started
-Status: Phase 02 plans complete; ready for verification/Phase 3 planning
-Last activity: 2026-07-24 - Gathered Phase 03 SOS Fast Path context decisions
+Phase: 03 (sos-fast-path) — EXECUTING
+Plan: 2 of 9
+Status: Ready to execute
+Last activity: 2026-08-01 — Phase 03 execution resumed (wave continue)
 
 Progress: [██████████] 100%
 
@@ -83,6 +83,7 @@ Progress: [██████████] 100%
 | Phase 02 P17 | 7min | 1 tasks | 2 files |
 | Phase 02-real-time-location-history-privacy P18 | 25min | 2 tasks | 4 files |
 | Phase 02 P19 | 20min | 2 tasks | 3 files |
+| Phase 03-sos-fast-path P01 | 10min | 3 tasks | 28 files |
 
 ## Accumulated Context
 
@@ -148,6 +149,8 @@ Recent decisions affecting current work:
 - [Phase 02]: [Phase 02-19]: Independent IPresenceQuery.IsOnline connection presence remains visible under denied LiveLocation sharing, preserving D-03. — The plan explicitly preserves the accepted non-location connection-presence signal while gating only ping-derived recency.
 - [Quick 260717-pwh]: LiveMapScreen converted from ConsumerWidget to ConsumerStatefulWidget owning a MapController; rail-card tap now recenters the map camera (zoom 17) instead of opening the member detail sheet, while marker-pin tap keeps opening it — two complementary interactions (locate-on-map vs. details).
 - [Quick 260720-3u4]: MemberMapPin now exposes one clean Semantics label combining the member label with current-location or staleness status, so screen readers do not announce the initials and badge as separate fragments.
+- [Phase 03-01]: Recipient resolution (ResolveRecipients) queries active Guardians only, bypassing ISharingAuthorizationService so a privacy preference can never suppress an SOS emergency.
+- [Phase 03-01]: GetSosSessionQuery/Handler added (not in original file list) plus a shared SosSessionProjection helper, so SosController.Get matches the controller-only-calls-handlers convention and both handlers never diverge on DTO shaping.
 
 ### Pending Todos
 
@@ -181,6 +184,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-01T09:06:51.434Z
-Stopped at: Phase 03 UI-SPEC approved
-Resume file: .planning/phases/03-sos-fast-path/03-UI-SPEC.md
+Last session: 2026-08-01T20:20:41.738Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None
