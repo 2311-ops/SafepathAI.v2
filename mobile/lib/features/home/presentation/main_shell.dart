@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -7,6 +8,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../location/presentation/history_timeline_screen.dart';
 import '../../location/presentation/live_map_screen.dart';
 import '../../privacy/presentation/privacy_center_screen.dart';
+import '../../sos/application/sos_controller.dart';
 import '../../sos/presentation/sos_arm_button.dart';
 
 class MainShell extends ConsumerStatefulWidget {
@@ -41,8 +43,12 @@ class _MainShellState extends ConsumerState<MainShell> {
   ];
 
   void _onArmComplete() {
-    // Task 3 wires this to `sosControllerProvider.notifier.arm()` and pushes
-    // the full-screen sender emergency session route.
+    // No confirmation dialog, countdown, or cancel-before-send gate between
+    // the hold completing and this navigation (D-02). Push (not go) so the
+    // emergency session sits on top of the shell and dismissing it returns
+    // to where the user was.
+    ref.read(sosControllerProvider.notifier).arm();
+    context.pushNamed('sos-session');
   }
 
   @override

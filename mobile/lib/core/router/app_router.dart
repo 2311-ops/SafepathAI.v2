@@ -26,6 +26,7 @@ import '../../features/location/presentation/permission_priming_screen.dart';
 import '../../features/privacy/presentation/privacy_policy_screen.dart';
 import '../../features/profile/application/profile_controller.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/sos/presentation/sender_emergency_session_screen.dart';
 import '../../features/splash/application/splash_providers.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 
@@ -56,6 +57,7 @@ const _authenticatedOnlyRoutes = {
   '/battery-info',
   '/privacy/policy',
   '/profile',
+  '/sos/session',
 };
 
 /// Bridges [authControllerProvider] changes to go_router's
@@ -241,6 +243,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/profile',
         name: 'profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/sos/session',
+        name: 'sos-session',
+        builder: (context, state) => const SenderEmergencySessionScreen(),
       ),
       GoRoute(
         path: '/circle/create',
