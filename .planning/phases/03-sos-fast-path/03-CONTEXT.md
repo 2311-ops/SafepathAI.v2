@@ -54,6 +54,11 @@ This phase owns the plain SOS path only: trigger, delivery, offline retry, respo
 - **D-28:** Silent/Duress is explicitly out of Phase 03 scope and remains Phase 6. Phase 03 must not implement decoy UI, duress secret storage, or covert behavior now.
 - **D-29:** Confirmed: the Phase 03 SOS entity/schema includes a `kind = visible | duress` field from the start (defaulting to/only ever set to `visible` in this phase), purely so Phase 6 can add the Silent/Duress path without a schema migration or breaking change. This is a forward-compatible data-shape choice only — it authorizes no duress logic, decoy UI, or covert behavior in Phase 03.
 
+### Scope Gaps Resolved (post-research, 2026-08-01)
+- **D-30:** 03-UI-SPEC.md has no "add emergency contact" screen, but D-11 requires SOS to reach configured emergency contacts. Phase 03 builds a minimal add/edit emergency-contact screen (name + phone) — this is in scope, not deferred/seeded-manually.
+- **D-31:** D-21's live-location streaming window MUST survive the sender backgrounding or locking their phone during an active SOS session. Add `flutter_foreground_task` scoped specifically to the active SOS window (not routine tracking) so the location feed does not go stale mid-emergency.
+- **D-32:** Guardian FCM push tokens use a multi-device model from day one — store multiple tokens per Guardian so an SOS alert reaches every logged-in device, not just the most recently logged-in one.
+
 ### the agent's Discretion
 Planner/researcher may choose implementation details that preserve the decisions above, existing Clean Architecture boundaries, existing Riverpod/go_router mobile patterns, and the cost preference for free/no-cost options first.
 
