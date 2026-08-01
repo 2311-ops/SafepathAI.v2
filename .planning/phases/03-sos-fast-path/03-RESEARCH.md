@@ -478,6 +478,65 @@ public interface IAlertClient
    - What's unclear: Whether Phase 3 needs to add a `DeviceToken` entity (per-user, per-device) or whether a single-token-per-user model is acceptable for the MVP scope.
    - Recommendation: Add a minimal `UserDeviceToken` table (UserId, Token, Platform, UpdatedAtUtc) with upsert-on-app-start registration — the multi-device case (a Guardian with both a phone and tablet) is a real scenario for a family-safety app and should not be designed away at this stage, but a single-row-per-token upsert keeps the initial implementation simple.
 
+## Validation Architecture
+
+### Test Framework
+
+**Backend (.NET)**
+
+| Property | Value |
+|----------|-------|
+| Framework | xUnit 2.9.2 + `xunit.runner.visualstudio` 2.8.2 + Moq 4.20.72 [VERIFIED: codebase, `backend/tests/SafePath.Application.Tests/SafePath.Application.Tests.csproj`] |
+| Config file | none — no `xunit.runner.json`; project-level config only via each `.csproj` (`SafePath.Domain.Tests`, `SafePath.Application.Tests`, `SafePath.Api.IntegrationTests`), all targeting `net9.0` |
+| Quick run command | `dotnet test backend/tests/SafePath.Application.Tests --filter FullyQualifiedName~Sos` |
+| Full suite command | `dotnet test backend/SafePath.sln` |
+
+**Mobile (Flutter)**
+
+| Property | Value |
+|----------|-------|
+| Framework | `flutter_test` (bundled with Flutter SDK, declared in `mobile/pubspec.yaml` dev_dependencies) [VERIFIED: codebase, `mobile/pubspec.yaml`] |
+| Config file | none — no `dart_test.yaml`; existing convention is one `*_test.dart` file per feature/widget under `mobile/test/features/**`, with shared fakes under `mobile/test/helpers/` (e.g. `fake_location_api.dart`, `fake_location_hub_client.dart`) |
+| Quick run command | `flutter test test/features/sos` (run from `mobile/`) |
+| Full suite command | `flutter test` (run from `mobile/`) |
+
+Both stacks already have working test infrastructure — no new test framework needs to be installed for Phase 3. The `Sos`/`AlertHub` test surface is entirely new (no existing files), following the same conventions already used for `Location`/`Families` (backend) and `location`/`family` (mobile).
+
+### Phase Requirements → Test Map
+
+| Req ID | Behavior | Test Type | Automated Command | File Exists? |
+|--------|----------|-----------|-------------------|-------------|
+| SOS-01 (backend) | `TriggerSosCommandHandler` never invokes `ReportLocationCommandHandler` or any AI-scoring path; command succeeds independent of the routine pipeline | unit | `dotnet test backend/tests/SafePath.Application.Tests --filter FullyQualifiedName~Sos.TriggerSosCommandHandlerTests` | ❌ Wave 0 |
+| SOS-01 (mobile) | 3-second press-and-hold on the SOS button fires the trigger; release before 3s cancels, no network call made | widget | `flutter test test/features/home/sos_button_press_hold_test.dart` | ❌ Wave 0 |
+| SOS-02 (backend) | `TriggerSosCommandHandler` creates one `SosDeliveryAttempt` row per (recipient, channel) pair and dispatches fan-out for SignalR + FCM + SMS | unit | `dotnet test backend/tests/SafePath.Application.Tests --filter FullyQualifiedName~Sos.AlertFanOutTests` | ❌ Wave 0 |
+| SOS-02 (integration) | `POST /sos/trigger` response exposes per-recipient/per-channel delivery state, never a single collapsed "sent" flag (D-09) | integration | `dotnet test backend/tests/SafePath.Api.IntegrationTests --filter FullyQualifiedName~SosControllerTests` | ❌ Wave 0 |
+| SOS-03 (backend) | Repeat `TriggerSosCommand` submissions with the same `sosSessionId` are idempotent — no duplicate `SosSession` row, no duplicate fan-out (D-15) | unit | `dotnet test backend/tests/SafePath.Application.Tests --filter FullyQualifiedName~Sos.TriggerSosCommandHandlerTests.Idempotent` | ❌ Wave 0 |
+| SOS-03 (mobile) | Offline trigger enters the full-screen emergency session in "not sent yet/retrying" state; queued session resumes after simulated app-kill/restart via persisted `sosSessionId` (D-12, D-14, D-17) | unit (controller) | `flutter test test/features/sos/sos_controller_test.dart` | ❌ Wave 0 |
+| SOS-04 (backend) | `AlertHub` streams live-location updates to subscribed Guardians for the session's fixed window and stops emitting after the window's end time | integration (hub smoke, mirrors `LocationHubSmokeTests.cs`) | `dotnet test backend/tests/SafePath.Api.IntegrationTests --filter FullyQualifiedName~AlertHubSmokeTests` | ❌ Wave 0 |
+| SOS-04 (mobile) | Responder screen renders the live-location stream with an explicit end-time/countdown and stops updating after expiry (D-21) | widget | `flutter test test/features/sos/responder_alert_screen_test.dart` | ❌ Wave 0 |
+| SOS-05 (backend) | `CancelSosCommand` never blocks or delays the original `TriggerSosCommand` result; `SosSession` shows both the original alert and a `Canceled` state (D-05, D-24) | unit | `dotnet test backend/tests/SafePath.Application.Tests --filter FullyQualifiedName~Sos.CancelSosCommandTests` | ❌ Wave 0 |
+| SOS-06 | `quick_actions`-invoked shortcut fires SOS immediately, skipping the 3-second arming hold (D-27) | manual-only | — native OS home-screen/app-shortcut invocation cannot be triggered from a headless `flutter test` harness; requires manual exercise on an emulator/device per `/gsd-verify-work` | ❌ manual-only, justified |
+| NOTIF-03 (backend) | On trigger, `AlertHub` push and FCM send are both invoked for every resolved recipient (Guardians + emergency contacts per D-11) | unit | `dotnet test backend/tests/SafePath.Application.Tests --filter FullyQualifiedName~Sos.AlertFanOutTests` | ❌ Wave 0 (same file as SOS-02 backend row) |
+| NOTIF-03 (manual) | A real FCM push notification, when tapped, deep-links into the dedicated SOS responder screen (D-19) | manual-only | — requires actual FCM delivery + OS notification tap; not reproducible inside the Flutter test harness or an ASP.NET Core integration test | ❌ manual-only, justified |
+| DESIGN-02 | SOS button matches spec exactly: always-visible, raised center of bottom nav, 64px circle, 3-second press-and-hold with circular progress ring, release-to-cancel | widget | `flutter test test/features/home/sos_button_press_hold_test.dart` | ❌ Wave 0 (same file as SOS-01 mobile row) |
+
+### Sampling Rate
+- **Per task commit:** Backend — `dotnet test backend/tests/SafePath.Application.Tests --filter FullyQualifiedName~Sos` (plus `SafePath.Api.IntegrationTests --filter FullyQualifiedName~Sos|FullyQualifiedName~AlertHub` once those files exist); Mobile — `flutter test test/features/sos test/features/home/sos_button_press_hold_test.dart`
+- **Per wave merge:** Backend — `dotnet test backend/SafePath.sln`; Mobile — `flutter test` (run from `mobile/`)
+- **Phase gate:** Both full suites green, plus the two manual-only items (SOS-06 quick-action invocation, NOTIF-03 real FCM tap deep-link) exercised and confirmed before `/gsd-verify-work`
+
+### Wave 0 Gaps
+- [ ] `backend/tests/SafePath.Application.Tests/Sos/TriggerSosCommandHandlerTests.cs` — covers SOS-01 (backend), SOS-03 (backend, idempotency)
+- [ ] `backend/tests/SafePath.Application.Tests/Sos/AlertFanOutTests.cs` — covers SOS-02 (backend), NOTIF-03 (backend)
+- [ ] `backend/tests/SafePath.Application.Tests/Sos/CancelSosCommandTests.cs` — covers SOS-05
+- [ ] `backend/tests/SafePath.Api.IntegrationTests/SosControllerTests.cs` — covers SOS-02 (integration), mirrors existing `MeEndpointTests.cs`/`RemoveMemberCommandTests.cs` pattern
+- [ ] `backend/tests/SafePath.Api.IntegrationTests/AlertHubSmokeTests.cs` — covers SOS-04 (backend), mirrors existing `LocationHubSmokeTests.cs` pattern (auth rejection, group membership)
+- [ ] `mobile/test/features/sos/sos_controller_test.dart` — covers SOS-03 (mobile), SOS-05 (mobile follow-up UI state)
+- [ ] `mobile/test/features/home/sos_button_press_hold_test.dart` — covers SOS-01 (mobile), DESIGN-02
+- [ ] `mobile/test/features/sos/responder_alert_screen_test.dart` — covers SOS-04 (mobile)
+- [ ] `mobile/test/helpers/fake_sos_api.dart` and `mobile/test/helpers/fake_sos_hub_client.dart` — shared fakes for controller/widget tests, mirroring existing `fake_location_api.dart`/`fake_location_hub_client.dart`
+- [ ] Framework install: none — xUnit/Moq/`Microsoft.EntityFrameworkCore.Sqlite` (backend) and `flutter_test` (mobile) are already present in both test projects; no new test-framework dependency is required for Phase 3
+
 ## Security Domain
 
 ### Applicable ASVS Categories
