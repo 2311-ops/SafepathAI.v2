@@ -1,0 +1,127 @@
+using Microsoft.EntityFrameworkCore;
+using SafePath.Application.Common.Interfaces;
+using SafePath.Domain.Entities;
+using SafePath.Domain.Enums;
+
+namespace SafePath.Application.Sos;
+
+public record TriggerSosCommand(
+    Guid SosSessionId,
+    Guid CallerUserId,
+    Guid FamilyId,
+    double? Latitude,
+    double? Longitude,
+    double? AccuracyMeters,
+    DateTime TriggeredAtUtc);
+
+public record TriggerSosResult(SosSessionDto Session, bool WasExistingSession);
+
+/// <summary>
+/// Idempotent SOS trigger handler. Deliberately holds no reference to
+/// <c>ReportLocationCommandHandler</c>, <c>ILocationBroadcastService</c>,
+/// <c>ILowBatteryAlertTracker</c>, or any <c>LocationPing</c> write — SOS-01's isolation
+/// guarantee from the routine location pipeline is enforced by that absence.
+/// </summary>
+public class TriggerSosCommandHandler : ICommandHandler<TriggerSosCommand, TriggerSosResult>
+{
+    private readonly IApplicationDbContext _db;
+    private readonly IFamilyAuthorizationService _authorization;
+
+    public TriggerSosCommandHandler(IApplicationDbContext db, IFamilyAuthorizationService authorization)
+    {
+        _db = db;
+        _authorization = authorization;
+    }
+
+    public async Task<TriggerSosResult> Handle(TriggerSosCommand command, CancellationToken cancellationToken = default)
+    {
+        var existing = await _db.SosSessions
+            .SingleOrDefaultAsync(s => s.Id == command.SosSessionId, cancellationToken);
+
+        if (existing is not null)
+        {
+            var existingDto = await SosSessionProjection.ProjectAsync(_db, existing, cancellationToken);
+            return new TriggerSosResult(existingDto, WasExistingSession: true);
+        }
+
+        await _authorization.RequireMembership(command.CallerUserId, command.FamilyId, cancellationToken);
+        Validate(command);
+
+        var session = new SosSession
+        {
+            Id = command.SosSessionId,
+            FamilyId = command.FamilyId,
+            TriggeredByUserId = command.CallerUserId,
+            Kind = SosKind.Visible,
+            Status = SosSessionStatus.Active,
+            Latitude = command.Latitude,
+            Longitude = command.Longitude,
+            AccuracyMeters = command.AccuracyMeters,
+            TriggeredAtUtc = command.TriggeredAtUtc,
+            ReceivedAtUtc = DateTime.UtcNow,
+        };
+
+        _db.SosSessions.Add(session);
+
+        var recipients = await ResolveRecipients(command.FamilyId, command.CallerUserId, cancellationToken);
+        foreach (var recipient in recipients)
+        {
+            _db.SosDeliveryAttempts.Add(new SosDeliveryAttempt
+            {
+                Id = Guid.NewGuid(),
+                SosSessionId = session.Id,
+                RecipientUserId = recipient.UserId,
+                Channel = AlertChannel.SignalR,
+                Status = SosDeliveryStatus.NotAttempted,
+            });
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        var dto = await SosSessionProjection.ProjectAsync(_db, session, cancellationToken);
+        return new TriggerSosResult(dto, WasExistingSession: false);
+    }
+
+    /// <summary>
+    /// Resolves active Guardians of the caller's family, excluding the caller. This is the
+    /// single extension point plan 03-05 widens to also return EmergencyContact rows (D-11).
+    /// Deliberately does NOT route through ISharingAuthorizationService — that service gates
+    /// routine location visibility and would let a privacy preference suppress an emergency.
+    /// </summary>
+    private async Task<List<(Guid UserId, string DisplayName)>> ResolveRecipients(
+        Guid familyId,
+        Guid callerUserId,
+        CancellationToken cancellationToken)
+    {
+        return await _db.FamilyMembers
+            .Where(m => m.FamilyId == familyId && m.IsActive && m.Role == Role.Guardian && m.UserId != callerUserId)
+            .Join(_db.Users, m => m.UserId, u => u.Id, (m, u) => new { u.Id, u.DisplayName, u.FullName })
+            .Select(u => new ValueTuple<Guid, string>(
+                u.Id,
+                string.IsNullOrWhiteSpace(u.DisplayName) ? u.FullName : u.DisplayName!))
+            .ToListAsync(cancellationToken);
+    }
+
+    private static void Validate(TriggerSosCommand command)
+    {
+        if (command.Latitude is { } latitude && (double.IsNaN(latitude) || latitude is < -90 or > 90))
+        {
+            throw new ArgumentException("Latitude must be a finite number between -90 and 90.", nameof(command));
+        }
+
+        if (command.Longitude is { } longitude && (double.IsNaN(longitude) || longitude is < -180 or > 180))
+        {
+            throw new ArgumentException("Longitude must be a finite number between -180 and 180.", nameof(command));
+        }
+
+        if (command.AccuracyMeters is { } accuracy && (double.IsNaN(accuracy) || accuracy < 0))
+        {
+            throw new ArgumentException("Accuracy must be a finite number zero or greater.", nameof(command));
+        }
+
+        if (command.TriggeredAtUtc > DateTime.UtcNow.AddMinutes(5))
+        {
+            throw new ArgumentException("TriggeredAtUtc cannot be more than five minutes in the future.", nameof(command));
+        }
+    }
+}

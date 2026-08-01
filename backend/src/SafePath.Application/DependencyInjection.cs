@@ -5,6 +5,7 @@ using SafePath.Application.Families;
 using SafePath.Application.Location;
 using SafePath.Application.Profile;
 using SafePath.Application.Privacy;
+using SafePath.Application.Sos;
 
 namespace SafePath.Application;
 
@@ -36,6 +37,8 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<GetSharingMatrixQuery, SharingMatrixDto>, GetSharingMatrixQueryHandler>();
         services.AddScoped<ICommandHandler<ExportMyDataQuery, MyDataExportDto>, ExportMyDataQueryHandler>();
         services.AddScoped<ICommandHandler<DeleteMyDataCommand, DeleteMyDataResult>, DeleteMyDataCommandHandler>();
+        services.AddScoped<ICommandHandler<TriggerSosCommand, TriggerSosResult>, TriggerSosCommandHandler>();
+        services.AddScoped<ICommandHandler<GetSosSessionQuery, GetSosSessionResult>, GetSosSessionQueryHandler>();
 
         return services;
     }
