@@ -132,7 +132,7 @@
 ### Design System (DESIGN)
 
 - [x] **DESIGN-01**: Every screen matches the existing 36-screen design system (colors, type, spacing, motion) recreated as Flutter widgets/`ThemeData`
-- [ ] **DESIGN-02**: The SOS button is implemented exactly per spec: always-visible, raised center of bottom nav, 64px circle, 3-second press-and-hold arming with a circular progress ring, release-to-cancel
+- [x] **DESIGN-02**: The SOS button is implemented exactly per spec: always-visible, raised center of bottom nav, 64px circle, 3-second press-and-hold arming with a circular progress ring, release-to-cancel
 
 ## v2 Requirements
 
@@ -205,7 +205,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SOS-05 | Phase 3 | Pending |
 | SOS-06 | Phase 3 | Pending |
 | NOTIF-03 | Phase 3 | Pending |
-| DESIGN-02 | Phase 3 | Pending |
+| DESIGN-02 | Phase 3 | Complete |
 | GEO-01 | Phase 4 | Pending |
 | GEO-02 | Phase 4 | Pending |
 | GEO-03 | Phase 4 | Pending |

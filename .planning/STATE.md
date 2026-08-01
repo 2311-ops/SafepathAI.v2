@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: sos-fast-path
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-08-01T20:20:41.754Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-08-01T21:11:26.345Z"
 last_activity: 2026-08-01
 last_activity_desc: Phase 03 execution resumed (wave continue)
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 44
-  completed_plans: 36
+  completed_plans: 37
   percent: 38
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 03 (sos-fast-path) — EXECUTING
-Plan: 2 of 9
+Plan: 3 of 9
 Status: Ready to execute
 Last activity: 2026-08-01 — Phase 03 execution resumed (wave continue)
 
@@ -84,6 +84,7 @@ Progress: [██████████] 100%
 | Phase 02-real-time-location-history-privacy P18 | 25min | 2 tasks | 4 files |
 | Phase 02 P19 | 20min | 2 tasks | 3 files |
 | Phase 03-sos-fast-path P01 | 10min | 3 tasks | 28 files |
+| Phase 03 P02 | 25min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -151,6 +152,9 @@ Recent decisions affecting current work:
 - [Quick 260720-3u4]: MemberMapPin now exposes one clean Semantics label combining the member label with current-location or staleness status, so screen readers do not announce the initials and badge as separate fragments.
 - [Phase 03-01]: Recipient resolution (ResolveRecipients) queries active Guardians only, bypassing ISharingAuthorizationService so a privacy preference can never suppress an SOS emergency.
 - [Phase 03-01]: GetSosSessionQuery/Handler added (not in original file list) plus a shared SosSessionProjection helper, so SosController.Get matches the controller-only-calls-handlers convention and both handlers never diverge on DTO shaping.
+- [Phase 03-02]: SosController.arm() generates and persists a v4 session id before any network call; sosSessionId is a plain controller getter outside the sealed SosSessionState so D-13/D-14 are observable without a placeholder session
+- [Phase 03-02]: Promoted uuid and url_launcher from transitive to direct dependencies (already resolved in pubspec.lock via signalr_netcore/qr_flutter and share_plus) rather than gating as new package installs, matching the plan's own shared_preferences precedent
+- [Phase 03-02]: Fixed a pre-existing stray-comma syntax bug in member_map_pin.dart that had been silently breaking compilation of the whole mobile test suite; also fixed a rehydrate/arm race and a deactivated-context crash discovered in SosController/SosArmButton
 
 ### Pending Todos
 
@@ -184,6 +188,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-01T20:20:41.738Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-08-01T21:11:26.331Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
