@@ -317,7 +317,10 @@ void main() {
     final controller = _SpyPrivacyController();
 
     await tester.pumpWidget(_app(controller));
-    await tester.drag(find.byType(ListView), const Offset(0, -520));
+    // Drag distance intentionally overshoots the scroll extent (Scrollable
+    // clamps it) -- widened after 03-07 added an "Emergency contacts" entry
+    // point above "Delete my data", pushing it further down.
+    await tester.drag(find.byType(ListView), const Offset(0, -700));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete my data'));
     await tester.pumpAndSettle();
