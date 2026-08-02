@@ -175,7 +175,10 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None for Phase 01 closeout.
+| Title | Area | File |
+|-------|------|------|
+| Provision Firebase/APNs and verify FCM push deep-link (03-06 Task 3) | verification | [todos/pending/2026-08-02-provision-firebase-apns-and-verify-fcm-push-deep-link.md](./todos/pending/2026-08-02-provision-firebase-apns-and-verify-fcm-push-deep-link.md) |
+| Manual airplane-mode offline SOS smoke test (03-07 D4) | verification | [todos/pending/2026-08-02-manual-airplane-mode-offline-sos-smoke-test.md](./todos/pending/2026-08-02-manual-airplane-mode-offline-sos-smoke-test.md) |
 
 ### Blockers/Concerns
 
