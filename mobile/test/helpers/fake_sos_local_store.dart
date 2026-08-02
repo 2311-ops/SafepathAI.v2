@@ -30,4 +30,9 @@ class FakeSosLocalStore implements SosLocalStore {
   Future<void> writePendingTrigger(SosTriggerRequest request) async {
     pendingTrigger = request;
   }
+
+  @override
+  Future<void> clearPendingTrigger() async {
+    pendingTrigger = null;
+  }
 }

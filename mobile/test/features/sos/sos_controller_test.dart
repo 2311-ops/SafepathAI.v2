@@ -15,16 +15,20 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:mobile/core/network/connectivity_service.dart';
 import 'package:mobile/features/family/application/family_controller.dart';
 import 'package:mobile/features/family/data/family_models.dart';
 import 'package:mobile/features/location/application/location_controller.dart';
 import 'package:mobile/features/sos/application/sos_controller.dart';
 import 'package:mobile/features/sos/application/sos_session_state.dart';
 import 'package:mobile/features/sos/data/sos_api.dart';
+import 'package:mobile/features/sos/data/sos_hub_client.dart';
 import 'package:mobile/features/sos/data/sos_local_store.dart';
 import 'package:mobile/features/sos/data/sos_models.dart';
 
+import '../../helpers/fake_connectivity_service.dart';
 import '../../helpers/fake_sos_api.dart';
+import '../../helpers/fake_sos_hub_client.dart';
 import '../../helpers/fake_sos_local_store.dart';
 
 /// A fixed, non-loading family circle — enough for `SosController.submit()`
@@ -45,6 +49,7 @@ class _EmptyLocationController extends LocationController {
 ProviderContainer _container({
   required FakeSosApi sosApi,
   required FakeSosLocalStore localStore,
+  FakeConnectivityService? connectivity,
 }) {
   return ProviderContainer(
     overrides: [
@@ -52,6 +57,15 @@ ProviderContainer _container({
       locationControllerProvider.overrideWith(_EmptyLocationController.new),
       sosApiProvider.overrideWithValue(sosApi),
       sosLocalStoreProvider.overrideWithValue(localStore),
+      connectivityServiceProvider.overrideWithValue(
+        connectivity ?? FakeConnectivityService(),
+      ),
+      // Default sosHubClientProvider reads the real Supabase client, which
+      // is never initialized in a unit-test process — overriding with the
+      // hand-written fake lets SosController.build() actually complete
+      // instead of silently failing into an AsyncError that later test
+      // assertions happen to overwrite anyway.
+      sosHubClientProvider.overrideWithValue(FakeSosHubClient()),
     ],
   );
 }

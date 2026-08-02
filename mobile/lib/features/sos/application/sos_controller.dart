@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/network/connectivity_service.dart';
 import '../../family/application/family_controller.dart';
 import '../../location/application/location_controller.dart';
 import '../data/sos_api.dart';
@@ -10,6 +11,42 @@ import '../data/sos_hub_client.dart';
 import '../data/sos_local_store.dart';
 import '../data/sos_models.dart';
 import 'sos_session_state.dart';
+
+/// Schedules the offline-retry backoff timer for [SosController]. This is
+/// the only seam the retry loop goes through — overridden in tests with a
+/// fake that lets a test manually fire a scheduled retry instead of waiting
+/// on real wall-clock time. Deliberately not a third-party backoff package
+/// (03-RESEARCH.md "Don't Hand-Roll": the loop itself is simple; the part
+/// that must not be improvised is idempotency, which lives server-side).
+abstract class SosRetryScheduler {
+  SosRetryHandle schedule(Duration delay, void Function() callback);
+}
+
+/// Cancels a single scheduled retry. Returned by [SosRetryScheduler.schedule].
+abstract class SosRetryHandle {
+  void cancel();
+}
+
+class TimerSosRetryScheduler implements SosRetryScheduler {
+  const TimerSosRetryScheduler();
+
+  @override
+  SosRetryHandle schedule(Duration delay, void Function() callback) =>
+      _TimerSosRetryHandle(Timer(delay, callback));
+}
+
+class _TimerSosRetryHandle implements SosRetryHandle {
+  _TimerSosRetryHandle(this._timer);
+
+  final Timer _timer;
+
+  @override
+  void cancel() => _timer.cancel();
+}
+
+final sosRetrySchedulerProvider = Provider<SosRetryScheduler>(
+  (ref) => const TimerSosRetryScheduler(),
+);
 
 /// Owns the SOS sender-side state machine and trigger submission. `arm()` is
 /// the single entry point the press-and-hold button (and, in plan 03-09, the
@@ -20,8 +57,20 @@ import 'sos_session_state.dart';
 /// lifecycle. This controller only listens to the already-connected
 /// client's `deliveryStatusChanges`/`sosCanceled` streams so the sender's own
 /// session reflects live delivery/acknowledgement/cancellation state.
+///
+/// Offline behaviour (03-07-PLAN.md, D-12..D-17): a trigger that cannot
+/// reach the server persists its payload before the first network attempt,
+/// enters [SosOfflineQueued], and retries on an escalating backoff driven
+/// purely by the HTTP call's own outcome — [connectivityServiceProvider] is
+/// consulted only to retry sooner when an interface reappears, never as
+/// proof the server is reachable.
 class SosController extends AsyncNotifier<SosSessionState> {
   String? _sessionId;
+  SosTriggerRequest? _pendingRequest;
+  SosRetryHandle? _retryHandle;
+
+  static const _initialRetryDelay = Duration(seconds: 4);
+  static const _maxRetryDelay = Duration(seconds: 60);
 
   /// The device-generated session id for the current (or most recently
   /// persisted) emergency. Available immediately after [arm] completes,
@@ -38,9 +87,16 @@ class SosController extends AsyncNotifier<SosSessionState> {
     final sosCanceledSubscription = hubClient.sosCanceled.listen(
       _applySosCanceled,
     );
+    final connectivitySubscription = ref
+        .read(connectivityServiceProvider)
+        .onConnectivityChanged
+        .listen(_onConnectivityChanged);
     ref.onDispose(() {
       unawaited(deliveryStatusSubscription.cancel());
       unawaited(sosCanceledSubscription.cancel());
+      unawaited(connectivitySubscription.cancel());
+      _retryHandle?.cancel();
+      _retryHandle = null;
     });
 
     // Rehydrate a persisted session id (if any) so a restart lands on the
@@ -49,6 +105,20 @@ class SosController extends AsyncNotifier<SosSessionState> {
     // Future.microtask bootstrap convention.
     Future.microtask(_rehydrate);
     return const SosIdle();
+  }
+
+  /// [connectivityServiceProvider] is a hint, not ground truth (see class
+  /// doc) — a `true` transition only shortens the wait for the *next*
+  /// attempt of an already-queued trigger; it never itself decides success.
+  void _onConnectivityChanged(bool isConnected) {
+    if (!isConnected) return;
+    final current = state.value;
+    final request = _pendingRequest;
+    if (current is! SosOfflineQueued || request == null) return;
+
+    _retryHandle?.cancel();
+    _retryHandle = null;
+    unawaited(_attemptSubmit(request, retryCount: current.retryCount));
   }
 
   /// The [SosSession] embedded in the current sealed state, or `null` for
@@ -159,33 +229,59 @@ class SosController extends AsyncNotifier<SosSessionState> {
   }
 
   Future<void> _rehydrate() async {
-    final persisted = await ref.read(sosLocalStoreProvider).readSessionId();
+    final localStore = ref.read(sosLocalStoreProvider);
+    final persisted = await localStore.readSessionId();
     // A real arm() call may have already run (and generated its own fresh
     // session id) by the time this fire-and-forget bootstrap microtask gets
     // a turn — never clobber or duplicate that with a stale rehydrate.
     if (persisted == null || persisted.isEmpty || _sessionId != null) return;
     _sessionId = persisted;
+
+    final pendingTrigger = await localStore.readPendingTrigger();
+    if (pendingTrigger != null) {
+      // A queued-but-unacknowledged trigger survived the process death —
+      // resume as the same emergency immediately rather than losing it or
+      // minting a new one (D-14). Land in SosOfflineQueued synchronously so
+      // a cold-started sender screen reads "still in progress" the instant
+      // it opens, then attempt a resubmit right away instead of waiting out
+      // a fresh backoff.
+      _pendingRequest = pendingTrigger;
+      state = AsyncData(
+        SosOfflineQueued(
+          sessionId: persisted,
+          lastRetryAtUtc: DateTime.now().toUtc(),
+          retryCount: 0,
+        ),
+      );
+      await _attemptSubmit(pendingTrigger);
+      return;
+    }
+
     try {
       final session = await ref.read(sosApiProvider).getSession(persisted);
       state = AsyncData(SosSubmitted(session));
     } catch (_) {
-      // Best-effort resume only — plan 03-07 owns full offline/resume
-      // handling; leaving state as SosIdle here is a safe fallback.
+      // Best-effort resume only.
     }
   }
 
-  /// Arm-complete entry point: generates the session id, persists it, and
-  /// only then calls [submit]. The id exists and is persisted before any
-  /// await on the network (D-13, D-14).
+  /// Arm-complete entry point: generates the session id, persists it and the
+  /// composed trigger payload, and only then attempts to send. Both the id
+  /// and the payload exist on disk before any await on the network (D-13,
+  /// D-14) — a process death between hold-complete and the first network
+  /// attempt still leaves a resumable emergency behind.
   Future<void> arm() async {
     final id = const Uuid().v4();
     _sessionId = id;
-    await ref.read(sosLocalStoreProvider).writeSessionId(id);
+    final localStore = ref.read(sosLocalStoreProvider);
+    await localStore.writeSessionId(id);
+    final request = _composeRequest(id);
+    await localStore.writePendingTrigger(request);
     state = const AsyncLoading();
-    await submit();
+    await _attemptSubmit(request);
   }
 
-  /// Submits the current session id to the server. Every call passes the
+  /// Re-submits the current session id to the server. Every call passes the
   /// same persisted [sosSessionId], so a server-side replay is a status
   /// check rather than a second emergency (D-15).
   Future<void> submit() async {
@@ -197,13 +293,35 @@ class SosController extends AsyncNotifier<SosSessionState> {
     }
     _sessionId = sessionId;
 
+    final request = _composeRequest(sessionId);
+    await ref.read(sosLocalStoreProvider).writePendingTrigger(request);
+    state = const AsyncLoading();
+    await _attemptSubmit(request);
+  }
+
+  /// Asks the server directly for the current status of a rehydrated
+  /// session, for a client that cannot otherwise tell whether an earlier
+  /// submission landed. A best-effort check, not a retry trigger — failure
+  /// here leaves the current state untouched.
+  Future<void> checkQueuedSessionStatus() async {
+    final sessionId = _sessionId;
+    if (sessionId == null || sessionId.isEmpty) return;
+    try {
+      final session = await ref.read(sosApiProvider).getSession(sessionId);
+      await _handleSuccess(session);
+    } catch (_) {
+      // Best-effort only.
+    }
+  }
+
+  SosTriggerRequest _composeRequest(String sessionId) {
     final familyId = ref.read(familyControllerProvider).value?.family?.id;
     // Read the last known fix already held by LocationController rather than
     // starting a fresh geolocator request — waiting on a cold GPS fix would
     // delay the alert, which the Core Value forbids. Null coordinates are
     // accepted by the backend when no fix is available (03-01).
     final position = ref.read(locationControllerProvider).value?.selfPosition;
-    final request = SosTriggerRequest(
+    return SosTriggerRequest(
       sosSessionId: sessionId,
       familyId: familyId ?? '',
       latitude: position?.lat,
@@ -211,17 +329,85 @@ class SosController extends AsyncNotifier<SosSessionState> {
       accuracyMeters: position?.accuracyMeters,
       triggeredAtUtc: DateTime.now().toUtc(),
     );
+  }
 
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+  /// The single place every submit/retry/resume path funnels through.
+  /// [retryCount] is the number of attempts already made for this queued
+  /// trigger (0 for the very first attempt) — used only to compute the next
+  /// backoff delay if this attempt also fails on a network issue.
+  Future<void> _attemptSubmit(
+    SosTriggerRequest request, {
+    int retryCount = 0,
+  }) async {
+    _pendingRequest = request;
+    try {
       final session = await ref.read(sosApiProvider).trigger(request);
-      return SosSubmitted(session);
-    });
+      // A replayed sosSessionId the server already held is the idempotent
+      // success path working as designed (D-15) — not a conflict, so this
+      // branch never distinguishes a "fresh" accept from a reconciled one.
+      await _handleSuccess(session);
+    } on SosApiException catch (error) {
+      if (error.issue == SosApiIssue.network) {
+        _enterOfflineQueued(request, retryCount: retryCount + 1);
+      } else {
+        // Any other issue (validation, forbidden) surfaces as an error
+        // state — retrying a rejected payload forever helps nobody.
+        _retryHandle?.cancel();
+        _retryHandle = null;
+        state = AsyncError<SosSessionState>(error, StackTrace.current);
+      }
+    } catch (error, stackTrace) {
+      _retryHandle?.cancel();
+      _retryHandle = null;
+      state = AsyncError<SosSessionState>(error, stackTrace);
+    }
+  }
+
+  void _enterOfflineQueued(SosTriggerRequest request, {required int retryCount}) {
+    _pendingRequest = request;
+    state = AsyncData(
+      SosOfflineQueued(
+        sessionId: request.sosSessionId,
+        lastRetryAtUtc: DateTime.now().toUtc(),
+        retryCount: retryCount,
+      ),
+    );
+    _scheduleRetry(request, retryCount);
+  }
+
+  void _scheduleRetry(SosTriggerRequest request, int retryCount) {
+    _retryHandle?.cancel();
+    final delay = _delayForRetry(retryCount);
+    _retryHandle = ref
+        .read(sosRetrySchedulerProvider)
+        .schedule(delay, () {
+          unawaited(_attemptSubmit(request, retryCount: retryCount));
+        });
+  }
+
+  /// Starts short (an emergency retry is worth more battery than a routine
+  /// sync) and caps at roughly a minute — no external backoff package, this
+  /// is simple enough to own directly (03-RESEARCH.md "Don't Hand-Roll").
+  Duration _delayForRetry(int retryCount) {
+    final exponent = (retryCount - 1).clamp(0, 8);
+    final scaled = _initialRetryDelay * (1 << exponent);
+    return scaled > _maxRetryDelay ? _maxRetryDelay : scaled;
+  }
+
+  Future<void> _handleSuccess(SosSession session) async {
+    _retryHandle?.cancel();
+    _retryHandle = null;
+    _pendingRequest = null;
+    await ref.read(sosLocalStoreProvider).clearPendingTrigger();
+    state = AsyncData(SosSubmitted(session));
   }
 
   /// Clears the persisted session id so the next arm starts a fresh
   /// emergency.
   Future<void> closeSession() async {
+    _retryHandle?.cancel();
+    _retryHandle = null;
+    _pendingRequest = null;
     _sessionId = null;
     await ref.read(sosLocalStoreProvider).clear();
     state = const AsyncData(SosIdle());

@@ -21,6 +21,12 @@ abstract class SosLocalStore {
   /// server — consumed by plan 03-07's offline-resume flow.
   Future<SosTriggerRequest?> readPendingTrigger();
   Future<void> writePendingTrigger(SosTriggerRequest request);
+
+  /// Clears only the pending-trigger payload, leaving the session id intact
+  /// — called once a queued retry finally succeeds (D-15), so the resolved
+  /// session stays resumable/closable via [readSessionId]/[clear] without
+  /// re-queuing a payload that has already been accepted.
+  Future<void> clearPendingTrigger();
 }
 
 class SharedPreferencesSosLocalStore implements SosLocalStore {
@@ -65,6 +71,12 @@ class SharedPreferencesSosLocalStore implements SosLocalStore {
   Future<void> writePendingTrigger(SosTriggerRequest request) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_pendingTriggerKey, jsonEncode(request.toJson()));
+  }
+
+  @override
+  Future<void> clearPendingTrigger() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_pendingTriggerKey);
   }
 }
 

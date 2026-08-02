@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
+import 'package:mobile/core/network/connectivity_service.dart';
 import 'package:mobile/features/auth/data/auth_api.dart';
 import 'package:mobile/features/family/application/family_controller.dart';
 import 'package:mobile/features/family/data/family_models.dart';
@@ -29,6 +30,7 @@ import 'package:mobile/features/sos/presentation/sender_emergency_session_screen
 import 'package:mobile/core/theme/app_colors.dart';
 
 import '../../helpers/fake_auth_api.dart';
+import '../../helpers/fake_connectivity_service.dart';
 import '../../helpers/fake_sos_api.dart';
 import '../../helpers/fake_sos_hub_client.dart';
 import '../../helpers/fake_sos_local_store.dart';
@@ -371,6 +373,9 @@ void main() {
             familyControllerProvider.overrideWith(_FixedFamilyController.new),
             locationControllerProvider.overrideWith(
               _EmptyLocationController.new,
+            ),
+            connectivityServiceProvider.overrideWithValue(
+              FakeConnectivityService(),
             ),
           ],
           child: const MaterialApp(home: SenderEmergencySessionScreen()),
