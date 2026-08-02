@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: sos-fast-path
 status: executing
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-08-02T09:44:56.033Z"
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-08-02T11:31:38.187Z"
 last_activity: 2026-08-01
 last_activity_desc: Phase 03 execution resumed (wave continue)
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 44
-  completed_plans: 39
+  completed_plans: 40
   percent: 38
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 03 (sos-fast-path) — EXECUTING
-Plan: 5 of 9
+Plan: 6 of 9
 Status: Ready to execute
 Last activity: 2026-08-01 — Phase 03 execution resumed (wave continue)
 
@@ -87,6 +87,7 @@ Progress: [██████████] 100%
 | Phase 03 P02 | 25min | 3 tasks | 18 files |
 | Phase 03-sos-fast-path P03 | 35min | 3 tasks | 18 files |
 | Phase 03-sos-fast-path P04 | 72min | 3 tasks | 13 files |
+| Phase 03 P05 | 15min | 3 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,10 @@ Recent decisions affecting current work:
 - [Phase 03-04]: SosResponderController owns sosHubClientProvider's connect/disconnect lifecycle exclusively; SosController only listens to its streams -- one HubConnection per app session.
 - [Phase 03-04]: Fixed app_router.dart's authenticated-only-route guard: matchedLocation can never equal a parameterized route pattern like /sos/responder/:sessionId, so the check now uses fullPath instead.
 - [Phase 03-04]: Call sender opens a blank OS dialler (no phone-number field exists yet for family members on the wire) -- documented as a Known Stub pending a future phone-field addition.
+- [Phase 03-05]: PhoneNumberNormalizer lives in SafePath.Application.Sos; libphonenumber-csharp added as a direct package reference on SafePath.Application.csproj (same already-approved 9.0.35) rather than an IPhoneNumberNormalizer indirection.
+- [Phase 03-05]: TriggerSosCommandHandler.ResolveRecipients widened to also resolve the caller's active EmergencyContacts as Sms-channel recipients, still bypassing ISharingAuthorizationService so a privacy preference can never suppress an emergency contact either.
+- [Phase 03-05]: SosAlertDispatcher's Sms arm isolates failures per-contact (not just per-channel) so one bad phone number cannot flip a sibling contact's already-successful Queued row to Failed.
+- [Phase 03-05]: Kept Twilio signature validation behind an ISmsWebhookSignatureValidator seam (Application interface, TwilioWebhookSignatureValidator implementation) instead of inline in SmsWebhookController, so RecordSmsDeliveryStatusCommandHandler is unit-testable from SafePath.Application.Tests without an HTTP host; the validator refuses every request when no Twilio auth token is configured, not just on a signature mismatch.
 
 ### Pending Todos
 
@@ -196,6 +201,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-02T09:44:56.004Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-08-02T11:31:38.173Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None
