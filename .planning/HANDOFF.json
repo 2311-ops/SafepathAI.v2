@@ -1,53 +1,39 @@
 {
   "version": "1.0",
-  "timestamp": "2026-07-09T11:59:12Z",
-  "phase": "01",
-  "phase_name": "backend-auth-foundation",
-  "phase_dir": ".planning/phases/01-backend-auth-foundation",
-  "plan": 9,
+  "timestamp": "2026-08-02T09:46:39.138Z",
+  "phase": "03",
+  "phase_name": "sos-fast-path",
+  "phase_dir": ".planning/phases/03-sos-fast-path",
+  "plan": 5,
   "task": null,
   "total_tasks": null,
   "status": "paused",
   "completed_tasks": [
-    {"id": "01-01", "name": "Backend auth slice (later migrated to Supabase Auth)", "status": "done"},
-    {"id": "01-02", "name": "Flutter scaffold + design system + network/storage plumbing", "status": "done"},
-    {"id": "01-03", "name": "Auth screens (Welcome/Register/Role/Login) wired end-to-end", "status": "done"},
-    {"id": "01-04", "name": "Password reset backend", "status": "done", "note": "superseded — satisfied by Supabase Auth native reset, zero custom code needed"},
-    {"id": "01-05", "name": "Family-circle backend (entities, invites, permissions, IDOR-safe authz)", "status": "done", "commit": "82f29fc"},
-    {"id": "01-06", "name": "Password reset mobile screens", "status": "done", "note": "superseded — built directly against Supabase Auth"},
-    {"id": "01-08", "name": "Google Sign-In (browser OAuth flow)", "status": "done", "note": "superseded by 01-09 — browser flow replaced by native picker at user's request"},
-    {"id": "01-09", "name": "Google Sign-In (native picker, no visible URL)", "status": "done", "commit": "27f1172"}
+    {"id": "03-01", "name": "Backend SOS session intake — SosSession/SosDeliveryAttempt schema, EF migration applied to Supabase, idempotent TriggerSosCommand + SosController", "status": "done", "commit": "02e26ee"},
+    {"id": "03-02", "name": "Mobile SOS arm button (3s press-hold) → full-screen sender emergency session screen", "status": "done", "commit": "fd6ee28"},
+    {"id": "03-03", "name": "Dedicated AlertHub + broadcast service, SOS-only fan-out dispatcher, acknowledge/cancel/session-status endpoints", "status": "done", "commit": "1530f5f"},
+    {"id": "03-04", "name": "Mobile responder screen (AlertHub client, force-navigation), honest per-recipient/per-channel delivery status", "status": "done", "commit": "58bb4ca"}
   ],
   "remaining_tasks": [
-    {"id": "01-07", "name": "Family-circle mobile UI", "status": "code_complete_no_summary", "detail": "Code committed (132dd85, bd9288f), 69/69 tests pass, flutter analyze clean. Task 3 (manual E2E: create circle -> invite -> accept -> permissions -> remove) was never run. No 01-07-SUMMARY.md exists. This is the ONLY thing blocking Phase 1 completion."}
+    {"id": "03-05", "name": "SMS fallback to emergency contacts (Twilio)", "status": "not_started", "wave": 3, "depends_on": ["03-01", "03-03"], "autonomous": true},
+    {"id": "03-06", "name": "Push notifications (FCM) to backgrounded guardians", "status": "not_started", "wave": 4, "depends_on": ["03-04", "03-05"], "autonomous": false, "note": "checkpoint plan — expect a pause for human verification/decision"},
+    {"id": "03-07", "name": "Offline SOS handling + background retry", "status": "not_started", "wave": 4, "depends_on": ["03-04", "03-05"], "autonomous": true},
+    {"id": "03-08", "name": "Live location streaming during active SOS", "status": "not_started", "wave": 5, "depends_on": ["03-06", "03-07"], "autonomous": true},
+    {"id": "03-09", "name": "False-alarm cancel + lock-screen quick actions", "status": "not_started", "wave": 6, "depends_on": ["03-08"], "autonomous": false, "note": "checkpoint plan — expect a pause for human verification/decision"}
   ],
-  "blockers": [
-    {
-      "description": "01-07's manual E2E verification requires two Supabase test accounts to get past 'email not confirmed'. Confirmation links use the safepathai:// custom scheme, which was NOT registered on Android/iOS until plan 01-08 added it. Two test accounts (youssefhassan.2311.2005+e2eguardian@gmail.com, +e2emember@gmail.com) were created via direct Supabase REST signup and confirmation emails sent, but confirmation was never completed (links opened in a desktop browser, which can't complete the safepathai:// PKCE exchange).",
-      "type": "human_action",
-      "workaround": "Retry now that 01-08 registered the deep-link scheme on both platforms: open the confirmation emails ON THE PHONE (where the app is installed) so the OS routes the safepathai:// link into the app itself, OR paste the raw confirmation link URLs here and I'll extract the token and confirm via Supabase's /auth/v1/verify REST endpoint directly."
-    },
-    {
-      "description": "01-09's native Google Sign-In is implemented and unit/widget tested but has NOT been manually verified on a real device — requires Google Play Services + the Android OAuth client (package com.safepath.mobile, debug SHA-1 BA:3B:AA:E7:71:FB:3B:D7:6A:30:9D:F4:EA:6C:46:67:AC:6B:43:39) actually correctly registered in Google Cloud Console. User confirmed this registration already exists but it was never independently verified by any agent.",
-      "type": "human_action",
-      "workaround": "On resume: rebuild+reinstall the app on a device, tap Continue with Google, confirm the native account picker appears with no browser/URL. If it fails with ApiException: 10 / DEVELOPER_ERROR, the SHA-1/package registration in Google Cloud Console is the first thing to check."
-    }
-  ],
+  "blockers": [],
   "async_jobs": [],
   "human_actions_pending": [
-    {"action": "Reconnect the SM A075F device (was intentionally disconnected by the user mid-session) — needed for both remaining blockers above", "context": "adb currently shows no devices attached", "blocking": true},
-    {"action": "Confirm the two e2eguardian/e2emember test accounts via the safepathai:// deep link (now that it's registered)", "context": "unblocks 01-07's manual E2E test", "blocking": true},
-    {"action": "Manually verify 01-09's native Google Sign-In end-to-end on-device", "context": "code is done and tested but never run for real", "blocking": false}
+    {"action": "Correct the requirements-traceability over-claim in .planning/REQUIREMENTS.md before phase verification/milestone close", "context": "SOS-02 (needs SignalR+FCM+SMS) and SOS-03 (needs offline queue/retry) were marked [x] Complete by plans 03-01/03-03's automated requirements.mark-complete step, based on their own plan frontmatter — but FCM (03-06), SMS (03-05), and offline retry (03-07) are not built yet. Re-scope or re-open these two rows once the actual owning plans land; the end-of-phase gsd-verifier step cross-references requirement IDs against REQUIREMENTS.md so it should catch this, but flagging explicitly in case it doesn't.", "blocking": false}
   ],
   "decisions": [
-    {"decision": "Disabled workflow.use_worktrees project-wide", "rationale": "origin/HEAD cannot be resolved in this repo, so isolation=\"worktree\" executors were forking from a stale, far-earlier commit (confirmed twice via worktree_branch_check halting). All plan executions this session ran sequentially on the main tree instead.", "phase": "01"},
-    {"decision": "01-04/01-06 marked complete-via-supersession, not executed as written", "rationale": "Backend migrated from custom JWT auth to Supabase-managed auth mid-phase; AUTH-04 is satisfied entirely by Supabase Auth's native resetPasswordForEmail/updateUser flow.", "phase": "01"},
-    {"decision": "Added plan 01-08 (Google Sign-In, browser OAuth) then plan 01-09 (Google Sign-In, native picker) superseding it", "rationale": "01-08 was built correctly per its own spec (signInWithOAuth, reusing the existing redirect URL, zero Supabase config changes). User then saw the raw Supabase project URL flash in the browser during the redirect and asked to hide it. Explained the real trade-offs (leave as-is / native picker+new native OAuth client / custom Supabase domain); user chose native picker. 01-09 replaced signInWithOAuth with google_sign_in + signInWithIdToken and removed 01-08's now-dead lifecycle-resume cancellation hack (native cancellation is directly awaitable, no browser-launch-fire-and-forget race).", "phase": "01"},
-    {"decision": "Fixed the Google Sign-In button icon", "rationale": "It was rendering a plain text 'G' in a circle, not Google's real four-color logomark — looked broken/generic. Replaced with a CustomPainter drawing the actual Google G path/colors, no image asset needed.", "phase": "01"},
-    {"decision": "Google sign-ups default to Member role, no new role-selection UI or backend endpoint", "rationale": "The existing handle_new_auth_user Postgres trigger already does COALESCE(raw_user_meta_data->>'role', 'Member') — Google's profile metadata has no custom role key, so it lands as Member automatically. Zero new code needed; documented as D-08-4/D-09-5.", "phase": "01"},
-    {"decision": "Google Sign-In button placed on Welcome + Login only, deliberately NOT on Register", "rationale": "Register is step 1 of a two-step drafted flow (RegisterDraft -> RoleSelectScreen -> register()) that only makes sense for password-based sign-up; Google auth is a single atomic action with no draft step. Welcome already serves as the 'new user' entry point.", "phase": "01"}
+    {"decision": "Approved all 9 new Phase 3 packages exactly as researched (firebase_core, firebase_messaging, quick_actions, connectivity_plus, flutter_local_notifications, flutter_foreground_task, Twilio, libphonenumber-csharp, FirebaseAdmin)", "rationale": "User approved the package-legitimacy checkpoint in 03-01 Task 1 without changes.", "phase": "03"},
+    {"decision": "Fixed a DbContext-disposal race in TriggerSosCommandHandler's fire-and-forget dispatch", "rationale": "Task 2 of 03-03 introduced background dispatch that reused the request-scoped DbContext, which gets disposed as soon as the handler's Task returns. Fixed by resolving a fresh IServiceScopeFactory-created scope for the background dispatch, matching the existing SharingPreferenceSweepService convention. Additive fix (optional ctor param), no existing test assertions changed.", "phase": "03"},
+    {"decision": "Fixed a real auth-guard bug in app_router.dart during 03-04", "rationale": "Parameterized routes could never match _authenticatedOnlyRoutes, a pre-existing bug surfaced while adding the new responder route.", "phase": "03"},
+    {"decision": "\"Call sender\" on the responder screen is a documented Known Stub (opens a blank dialler)", "rationale": "No phone-number field exists yet for family members on the wire — out of scope for 03-04, not yet scheduled to a specific later plan.", "phase": "03"},
+    {"decision": "Disabled workflow.use_worktrees and parallelization project-wide (carried over from Phase 1)", "rationale": "All Phase 3 executors this session ran sequentially on the main working tree, one plan at a time, even within multi-plan waves (03-02/03-03 and the upcoming 03-04/03-05... wave pairs).", "phase": "03"}
   ],
   "uncommitted_files": [],
-  "next_action": "Ask the user to reconnect the SM A075F device (adb devices currently empty). Then: (1) relaunch the app via `flutter run -d <device> --dart-define-from-file=env.json --dart-define=API_BASE_URL=http://<LAN-IP>:5059` with the backend running (`ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://0.0.0.0:5059 dotnet run --project backend/src/SafePath.Api --no-launch-profile`), (2) resolve the two test-account email confirmations (see blockers), (3) manually run 01-07's E2E flow, write 01-07-SUMMARY.md via a continuation agent, (4) manually verify 01-09's native Google picker, (5) then run phase-level verification (gsd-verifier) and phase.complete to close Phase 1.",
-  "context_notes": "This session did a LOT: found and committed a large chunk of leftover uncommitted work from a prior interrupted session (the Supabase Auth migration's mobile-side completion), executed plans 01-05/01-07(partial)/01-08/01-09, discovered and fixed a real Android/iOS deep-link registration gap, disabled broken worktree isolation, and iterated on Google Sign-In twice per user feedback (icon fix, then a full flow-architecture change for URL privacy). Phase 1 is functionally almost done — 01-07 is the single remaining gap, and it's purely a verification/testing gap, not a code gap. Two secret JSON files (Google OAuth client_secret_*.json) were found sitting ungitignored at the repo root early in the session and were gitignored immediately — worth a reminder to the user to delete or securely store those outside the repo if not already handled."
+  "next_action": "Run /gsd-execute-phase 03 to resume. It will detect 03-01..03-04 as complete via existing SUMMARY.md files and dispatch 03-05 (SMS fallback to emergency contacts) next, remaining in Wave 3. Expect two checkpoint pauses ahead: 03-06 (push notifications, autonomous:false) and 03-09 (false-alarm cancel + quick actions, autonomous:false).",
+  "context_notes": "Phase 3 (SOS fast path) execution is proceeding wave-by-wave, sequentially, per plan. One executor (plan 03-03) was cut off mid-Task-3 by a provider session/quota limit — a continuation agent picked it up cleanly from the two already-committed tasks and finished without issue; this is a normal recoverable event, not a plan defect, worth being aware of if it recurs. 03-01's checkpoint (package legitimacy audit) was the only user-facing pause so far and was approved as-is. No code-level blockers remain; the only open item is the requirements-traceability over-claim noted above, which is advisory and self-corrects once 03-05/03-06/03-07 land."
 }
