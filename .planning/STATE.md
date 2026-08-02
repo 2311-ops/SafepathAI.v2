@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: sos-fast-path
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-08-02T07:41:35.936Z"
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-08-02T09:44:56.033Z"
 last_activity: 2026-08-01
 last_activity_desc: Phase 03 execution resumed (wave continue)
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 44
-  completed_plans: 38
+  completed_plans: 39
   percent: 38
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 03 (sos-fast-path) — EXECUTING
-Plan: 4 of 9
+Plan: 5 of 9
 Status: Ready to execute
 Last activity: 2026-08-01 — Phase 03 execution resumed (wave continue)
 
@@ -86,6 +86,7 @@ Progress: [██████████] 100%
 | Phase 03-sos-fast-path P01 | 10min | 3 tasks | 28 files |
 | Phase 03 P02 | 25min | 3 tasks | 18 files |
 | Phase 03-sos-fast-path P03 | 35min | 3 tasks | 18 files |
+| Phase 03-sos-fast-path P04 | 72min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 03-03]: TriggerSosCommandHandler's fire-and-forget dispatch now resolves its own IServiceScopeFactory-created DI scope instead of reusing the request-scoped DbContext, matching SharingPreferenceSweepService's background-scope convention -- avoids a DbContext concurrency race/crash against the disposed request scope.
 - [Phase ?]: [Phase 03-03]: AcknowledgeSosCommand and AlertHub.ConfirmReceipt both explicitly add the triggering user into the DeliveryStatusChanged broadcast recipient set so the sender's own session reflects live delivery/acknowledgement changes.
 - [Phase ?]: [Phase 03-03]: CancelSosCommand is self-cancel-only (TriggeredByUserId), idempotent, and never mutates/deletes SosDeliveryAttempt rows -- cancellation is a parallel notice, never a retraction.
+- [Phase 03-04]: SosResponderController owns sosHubClientProvider's connect/disconnect lifecycle exclusively; SosController only listens to its streams -- one HubConnection per app session.
+- [Phase 03-04]: Fixed app_router.dart's authenticated-only-route guard: matchedLocation can never equal a parameterized route pattern like /sos/responder/:sessionId, so the check now uses fullPath instead.
+- [Phase 03-04]: Call sender opens a blank OS dialler (no phone-number field exists yet for family members on the wire) -- documented as a Known Stub pending a future phone-field addition.
 
 ### Pending Todos
 
@@ -192,6 +196,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-02T07:40:36.905Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-08-02T09:44:56.004Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None
