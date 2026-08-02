@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: sos-fast-path
 status: executing
-stopped_at: Completed 03-05-PLAN.md
-last_updated: "2026-08-02T11:31:38.187Z"
+stopped_at: Completed 03-07-PLAN.md
+last_updated: "2026-08-02T18:14:12.247Z"
 last_activity: 2026-08-01
 last_activity_desc: Phase 03 execution resumed (wave continue)
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 44
-  completed_plans: 40
+  completed_plans: 41
   percent: 38
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 03 (sos-fast-path) — EXECUTING
-Plan: 6 of 9
+Plan: 8 of 9
 Status: Ready to execute
 Last activity: 2026-08-01 — Phase 03 execution resumed (wave continue)
 
@@ -88,6 +88,7 @@ Progress: [██████████] 100%
 | Phase 03-sos-fast-path P03 | 35min | 3 tasks | 18 files |
 | Phase 03-sos-fast-path P04 | 72min | 3 tasks | 13 files |
 | Phase 03 P05 | 15min | 3 tasks | 20 files |
+| Phase 03-sos-fast-path P07 | 17min | 3 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -168,6 +169,9 @@ Recent decisions affecting current work:
 - [Phase 03-05]: TriggerSosCommandHandler.ResolveRecipients widened to also resolve the caller's active EmergencyContacts as Sms-channel recipients, still bypassing ISharingAuthorizationService so a privacy preference can never suppress an emergency contact either.
 - [Phase 03-05]: SosAlertDispatcher's Sms arm isolates failures per-contact (not just per-channel) so one bad phone number cannot flip a sibling contact's already-successful Queued row to Failed.
 - [Phase 03-05]: Kept Twilio signature validation behind an ISmsWebhookSignatureValidator seam (Application interface, TwilioWebhookSignatureValidator implementation) instead of inline in SmsWebhookController, so RecordSmsDeliveryStatusCommandHandler is unit-testable from SafePath.Application.Tests without an HTTP host; the validator refuses every request when no Twilio auth token is configured, not just on a signature mismatch.
+- [Phase 03-07]: SosController's retry loop is a single injectable SosRetryScheduler seam (schedule(Duration, callback) -> SosRetryHandle), not a bespoke backoff package -- idempotency stays server-side (03-01) as the only part that must not be improvised.
+- [Phase 03-07]: sosHubClientProvider's default construction depends on an initialized Supabase client, absent in the unit-test process -- every test container reading sosControllerProvider now overrides sosHubClientProvider with FakeSosHubClient so SosController.build() actually completes (including its connectivity subscription) instead of silently failing into an unobserved AsyncError.
+- [Phase 03-07]: Corrected the pre-existing generic AsyncError-state copy on the sender screen: since Task 1 routes every network failure through SosOfflineQueued instead, the AsyncError branch is now reached only for a genuine non-network rejection that will not retry automatically, so it surfaces the server's own rejection message instead of a false 'keep trying' claim.
 
 ### Pending Todos
 
@@ -201,6 +205,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-02T11:31:38.173Z
-Stopped at: Completed 03-05-PLAN.md
+Last session: 2026-08-02T18:14:12.236Z
+Stopped at: Completed 03-07-PLAN.md
 Resume file: None
