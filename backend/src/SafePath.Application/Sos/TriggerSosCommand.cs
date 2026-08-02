@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Domain.Entities;
 using SafePath.Domain.Enums;
@@ -27,15 +28,18 @@ public class TriggerSosCommandHandler : ICommandHandler<TriggerSosCommand, Trigg
     private readonly IApplicationDbContext _db;
     private readonly IFamilyAuthorizationService _authorization;
     private readonly ISosAlertDispatcher _dispatcher;
+    private readonly IServiceScopeFactory? _scopeFactory;
 
     public TriggerSosCommandHandler(
         IApplicationDbContext db,
         IFamilyAuthorizationService authorization,
-        ISosAlertDispatcher dispatcher)
+        ISosAlertDispatcher dispatcher,
+        IServiceScopeFactory? scopeFactory = null)
     {
         _db = db;
         _authorization = authorization;
         _dispatcher = dispatcher;
+        _scopeFactory = scopeFactory;
     }
 
     public async Task<TriggerSosResult> Handle(TriggerSosCommand command, CancellationToken cancellationToken = default)
@@ -85,15 +89,39 @@ public class TriggerSosCommandHandler : ICommandHandler<TriggerSosCommand, Trigg
 
         // Fan-out starts only after the commit the idempotency check above depends on, and is
         // never awaited inline — a slow/failing channel must never delay the sender's
-        // confirmation (Core Value). Faults are observed via a fire-and-forget continuation
-        // rather than left to become an unobserved task exception; SosAlertDispatcher already
-        // isolates per-channel failures internally, so this is a last-resort guard only.
-        var dispatch = _dispatcher.DispatchAsync(session.Id, cancellationToken);
-        _ = dispatch.ContinueWith(
-            static _ => { /* swallow: dispatcher owns per-channel failure handling */ },
-            CancellationToken.None,
-            TaskContinuationOptions.OnlyOnFaulted,
-            TaskScheduler.Default);
+        // confirmation (Core Value). It must run against its own DbContext, not this handler's
+        // request-scoped `_db`: the HTTP request's DI scope (and `_db` with it) is disposed the
+        // moment this method's returned Task completes, which happens before a backgrounded
+        // dispatch necessarily finishes, and EF Core's DbContext is not safe for concurrent use
+        // by two overlapping operations. A fresh IServiceScopeFactory-created scope keeps the
+        // dispatch's own DbContext alive for exactly as long as the dispatch needs it,
+        // independent of the request scope's lifetime (same pattern as
+        // SharingPreferenceSweepService's background scope usage). Faults are observed via a
+        // continuation rather than left as an unobserved task exception; SosAlertDispatcher
+        // already isolates per-channel failures internally, so this is a last-resort guard only.
+        if (_scopeFactory is not null)
+        {
+            var scope = _scopeFactory.CreateScope();
+            var scopedDispatcher = scope.ServiceProvider.GetRequiredService<ISosAlertDispatcher>();
+            var scopedDispatch = scopedDispatcher.DispatchAsync(session.Id, CancellationToken.None);
+            _ = scopedDispatch.ContinueWith(
+                _ => scope.Dispose(),
+                CancellationToken.None,
+                TaskContinuationOptions.None,
+                TaskScheduler.Default);
+        }
+        else
+        {
+            // No scope factory available (e.g. this handler constructed directly, without a DI
+            // container, as AlertFanOutTests does) — fall back to the directly-injected
+            // dispatcher so unit tests can observe/mock it.
+            var dispatch = _dispatcher.DispatchAsync(session.Id, cancellationToken);
+            _ = dispatch.ContinueWith(
+                static _ => { /* swallow: dispatcher owns per-channel failure handling */ },
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default);
+        }
 
         var dto = await SosSessionProjection.ProjectAsync(_db, session, cancellationToken);
         return new TriggerSosResult(dto, WasExistingSession: false);

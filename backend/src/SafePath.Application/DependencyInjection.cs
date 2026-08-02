@@ -40,6 +40,8 @@ public static class DependencyInjection
         services.AddScoped<ISosAlertDispatcher, SosAlertDispatcher>();
         services.AddScoped<ICommandHandler<TriggerSosCommand, TriggerSosResult>, TriggerSosCommandHandler>();
         services.AddScoped<ICommandHandler<GetSosSessionQuery, GetSosSessionResult>, GetSosSessionQueryHandler>();
+        services.AddScoped<ICommandHandler<AcknowledgeSosCommand, AcknowledgeSosResult>, AcknowledgeSosCommandHandler>();
+        services.AddScoped<ICommandHandler<CancelSosCommand, CancelSosResult>, CancelSosCommandHandler>();
 
         return services;
     }

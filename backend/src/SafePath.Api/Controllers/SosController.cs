@@ -16,15 +16,21 @@ public class SosController : ControllerBase
 {
     private readonly ICommandHandler<TriggerSosCommand, TriggerSosResult> _triggerSos;
     private readonly ICommandHandler<GetSosSessionQuery, GetSosSessionResult> _getSosSession;
+    private readonly ICommandHandler<AcknowledgeSosCommand, AcknowledgeSosResult> _acknowledgeSos;
+    private readonly ICommandHandler<CancelSosCommand, CancelSosResult> _cancelSos;
     private readonly ICurrentUserService _currentUser;
 
     public SosController(
         ICommandHandler<TriggerSosCommand, TriggerSosResult> triggerSos,
         ICommandHandler<GetSosSessionQuery, GetSosSessionResult> getSosSession,
+        ICommandHandler<AcknowledgeSosCommand, AcknowledgeSosResult> acknowledgeSos,
+        ICommandHandler<CancelSosCommand, CancelSosResult> cancelSos,
         ICurrentUserService currentUser)
     {
         _triggerSos = triggerSos;
         _getSosSession = getSosSession;
+        _acknowledgeSos = acknowledgeSos;
+        _cancelSos = cancelSos;
         _currentUser = currentUser;
     }
 
@@ -80,6 +86,48 @@ public class SosController : ControllerBase
             }
 
             return Ok(result.Session);
+        }
+        catch (FamilyAuthorizationDeniedException)
+        {
+            return Forbid();
+        }
+    }
+
+    /// <summary>No rate-limit attribute here either — a guardian acknowledging must never be
+    /// throttled.</summary>
+    [HttpPost("sos/{sosSessionId:guid}/acknowledge")]
+    public async Task<ActionResult<AcknowledgeSosResult>> Acknowledge(Guid sosSessionId, CancellationToken cancellationToken)
+    {
+        if (_currentUser.UserId is not { } userId)
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var result = await _acknowledgeSos.Handle(new AcknowledgeSosCommand(sosSessionId, userId), cancellationToken);
+            return Ok(result);
+        }
+        catch (FamilyAuthorizationDeniedException)
+        {
+            return Forbid();
+        }
+    }
+
+    /// <summary>No rate-limit attribute here either — a user correcting a false alarm is
+    /// time-sensitive and must never be throttled.</summary>
+    [HttpPost("sos/{sosSessionId:guid}/cancel")]
+    public async Task<ActionResult<CancelSosResult>> Cancel(Guid sosSessionId, CancellationToken cancellationToken)
+    {
+        if (_currentUser.UserId is not { } userId)
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var result = await _cancelSos.Handle(new CancelSosCommand(sosSessionId, userId), cancellationToken);
+            return Ok(result);
         }
         catch (FamilyAuthorizationDeniedException)
         {

@@ -81,11 +81,17 @@ public class AlertHub : Hub<IAlertClient>
         attempt.DeliveredAtUtc = deliveredAtUtc;
         await _db.SaveChangesAsync(Context.ConnectionAborted);
 
+        // Includes the triggering user, not just the other guardian recipients — the sender's
+        // own session must reflect delivery/acknowledgement changes live (must_haves truth).
         var recipientIds = await _db.SosDeliveryAttempts
             .Where(a => a.SosSessionId == sosSessionId && a.RecipientUserId != null)
             .Select(a => a.RecipientUserId!.Value)
             .Distinct()
             .ToListAsync(Context.ConnectionAborted);
+        if (!recipientIds.Contains(session.TriggeredByUserId))
+        {
+            recipientIds.Add(session.TriggeredByUserId);
+        }
 
         await _broadcast.DeliveryStatusChanged(
             session.FamilyId,

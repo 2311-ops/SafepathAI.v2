@@ -77,4 +77,20 @@ internal static class SosSessionProjection
             session.CanceledAtUtc,
             recipients);
     }
+
+    /// <summary>
+    /// Distinct guardian recipient user ids resolved from this session's delivery attempts —
+    /// the same set <see cref="TriggerSosCommandHandler"/> used to fan out the original
+    /// SosTriggered event. Does not include the triggering user; callers that need the sender
+    /// to also receive a live update (e.g. AcknowledgeSosCommandHandler) add it explicitly.
+    /// </summary>
+    public static async Task<List<Guid>> ResolveRecipientUserIds(
+        IApplicationDbContext db,
+        Guid sosSessionId,
+        CancellationToken cancellationToken) =>
+        await db.SosDeliveryAttempts
+            .Where(a => a.SosSessionId == sosSessionId && a.RecipientUserId != null)
+            .Select(a => a.RecipientUserId!.Value)
+            .Distinct()
+            .ToListAsync(cancellationToken);
 }
