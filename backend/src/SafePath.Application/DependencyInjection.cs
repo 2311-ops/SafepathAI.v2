@@ -42,6 +42,10 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<GetSosSessionQuery, GetSosSessionResult>, GetSosSessionQueryHandler>();
         services.AddScoped<ICommandHandler<AcknowledgeSosCommand, AcknowledgeSosResult>, AcknowledgeSosCommandHandler>();
         services.AddScoped<ICommandHandler<CancelSosCommand, CancelSosResult>, CancelSosCommandHandler>();
+        services.AddScoped<ICommandHandler<AddEmergencyContactCommand, EmergencyContactDto>, AddEmergencyContactCommandHandler>();
+        services.AddScoped<ICommandHandler<UpdateEmergencyContactCommand, EmergencyContactDto>, UpdateEmergencyContactCommandHandler>();
+        services.AddScoped<ICommandHandler<DeleteEmergencyContactCommand, EmergencyContactDto>, DeleteEmergencyContactCommandHandler>();
+        services.AddScoped<ICommandHandler<ListEmergencyContactsQuery, IReadOnlyList<EmergencyContactDto>>, ListEmergencyContactsQueryHandler>();
 
         return services;
     }

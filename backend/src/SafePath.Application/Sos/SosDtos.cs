@@ -3,6 +3,18 @@ using SafePath.Domain.Enums;
 namespace SafePath.Application.Sos;
 
 /// <summary>
+/// Owner-scoped emergency contact view. Returned ONLY from EmergencyContactsController's
+/// `/me/emergency-contacts` routes for the contact's own owning user — this is the single DTO
+/// in the codebase carrying a phone number; never embed it in SosSessionDto/SosRecipientStatusDto
+/// or any other guardian-facing payload (threat T-03-03).
+/// </summary>
+public record EmergencyContactDto(
+    Guid Id,
+    string DisplayName,
+    string PhoneNumberE164,
+    bool IsActive);
+
+/// <summary>
 /// Per-channel delivery state for one recipient. Never a single collapsed sent flag (D-09).
 /// </summary>
 public record SosChannelStatusDto(
