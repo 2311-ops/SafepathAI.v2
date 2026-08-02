@@ -85,6 +85,23 @@ public class TriggerSosCommandHandler : ICommandHandler<TriggerSosCommand, Trigg
             });
         }
 
+        // D-11 / 03-05: SOS recipients are active Guardians (above) PLUS the sender's own
+        // configured emergency contacts (below) — never all active family members. Emergency
+        // contacts are SMS-only: no RecipientUserId (they have no app account), no SignalR/FCM
+        // row. Deliberately not routed through ISharingAuthorizationService — see the class doc.
+        var emergencyContacts = await ResolveEmergencyContacts(command.CallerUserId, cancellationToken);
+        foreach (var contact in emergencyContacts)
+        {
+            _db.SosDeliveryAttempts.Add(new SosDeliveryAttempt
+            {
+                Id = Guid.NewGuid(),
+                SosSessionId = session.Id,
+                EmergencyContactId = contact.Id,
+                Channel = AlertChannel.Sms,
+                Status = SosDeliveryStatus.NotAttempted,
+            });
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
 
         // Fan-out starts only after the commit the idempotency check above depends on, and is
@@ -144,6 +161,22 @@ public class TriggerSosCommandHandler : ICommandHandler<TriggerSosCommand, Trigg
             .Select(u => new ValueTuple<Guid, string>(
                 u.Id,
                 string.IsNullOrWhiteSpace(u.DisplayName) ? u.FullName : u.DisplayName!))
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Resolves the triggering user's own active emergency contacts (03-05, D-11's second
+    /// recipient class). Deliberately does NOT route through ISharingAuthorizationService, for
+    /// the same reason as <see cref="ResolveRecipients"/> — a routine privacy preference must
+    /// never be able to suppress an emergency contact either.
+    /// </summary>
+    private async Task<List<(Guid Id, string DisplayName)>> ResolveEmergencyContacts(
+        Guid callerUserId,
+        CancellationToken cancellationToken)
+    {
+        return await _db.EmergencyContacts
+            .Where(c => c.OwnerUserId == callerUserId && c.IsActive)
+            .Select(c => new ValueTuple<Guid, string>(c.Id, c.DisplayName))
             .ToListAsync(cancellationToken);
     }
 

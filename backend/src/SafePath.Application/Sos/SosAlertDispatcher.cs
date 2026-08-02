@@ -20,11 +20,13 @@ public class SosAlertDispatcher : ISosAlertDispatcher
 {
     private readonly IApplicationDbContext _db;
     private readonly IAlertBroadcastService _broadcast;
+    private readonly ISmsGateway _smsGateway;
 
-    public SosAlertDispatcher(IApplicationDbContext db, IAlertBroadcastService broadcast)
+    public SosAlertDispatcher(IApplicationDbContext db, IAlertBroadcastService broadcast, ISmsGateway smsGateway)
     {
         _db = db;
         _broadcast = broadcast;
+        _smsGateway = smsGateway;
     }
 
     public async Task DispatchAsync(Guid sosSessionId, CancellationToken cancellationToken = default)
@@ -57,7 +59,7 @@ public class SosAlertDispatcher : ISosAlertDispatcher
                         break;
 
                     case AlertChannel.Sms:
-                        // 03-05 fills in the Twilio SMS arm — the single extension point for that plan.
+                        await DispatchSms(session, rows, cancellationToken);
                         break;
                 }
             }
@@ -95,6 +97,78 @@ public class SosAlertDispatcher : ISosAlertDispatcher
 
         var dto = await SosSessionProjection.ProjectAsync(_db, session, cancellationToken);
         await _broadcast.SosTriggered(session.FamilyId, recipientUserIds, dto, cancellationToken);
+    }
+
+    /// <summary>
+    /// Sends one SMS per emergency-contact delivery row via <see cref="ISmsGateway"/>. A
+    /// per-contact failure marks only that contact's row Failed (never the whole channel), so
+    /// one bad number does not swallow a successfully-queued send to another contact. The
+    /// gateway returning successfully means only that the provider accepted the message — this
+    /// method never writes <see cref="SosDeliveryStatus.Delivered"/>, which only the Task 3
+    /// status webhook may do.
+    /// </summary>
+    private async Task DispatchSms(
+        SosSession session,
+        List<SosDeliveryAttempt> attempts,
+        CancellationToken cancellationToken)
+    {
+        var contactRows = attempts.Where(a => a.EmergencyContactId.HasValue).ToList();
+        if (contactRows.Count == 0)
+        {
+            return;
+        }
+
+        var contactIds = contactRows.Select(a => a.EmergencyContactId!.Value).Distinct().ToList();
+        var contacts = await _db.EmergencyContacts
+            .Where(c => contactIds.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id, cancellationToken);
+
+        var senderName = await _db.Users
+            .Where(u => u.Id == session.TriggeredByUserId)
+            .Select(u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.FullName : u.DisplayName!)
+            .SingleOrDefaultAsync(cancellationToken);
+        senderName = string.IsNullOrWhiteSpace(senderName) ? "A family member" : senderName;
+
+        var body = ComposeSmsBody(senderName, session.Latitude, session.Longitude);
+
+        foreach (var attempt in contactRows)
+        {
+            if (!contacts.TryGetValue(attempt.EmergencyContactId!.Value, out var contact))
+            {
+                continue;
+            }
+
+            try
+            {
+                var result = await _smsGateway.SendAsync(contact.PhoneNumberE164, body, cancellationToken);
+                attempt.Status = SosDeliveryStatus.Queued;
+                attempt.QueuedAtUtc = DateTime.UtcNow;
+                attempt.ProviderMessageId = result.ProviderMessageId;
+            }
+            catch (Exception ex)
+            {
+                attempt.Status = SosDeliveryStatus.Failed;
+                attempt.FailureReason = ex.Message.Length > 500 ? ex.Message[..500] : ex.Message;
+            }
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Sender display name + a short emergency statement + a maps link built from the session's
+    /// coordinates (omitted when null) — never the recipient's own phone number. Kept under 320
+    /// characters (at most two SMS segments on a trial balance).
+    /// </summary>
+    private static string ComposeSmsBody(string senderDisplayName, double? latitude, double? longitude)
+    {
+        var body = $"{senderDisplayName} triggered an SOS on SafePath and needs help.";
+        if (latitude is { } lat && longitude is { } lng)
+        {
+            body += $" Location: https://maps.google.com/?q={lat},{lng}";
+        }
+
+        return body.Length > 320 ? body[..320] : body;
     }
 
     private async Task MarkChannelFailed(

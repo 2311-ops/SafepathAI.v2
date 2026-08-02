@@ -28,7 +28,7 @@ public class AlertFanOutTests : IDisposable
         broadcast
             .Setup(b => b.SosTriggered(It.IsAny<Guid>(), It.IsAny<IEnumerable<Guid>>(), It.IsAny<SosSessionDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        var dispatcher = new SosAlertDispatcher(db, broadcast.Object);
+        var dispatcher = new SosAlertDispatcher(db, broadcast.Object, new NoOpSmsGateway());
 
         await dispatcher.DispatchAsync(sessionId);
 
@@ -51,7 +51,7 @@ public class AlertFanOutTests : IDisposable
         broadcast
             .Setup(b => b.SosTriggered(It.IsAny<Guid>(), It.IsAny<IEnumerable<Guid>>(), It.IsAny<SosSessionDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        var dispatcher = new SosAlertDispatcher(db, broadcast.Object);
+        var dispatcher = new SosAlertDispatcher(db, broadcast.Object, new NoOpSmsGateway());
 
         await dispatcher.DispatchAsync(sessionId);
 
@@ -73,7 +73,7 @@ public class AlertFanOutTests : IDisposable
         broadcast
             .Setup(b => b.SosTriggered(It.IsAny<Guid>(), It.IsAny<IEnumerable<Guid>>(), It.IsAny<SosSessionDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        var dispatcher = new SosAlertDispatcher(db, broadcast.Object);
+        var dispatcher = new SosAlertDispatcher(db, broadcast.Object, new NoOpSmsGateway());
 
         await dispatcher.DispatchAsync(sessionId);
 
@@ -95,7 +95,7 @@ public class AlertFanOutTests : IDisposable
         broadcast
             .Setup(b => b.SosTriggered(It.IsAny<Guid>(), It.IsAny<IEnumerable<Guid>>(), It.IsAny<SosSessionDto>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("simulated channel failure"));
-        var dispatcher = new SosAlertDispatcher(db, broadcast.Object);
+        var dispatcher = new SosAlertDispatcher(db, broadcast.Object, new NoOpSmsGateway());
 
         await dispatcher.DispatchAsync(sessionId);
 
@@ -218,4 +218,14 @@ public class AlertFanOutTests : IDisposable
     }
 
     public void Dispose() => _factory.Dispose();
+}
+
+/// <summary>
+/// No-op ISmsGateway test double for tests that only exercise the SignalR arm — SmsFanOutTests.cs
+/// covers the SMS arm itself.
+/// </summary>
+internal sealed class NoOpSmsGateway : ISmsGateway
+{
+    public Task<SmsSendResult> SendAsync(string toE164, string body, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new SmsSendResult($"noop-{Guid.NewGuid():N}"));
 }

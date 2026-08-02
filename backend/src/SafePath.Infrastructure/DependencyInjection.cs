@@ -2,11 +2,14 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Infrastructure.Identity;
 using SafePath.Infrastructure.Persistence;
 using SafePath.Infrastructure.RealTime;
+using SafePath.Infrastructure.Sms;
 using SafePath.Infrastructure.Storage;
+using Twilio.Clients;
 
 namespace SafePath.Infrastructure;
 
@@ -54,6 +57,44 @@ public static class DependencyInjection
                 client.DefaultRequestHeaders.Authorization = new("Bearer", serviceRoleKey);
             }
         });
+
+        var twilioOptions = new TwilioOptions
+        {
+            AccountSid = configuration["Twilio:AccountSid"],
+            AuthToken = configuration["Twilio:AuthToken"],
+            FromNumber = configuration["Twilio:FromNumber"],
+            StatusCallbackUrl = configuration["Twilio:StatusCallbackUrl"],
+        };
+        services.AddSingleton(twilioOptions);
+
+        // The default with no Twilio configuration present is LoggingSmsGateway (D-07) — a
+        // fresh clone builds, tests, and demos the whole SOS pipeline with no Twilio account
+        // and no spend. Logged once here (a throwaway bootstrap logger, since the DI container
+        // has not been built yet at this point) so the operator is never confused about why no
+        // real SMS arrived.
+        using (var bootstrapLoggerFactory = LoggerFactory.Create(builder => builder.AddConsole()))
+        {
+            var bootstrapLogger = bootstrapLoggerFactory.CreateLogger("SafePath.Infrastructure.Sms");
+            if (twilioOptions.IsConfigured)
+            {
+                bootstrapLogger.LogInformation("SMS gateway active: TwilioSmsGateway (Twilio credentials configured).");
+            }
+            else
+            {
+                bootstrapLogger.LogInformation("SMS gateway active: LoggingSmsGateway (no Twilio credentials configured — SMS sends are logged only, never sent).");
+            }
+        }
+
+        if (twilioOptions.IsConfigured)
+        {
+            services.AddSingleton<ITwilioRestClient>(_ =>
+                new TwilioRestClient(twilioOptions.AccountSid!, twilioOptions.AuthToken!, twilioOptions.AccountSid));
+            services.AddScoped<ISmsGateway, TwilioSmsGateway>();
+        }
+        else
+        {
+            services.AddScoped<ISmsGateway, LoggingSmsGateway>();
+        }
 
         return services;
     }
