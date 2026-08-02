@@ -28,7 +28,7 @@ public class AlertFanOutTests : IDisposable
         broadcast
             .Setup(b => b.SosTriggered(It.IsAny<Guid>(), It.IsAny<IEnumerable<Guid>>(), It.IsAny<SosSessionDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        var dispatcher = new SosAlertDispatcher(db, broadcast.Object, new NoOpSmsGateway());
+        var dispatcher = new SosAlertDispatcher(db, broadcast.Object, new NoOpSmsGateway(), new NoOpPushSender());
 
         await dispatcher.DispatchAsync(sessionId);
 
@@ -51,7 +51,7 @@ public class AlertFanOutTests : IDisposable
         broadcast
             .Setup(b => b.SosTriggered(It.IsAny<Guid>(), It.IsAny<IEnumerable<Guid>>(), It.IsAny<SosSessionDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        var dispatcher = new SosAlertDispatcher(db, broadcast.Object, new NoOpSmsGateway());
+        var dispatcher = new SosAlertDispatcher(db, broadcast.Object, new NoOpSmsGateway(), new NoOpPushSender());
 
         await dispatcher.DispatchAsync(sessionId);
 
@@ -73,7 +73,7 @@ public class AlertFanOutTests : IDisposable
         broadcast
             .Setup(b => b.SosTriggered(It.IsAny<Guid>(), It.IsAny<IEnumerable<Guid>>(), It.IsAny<SosSessionDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        var dispatcher = new SosAlertDispatcher(db, broadcast.Object, new NoOpSmsGateway());
+        var dispatcher = new SosAlertDispatcher(db, broadcast.Object, new NoOpSmsGateway(), new NoOpPushSender());
 
         await dispatcher.DispatchAsync(sessionId);
 
@@ -95,7 +95,7 @@ public class AlertFanOutTests : IDisposable
         broadcast
             .Setup(b => b.SosTriggered(It.IsAny<Guid>(), It.IsAny<IEnumerable<Guid>>(), It.IsAny<SosSessionDto>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("simulated channel failure"));
-        var dispatcher = new SosAlertDispatcher(db, broadcast.Object, new NoOpSmsGateway());
+        var dispatcher = new SosAlertDispatcher(db, broadcast.Object, new NoOpSmsGateway(), new NoOpPushSender());
 
         await dispatcher.DispatchAsync(sessionId);
 
@@ -228,4 +228,17 @@ internal sealed class NoOpSmsGateway : ISmsGateway
 {
     public Task<SmsSendResult> SendAsync(string toE164, string body, CancellationToken cancellationToken = default) =>
         Task.FromResult(new SmsSendResult($"noop-{Guid.NewGuid():N}"));
+}
+
+/// <summary>
+/// No-op IPushSender test double for tests that only exercise the SignalR/SMS arms —
+/// PushFanOutTests.cs covers the FCM arm itself.
+/// </summary>
+internal sealed class NoOpPushSender : IPushSender
+{
+    public Task<PushSendResult> SendAsync(
+        IReadOnlyList<string> tokens,
+        PushMessage message,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new PushSendResult(tokens.Count, Array.Empty<string>()));
 }

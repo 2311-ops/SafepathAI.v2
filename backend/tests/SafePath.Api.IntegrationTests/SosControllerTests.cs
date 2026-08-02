@@ -79,9 +79,10 @@ public class SosControllerTests : IClassFixture<FamilyApiFactory>
         var body = await response.Content.ReadFromJsonAsync<TriggerSosResult>(JsonOptions);
         Assert.NotNull(body);
         var recipient = Assert.Single(body!.Session.Recipients);
-        var channel = Assert.Single(recipient.Channels);
-        Assert.Equal(AlertChannel.SignalR, channel.Channel);
-        Assert.Equal(SosDeliveryStatus.NotAttempted, channel.Status);
+        // 03-06: every Guardian recipient now also gets an Fcm channel row alongside SignalR (D-06).
+        Assert.Equal(2, recipient.Channels.Count);
+        Assert.Contains(recipient.Channels, c => c.Channel == AlertChannel.SignalR && c.Status == SosDeliveryStatus.NotAttempted);
+        Assert.Contains(recipient.Channels, c => c.Channel == AlertChannel.Fcm && c.Status == SosDeliveryStatus.NotAttempted);
     }
 
     [Fact]

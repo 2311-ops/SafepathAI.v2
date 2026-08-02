@@ -58,9 +58,11 @@ public class TriggerSosCommandHandlerTests : IDisposable
         await handler.Handle(new TriggerSosCommand(
             Guid.NewGuid(), callerId, familyId, null, null, null, DateTime.UtcNow));
 
+        // 03-06 widens this to one SignalR row *and* one Fcm row per Guardian recipient (D-06).
         var attempts = db.SosDeliveryAttempts.ToList();
-        Assert.Equal(2, attempts.Count);
-        Assert.All(attempts, a => Assert.Equal(AlertChannel.SignalR, a.Channel));
+        Assert.Equal(4, attempts.Count);
+        Assert.Equal(2, attempts.Count(a => a.Channel == AlertChannel.SignalR));
+        Assert.Equal(2, attempts.Count(a => a.Channel == AlertChannel.Fcm));
         Assert.All(attempts, a => Assert.Equal(SosDeliveryStatus.NotAttempted, a.Status));
     }
 

@@ -113,7 +113,7 @@ public class SmsFanOutTests : IDisposable
         gateway
             .Setup(g => g.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SmsSendResult("SM123"));
-        var dispatcher = new SosAlertDispatcher(db, Mock.Of<IAlertBroadcastService>(), gateway.Object);
+        var dispatcher = new SosAlertDispatcher(db, Mock.Of<IAlertBroadcastService>(), gateway.Object, new NoOpPushSender());
 
         await dispatcher.DispatchAsync(sessionId);
 
@@ -149,7 +149,7 @@ public class SmsFanOutTests : IDisposable
         broadcast
             .Setup(b => b.SosTriggered(It.IsAny<Guid>(), It.IsAny<IEnumerable<Guid>>(), It.IsAny<SosSessionDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        var dispatcher = new SosAlertDispatcher(db, broadcast.Object, gateway.Object);
+        var dispatcher = new SosAlertDispatcher(db, broadcast.Object, gateway.Object, new NoOpPushSender());
 
         await dispatcher.DispatchAsync(sessionId);
 
@@ -184,7 +184,7 @@ public class SmsFanOutTests : IDisposable
             .Setup(g => g.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Callback<string, string, CancellationToken>((_, body, _) => capturedBody = body)
             .ReturnsAsync(new SmsSendResult("SM123"));
-        var dispatcher = new SosAlertDispatcher(db, Mock.Of<IAlertBroadcastService>(), gateway.Object);
+        var dispatcher = new SosAlertDispatcher(db, Mock.Of<IAlertBroadcastService>(), gateway.Object, new NoOpPushSender());
 
         await dispatcher.DispatchAsync(sessionId);
 

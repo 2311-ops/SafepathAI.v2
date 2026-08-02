@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Infrastructure.Identity;
 using SafePath.Infrastructure.Persistence;
+using SafePath.Infrastructure.Push;
 using SafePath.Infrastructure.RealTime;
 using SafePath.Infrastructure.Sms;
 using SafePath.Infrastructure.Storage;
@@ -97,6 +98,40 @@ public static class DependencyInjection
         }
 
         services.AddScoped<ISmsWebhookSignatureValidator, TwilioWebhookSignatureValidator>();
+
+        var firebaseOptions = new FirebaseOptions
+        {
+            ProjectId = configuration["Firebase:ProjectId"],
+            CredentialsPath = configuration["Firebase:CredentialsPath"],
+        };
+        services.AddSingleton(firebaseOptions);
+
+        // The default with no Firebase configuration present is LoggingPushSender (D-07) — a
+        // fresh clone builds, tests, and demos the whole SOS pipeline with no Firebase project
+        // and no spend. Logged once here (a throwaway bootstrap logger, since the DI container
+        // has not been built yet at this point) so the operator is never confused about why no
+        // real push arrived.
+        using (var bootstrapLoggerFactory = LoggerFactory.Create(builder => builder.AddConsole()))
+        {
+            var bootstrapLogger = bootstrapLoggerFactory.CreateLogger("SafePath.Infrastructure.Push");
+            if (firebaseOptions.IsConfigured)
+            {
+                bootstrapLogger.LogInformation("Push sender active: FirebasePushSender (Firebase credentials configured).");
+            }
+            else
+            {
+                bootstrapLogger.LogInformation("Push sender active: LoggingPushSender (no Firebase credentials configured — push sends are logged only, never sent).");
+            }
+        }
+
+        if (firebaseOptions.IsConfigured)
+        {
+            services.AddScoped<IPushSender, FirebasePushSender>();
+        }
+        else
+        {
+            services.AddScoped<IPushSender, LoggingPushSender>();
+        }
 
         return services;
     }

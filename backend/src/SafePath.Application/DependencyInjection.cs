@@ -47,6 +47,9 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<DeleteEmergencyContactCommand, EmergencyContactDto>, DeleteEmergencyContactCommandHandler>();
         services.AddScoped<ICommandHandler<ListEmergencyContactsQuery, IReadOnlyList<EmergencyContactDto>>, ListEmergencyContactsQueryHandler>();
         services.AddScoped<ICommandHandler<RecordSmsDeliveryStatusCommand, RecordSmsDeliveryStatusResult>, RecordSmsDeliveryStatusCommandHandler>();
+        services.AddScoped<ICommandHandler<RegisterDeviceTokenCommand, RegisterDeviceTokenResult>, RegisterDeviceTokenCommandHandler>();
+        services.AddScoped<ICommandHandler<RemoveDeviceTokenCommand, bool>, RemoveDeviceTokenCommandHandler>();
+        services.AddScoped<ICommandHandler<ConfirmPushReceiptCommand, ConfirmPushReceiptResult>, ConfirmPushReceiptCommandHandler>();
 
         return services;
     }

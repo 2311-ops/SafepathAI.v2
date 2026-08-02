@@ -83,6 +83,17 @@ public class TriggerSosCommandHandler : ICommandHandler<TriggerSosCommand, Trigg
                 Channel = AlertChannel.SignalR,
                 Status = SosDeliveryStatus.NotAttempted,
             });
+
+            // 03-06 / D-06: every Guardian recipient also gets an FCM row alongside their
+            // SignalR row, so they are reached even when their app is backgrounded or closed.
+            _db.SosDeliveryAttempts.Add(new SosDeliveryAttempt
+            {
+                Id = Guid.NewGuid(),
+                SosSessionId = session.Id,
+                RecipientUserId = recipient.UserId,
+                Channel = AlertChannel.Fcm,
+                Status = SosDeliveryStatus.NotAttempted,
+            });
         }
 
         // D-11 / 03-05: SOS recipients are active Guardians (above) PLUS the sender's own

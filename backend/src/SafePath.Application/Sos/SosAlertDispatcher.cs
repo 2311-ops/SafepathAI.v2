@@ -21,12 +21,18 @@ public class SosAlertDispatcher : ISosAlertDispatcher
     private readonly IApplicationDbContext _db;
     private readonly IAlertBroadcastService _broadcast;
     private readonly ISmsGateway _smsGateway;
+    private readonly IPushSender _pushSender;
 
-    public SosAlertDispatcher(IApplicationDbContext db, IAlertBroadcastService broadcast, ISmsGateway smsGateway)
+    public SosAlertDispatcher(
+        IApplicationDbContext db,
+        IAlertBroadcastService broadcast,
+        ISmsGateway smsGateway,
+        IPushSender pushSender)
     {
         _db = db;
         _broadcast = broadcast;
         _smsGateway = smsGateway;
+        _pushSender = pushSender;
     }
 
     public async Task DispatchAsync(Guid sosSessionId, CancellationToken cancellationToken = default)
@@ -55,7 +61,7 @@ public class SosAlertDispatcher : ISosAlertDispatcher
                         break;
 
                     case AlertChannel.Fcm:
-                        // 03-06 fills in the FCM push arm — the single extension point for that plan.
+                        await DispatchFcm(session, rows, cancellationToken);
                         break;
 
                     case AlertChannel.Sms:
@@ -97,6 +103,75 @@ public class SosAlertDispatcher : ISosAlertDispatcher
 
         var dto = await SosSessionProjection.ProjectAsync(_db, session, cancellationToken);
         await _broadcast.SosTriggered(session.FamilyId, recipientUserIds, dto, cancellationToken);
+    }
+
+    /// <summary>
+    /// Sends one FCM multicast per Guardian recipient row, fanning out to every device that
+    /// recipient has registered (D-32 — a guardian with a phone and a tablet is alerted on
+    /// both). A recipient with zero registered tokens is marked <see cref="SosDeliveryStatus.Failed"/>
+    /// with a reason naming the missing registration, rather than silently looking queued —
+    /// an honest amber state beats a misleading one. This method never writes
+    /// <see cref="SosDeliveryStatus.Delivered"/>: FCM's send API only confirms Google accepted
+    /// the message, never that a device received it (D-10, 03-RESEARCH.md Pitfall 1) —
+    /// <c>ConfirmPushReceiptCommand</c> is the only path allowed to do that.
+    /// </summary>
+    private async Task DispatchFcm(
+        SosSession session,
+        List<SosDeliveryAttempt> attempts,
+        CancellationToken cancellationToken)
+    {
+        var recipientRows = attempts.Where(a => a.RecipientUserId.HasValue).ToList();
+        if (recipientRows.Count == 0)
+        {
+            return;
+        }
+
+        var senderName = await _db.Users
+            .Where(u => u.Id == session.TriggeredByUserId)
+            .Select(u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.FullName : u.DisplayName!)
+            .SingleOrDefaultAsync(cancellationToken);
+        senderName = string.IsNullOrWhiteSpace(senderName) ? "A family member" : senderName;
+
+        var recipientUserIds = recipientRows.Select(a => a.RecipientUserId!.Value).Distinct().ToList();
+        var tokensByUser = await _db.UserDeviceTokens
+            .Where(t => recipientUserIds.Contains(t.UserId))
+            .ToListAsync(cancellationToken);
+
+        var message = new PushMessage(
+            Title: "SafePath SOS",
+            Body: $"{senderName} needs help.",
+            Data: new Dictionary<string, string>
+            {
+                ["type"] = "sos",
+                ["sosSessionId"] = session.Id.ToString(),
+                ["senderDisplayName"] = senderName,
+                ["triggeredAtUtc"] = session.TriggeredAtUtc.ToString("O"),
+            });
+
+        foreach (var attempt in recipientRows)
+        {
+            var recipientTokenRows = tokensByUser.Where(t => t.UserId == attempt.RecipientUserId!.Value).ToList();
+            if (recipientTokenRows.Count == 0)
+            {
+                attempt.Status = SosDeliveryStatus.Failed;
+                attempt.FailureReason = "No registered device token for this recipient.";
+                continue;
+            }
+
+            var tokens = recipientTokenRows.Select(t => t.Token).ToList();
+            var result = await _pushSender.SendAsync(tokens, message, cancellationToken);
+
+            if (result.InvalidTokens.Count > 0)
+            {
+                var invalid = recipientTokenRows.Where(t => result.InvalidTokens.Contains(t.Token)).ToList();
+                _db.UserDeviceTokens.RemoveRange(invalid);
+            }
+
+            attempt.Status = SosDeliveryStatus.Queued;
+            attempt.QueuedAtUtc = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>
