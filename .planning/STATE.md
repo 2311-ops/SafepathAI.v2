@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 Phase: 03 (sos-fast-path) — EXECUTING
 Plan: 8 of 9
 Status: Ready to execute
-Last activity: 2026-08-01 — Phase 03 execution resumed (wave continue)
+Last activity: 2026-08-02 — Completed quick task 260802-w1e: Codemagic CI config + Firebase/APNs external-setup runbook
 
 Progress: [██████████] 100%
 
@@ -154,6 +154,7 @@ Recent decisions affecting current work:
 - [Phase 02]: [Phase 02-19]: Independent IPresenceQuery.IsOnline connection presence remains visible under denied LiveLocation sharing, preserving D-03. — The plan explicitly preserves the accepted non-location connection-presence signal while gating only ping-derived recency.
 - [Quick 260717-pwh]: LiveMapScreen converted from ConsumerWidget to ConsumerStatefulWidget owning a MapController; rail-card tap now recenters the map camera (zoom 17) instead of opening the member detail sheet, while marker-pin tap keeps opening it — two complementary interactions (locate-on-map vs. details).
 - [Quick 260720-3u4]: MemberMapPin now exposes one clean Semantics label combining the member label with current-location or staleness status, so screen readers do not announce the initials and badge as separate fragments.
+- [Quick 260802-w1e]: Added codemagic.yaml (manual-start ios-testflight + android-apk workflows, Codemagic automatic ios_signing + App Store Connect integration, no local Mac/Xcode needed) and docs/EXTERNAL-SETUP.md (Firebase/APNs/App Store Connect/Codemagic provisioning runbook, correcting 03-06's superseded FIREBASE_PROJECT_ID/GOOGLE_APPLICATION_CREDENTIALS names to the shipped Firebase:ProjectId/Firebase:CredentialsPath binding). Unblocks the pending 03-06 Task 3 FCM verification todo for provisioning purposes only; the actual two-device manual verification and all external account/key creation remain human-only follow-up.
 - [Phase 03-01]: Recipient resolution (ResolveRecipients) queries active Guardians only, bypassing ISharingAuthorizationService so a privacy preference can never suppress an SOS emergency.
 - [Phase 03-01]: GetSosSessionQuery/Handler added (not in original file list) plus a shared SosSessionProjection helper, so SosController.Get matches the controller-only-calls-handlers convention and both handlers never diverge on DTO shaping.
 - [Phase 03-02]: SosController.arm() generates and persists a v4 session id before any network call; sosSessionId is a plain controller getter outside the sealed SosSessionState so D-13/D-14 are observable without a placeholder session
@@ -197,6 +198,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260717-oq0 | Display each family member's live battery on the Live Map | 2026-07-17 | 4701da1 | [260717-oq0-display-each-family-member-s-live-batter](./quick/260717-oq0-display-each-family-member-s-live-batter/) |
 | 260717-pwh | Rail-card tap on the Live Map recenters the map instead of opening the member sheet | 2026-07-17 | 4ddb746 | [260717-pwh-on-the-live-map-screen-tapping-a-family-](./quick/260717-pwh-on-the-live-map-screen-tapping-a-family-/) |
 | 260720-3u4 | Add Semantics labels to MemberMapPin for screen-reader support | 2026-07-24 | 7246356 | [260720-3u4-add-semantics-labels-to-membermappin-so-](./quick/260720-3u4-add-semantics-labels-to-membermappin-so-/) |
+| 260802-w1e | Codemagic CI config for iOS TestFlight/Android APK + Firebase/APNs/ASC external-setup runbook | 2026-08-02 | 92abded, 20fd982 | [260802-w1e-codemagic-ci-config-and-firebase-apns-se](./quick/260802-w1e-codemagic-ci-config-and-firebase-apns-se/) |
 
 ## Deferred Items
 
