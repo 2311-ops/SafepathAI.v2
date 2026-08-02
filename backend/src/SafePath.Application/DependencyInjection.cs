@@ -46,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<UpdateEmergencyContactCommand, EmergencyContactDto>, UpdateEmergencyContactCommandHandler>();
         services.AddScoped<ICommandHandler<DeleteEmergencyContactCommand, EmergencyContactDto>, DeleteEmergencyContactCommandHandler>();
         services.AddScoped<ICommandHandler<ListEmergencyContactsQuery, IReadOnlyList<EmergencyContactDto>>, ListEmergencyContactsQueryHandler>();
+        services.AddScoped<ICommandHandler<RecordSmsDeliveryStatusCommand, RecordSmsDeliveryStatusResult>, RecordSmsDeliveryStatusCommandHandler>();
 
         return services;
     }

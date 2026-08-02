@@ -96,6 +96,8 @@ public static class DependencyInjection
             services.AddScoped<ISmsGateway, LoggingSmsGateway>();
         }
 
+        services.AddScoped<ISmsWebhookSignatureValidator, TwilioWebhookSignatureValidator>();
+
         return services;
     }
 }
