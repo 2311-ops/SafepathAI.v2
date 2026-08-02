@@ -25,6 +25,15 @@ abstract class SosApi {
   /// `GET /sos/{sosSessionId}` — current per-recipient/per-channel delivery
   /// state for an already-triggered emergency.
   Future<SosSession> getSession(String sosSessionId);
+
+  /// `POST /sos/{id}/acknowledge` — a guardian confirms they have seen the
+  /// alert. Strictly stronger than Delivered (D-22); only the caller's own
+  /// delivery rows change server-side.
+  Future<SosSession> acknowledge(String sosSessionId);
+
+  /// `POST /sos/{id}/cancel` — self-cancel only. Consumed by plan 03-09;
+  /// declared here so the API surface is complete in one place.
+  Future<SosSession> cancel(String sosSessionId);
 }
 
 class DioSosApi implements SosApi {
@@ -63,6 +72,41 @@ class DioSosApi implements SosApi {
     } on DioException catch (error) {
       throw _mapError(error);
     }
+  }
+
+  @override
+  Future<SosSession> acknowledge(String sosSessionId) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/sos/$sosSessionId/acknowledge',
+      );
+      return _sessionFromWrappedResponse(response.data);
+    } on DioException catch (error) {
+      throw _mapError(error);
+    }
+  }
+
+  @override
+  Future<SosSession> cancel(String sosSessionId) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/sos/$sosSessionId/cancel',
+      );
+      return _sessionFromWrappedResponse(response.data);
+    } on DioException catch (error) {
+      throw _mapError(error);
+    }
+  }
+
+  SosSession _sessionFromWrappedResponse(Map<String, dynamic>? data) {
+    final sessionJson = (data ?? const {})['session'] as Map<String, dynamic>?;
+    if (sessionJson == null) {
+      throw SosApiException(
+        SosApiIssue.unknown,
+        message: 'The server did not return a session.',
+      );
+    }
+    return SosSession.fromJson(sessionJson);
   }
 
   SosApiException _mapError(DioException error) {

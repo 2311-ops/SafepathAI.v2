@@ -177,6 +177,100 @@ class SosSession {
   }
 }
 
+/// Mirrors `SosDeliveryStatusChangedDto` — pushed to the family alert group
+/// whenever a single (recipient, channel) delivery row's status changes.
+/// Lets a connected client update one row of the delivery matrix without
+/// re-fetching the whole session.
+class SosDeliveryStatusChange {
+  const SosDeliveryStatusChange({
+    required this.sosSessionId,
+    this.recipientUserId,
+    this.emergencyContactId,
+    required this.channel,
+    required this.status,
+    required this.atUtc,
+  });
+
+  final String sosSessionId;
+  final String? recipientUserId;
+  final String? emergencyContactId;
+  final SosChannel channel;
+  final SosDeliveryStatus status;
+  final DateTime atUtc;
+
+  factory SosDeliveryStatusChange.fromJson(Map<String, dynamic> json) {
+    return SosDeliveryStatusChange(
+      sosSessionId: json['sosSessionId'] as String,
+      recipientUserId: json['recipientUserId'] as String?,
+      emergencyContactId: json['emergencyContactId'] as String?,
+      channel: _parseSosChannel(json['channel'] as String?),
+      status: _parseSosDeliveryStatus(json['status'] as String?),
+      atUtc: DateTime.parse(json['atUtc'] as String).toUtc(),
+    );
+  }
+}
+
+/// Mirrors `SosCanceledDto` — pushed when the triggering user cancels their
+/// own SOS session (D-05, D-24). A parallel follow-up notice, never a
+/// retraction of the original delivery history.
+class SosCancellation {
+  const SosCancellation({
+    required this.sosSessionId,
+    required this.canceledByUserId,
+    required this.canceledByDisplayName,
+    required this.canceledAtUtc,
+  });
+
+  final String sosSessionId;
+  final String canceledByUserId;
+  final String canceledByDisplayName;
+  final DateTime canceledAtUtc;
+
+  factory SosCancellation.fromJson(Map<String, dynamic> json) {
+    return SosCancellation(
+      sosSessionId: json['sosSessionId'] as String,
+      canceledByUserId: json['canceledByUserId'] as String,
+      canceledByDisplayName:
+          (json['canceledByDisplayName'] as String?) ?? 'A family member',
+      canceledAtUtc: DateTime.parse(json['canceledAtUtc'] as String).toUtc(),
+    );
+  }
+}
+
+/// Mirrors `SosLocationUpdateDto` — a live-location window update pushed
+/// during an active SOS session. Declared now so the hub client's contract
+/// is stable across this plan and plan 03-08 (the first to render it).
+class SosLocationUpdate {
+  const SosLocationUpdate({
+    required this.sosSessionId,
+    required this.latitude,
+    required this.longitude,
+    this.accuracyMeters,
+    required this.recordedAtUtc,
+    required this.windowEndsAtUtc,
+  });
+
+  final String sosSessionId;
+  final double latitude;
+  final double longitude;
+  final double? accuracyMeters;
+  final DateTime recordedAtUtc;
+  final DateTime windowEndsAtUtc;
+
+  factory SosLocationUpdate.fromJson(Map<String, dynamic> json) {
+    return SosLocationUpdate(
+      sosSessionId: json['sosSessionId'] as String,
+      latitude: (json['latitude'] as num).toDouble(),
+      longitude: (json['longitude'] as num).toDouble(),
+      accuracyMeters: (json['accuracyMeters'] as num?)?.toDouble(),
+      recordedAtUtc: DateTime.parse(json['recordedAtUtc'] as String).toUtc(),
+      windowEndsAtUtc: DateTime.parse(
+        json['windowEndsAtUtc'] as String,
+      ).toUtc(),
+    );
+  }
+}
+
 /// Request body mirroring `TriggerSosRequest` — `sosSessionId` is generated
 /// on-device before this is ever built (D-13/D-14).
 class SosTriggerRequest {

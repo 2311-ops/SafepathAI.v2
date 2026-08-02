@@ -19,6 +19,16 @@ class FakeSosApi implements SosApi {
   SosSession Function(String sosSessionId)? getSessionResponseBuilder;
   int getSessionCallCount = 0;
 
+  SosApiException? acknowledgeError;
+  SosSession Function(String sosSessionId)? acknowledgeResponseBuilder;
+  final List<String> acknowledgeCalls = [];
+  int get acknowledgeCallCount => acknowledgeCalls.length;
+
+  SosApiException? cancelError;
+  SosSession Function(String sosSessionId)? cancelResponseBuilder;
+  final List<String> cancelCalls = [];
+  int get cancelCallCount => cancelCalls.length;
+
   @override
   Future<SosSession> trigger(SosTriggerRequest request) async {
     triggerCalls.add(request);
@@ -51,6 +61,38 @@ class FakeSosApi implements SosApi {
       familyId: 'family-1',
       triggeredByUserId: 'self-user',
       status: SosSessionStatus.active,
+      triggeredAtUtc: DateTime.now().toUtc(),
+      receivedAtUtc: DateTime.now().toUtc(),
+    );
+  }
+
+  @override
+  Future<SosSession> acknowledge(String sosSessionId) async {
+    acknowledgeCalls.add(sosSessionId);
+    if (acknowledgeError != null) throw acknowledgeError!;
+    final builder = acknowledgeResponseBuilder;
+    if (builder != null) return builder(sosSessionId);
+    return SosSession(
+      sosSessionId: sosSessionId,
+      familyId: 'family-1',
+      triggeredByUserId: 'ana-user-id',
+      status: SosSessionStatus.active,
+      triggeredAtUtc: DateTime.now().toUtc(),
+      receivedAtUtc: DateTime.now().toUtc(),
+    );
+  }
+
+  @override
+  Future<SosSession> cancel(String sosSessionId) async {
+    cancelCalls.add(sosSessionId);
+    if (cancelError != null) throw cancelError!;
+    final builder = cancelResponseBuilder;
+    if (builder != null) return builder(sosSessionId);
+    return SosSession(
+      sosSessionId: sosSessionId,
+      familyId: 'family-1',
+      triggeredByUserId: 'self-user',
+      status: SosSessionStatus.canceled,
       triggeredAtUtc: DateTime.now().toUtc(),
       receivedAtUtc: DateTime.now().toUtc(),
     );
