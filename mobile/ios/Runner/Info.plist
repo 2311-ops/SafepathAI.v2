@@ -43,6 +43,16 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Remote-notification background mode — required for FCM (03-06) so a
+	     data message can be processed while the app is backgrounded. The
+	     APNs authentication key upload and the Xcode Push Notifications
+	     capability (Signing & Capabilities) are separate human setup steps
+	     recorded in 03-06-PLAN.md's user_setup block; without them this mode
+	     alone does not make push delivery work end-to-end. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -2,6 +2,9 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- Required on Android 13+ to show any notification, including the
+         heads-up SOS push from push_service.dart (03-06). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
         android:label="SafePath AI"
@@ -45,6 +48,14 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Default FCM notification channel id — must match
+             sosAndroidChannelId in mobile/lib/core/push/push_service.dart so
+             a data-only SOS message the OS renders itself (app fully
+             terminated, before Dart code runs) still lands on the same
+             high-importance channel as the app's own local notification. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="safepath_sos" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
