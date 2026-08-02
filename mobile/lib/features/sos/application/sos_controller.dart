@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../family/application/family_controller.dart';
 import '../../location/application/location_controller.dart';
 import '../data/sos_api.dart';
+import '../data/sos_hub_client.dart';
 import '../data/sos_local_store.dart';
 import '../data/sos_models.dart';
 import 'sos_session_state.dart';
@@ -11,6 +14,12 @@ import 'sos_session_state.dart';
 /// Owns the SOS sender-side state machine and trigger submission. `arm()` is
 /// the single entry point the press-and-hold button (and, in plan 03-09, the
 /// OS quick-actions shortcut) both call.
+///
+/// This controller never connects/disconnects [sosHubClientProvider] itself
+/// — [SosResponderController] (03-04-PLAN.md Task 1) owns that connection's
+/// lifecycle. This controller only listens to the already-connected
+/// client's `deliveryStatusChanges`/`sosCanceled` streams so the sender's own
+/// session reflects live delivery/acknowledgement/cancellation state.
 class SosController extends AsyncNotifier<SosSessionState> {
   String? _sessionId;
 
@@ -22,12 +31,131 @@ class SosController extends AsyncNotifier<SosSessionState> {
 
   @override
   SosSessionState build() {
+    final hubClient = ref.read(sosHubClientProvider);
+    final deliveryStatusSubscription = hubClient.deliveryStatusChanges.listen(
+      _applyDeliveryStatusChange,
+    );
+    final sosCanceledSubscription = hubClient.sosCanceled.listen(
+      _applySosCanceled,
+    );
+    ref.onDispose(() {
+      unawaited(deliveryStatusSubscription.cancel());
+      unawaited(sosCanceledSubscription.cancel());
+    });
+
     // Rehydrate a persisted session id (if any) so a restart lands on the
     // same emergency rather than losing it. Fire-and-forget: must run after
     // build() returns, matching FamilyController/LocationController's own
     // Future.microtask bootstrap convention.
     Future.microtask(_rehydrate);
     return const SosIdle();
+  }
+
+  /// The [SosSession] embedded in the current sealed state, or `null` for
+  /// states that carry no session ([SosIdle], [SosOfflineQueued]).
+  SosSession? _sessionOf(SosSessionState value) {
+    return switch (value) {
+      SosSubmitted(:final session) => session,
+      SosDelivering(:final session) => session,
+      SosLiveActive(:final session) => session,
+      SosCanceled(:final session) => session,
+      SosIdle() || SosOfflineQueued() => null,
+    };
+  }
+
+  void _applyDeliveryStatusChange(SosDeliveryStatusChange change) {
+    final current = state.value;
+    if (current == null) return;
+    final session = _sessionOf(current);
+    if (session == null || session.sosSessionId != change.sosSessionId) {
+      return;
+    }
+
+    final updatedSession = _foldDeliveryStatusChange(session, change);
+    state = AsyncData(
+      switch (current) {
+        SosSubmitted() || SosDelivering() => SosDelivering(updatedSession),
+        SosLiveActive(:final windowEndsAtUtc) => SosLiveActive(
+          updatedSession,
+          windowEndsAtUtc,
+        ),
+        SosCanceled(:final canceledAtUtc) => SosCanceled(
+          updatedSession,
+          canceledAtUtc,
+        ),
+        SosIdle() || SosOfflineQueued() => current,
+      },
+    );
+  }
+
+  void _applySosCanceled(SosCancellation cancellation) {
+    final current = state.value;
+    if (current == null) return;
+    final session = _sessionOf(current);
+    if (session == null || session.sosSessionId != cancellation.sosSessionId) {
+      return;
+    }
+    state = AsyncData(SosCanceled(session, cancellation.canceledAtUtc));
+  }
+
+  SosSession _foldDeliveryStatusChange(
+    SosSession session,
+    SosDeliveryStatusChange change,
+  ) {
+    final updatedRecipients = [
+      for (final recipient in session.recipients)
+        _matchesRecipient(recipient, change)
+            ? SosRecipientStatus(
+                recipientUserId: recipient.recipientUserId,
+                emergencyContactId: recipient.emergencyContactId,
+                displayName: recipient.displayName,
+                channels: [
+                  for (final channelStatus in recipient.channels)
+                    if (channelStatus.channel == change.channel)
+                      SosChannelStatus(
+                        channel: channelStatus.channel,
+                        status: change.status,
+                        queuedAtUtc: channelStatus.queuedAtUtc,
+                        deliveredAtUtc:
+                            change.status == SosDeliveryStatus.delivered
+                            ? change.atUtc
+                            : channelStatus.deliveredAtUtc,
+                        acknowledgedAtUtc:
+                            change.status == SosDeliveryStatus.acknowledged
+                            ? change.atUtc
+                            : channelStatus.acknowledgedAtUtc,
+                      )
+                    else
+                      channelStatus,
+                ],
+              )
+            : recipient,
+    ];
+
+    return SosSession(
+      sosSessionId: session.sosSessionId,
+      familyId: session.familyId,
+      triggeredByUserId: session.triggeredByUserId,
+      status: session.status,
+      triggeredAtUtc: session.triggeredAtUtc,
+      receivedAtUtc: session.receivedAtUtc,
+      liveWindowEndsAtUtc: session.liveWindowEndsAtUtc,
+      canceledAtUtc: session.canceledAtUtc,
+      recipients: updatedRecipients,
+    );
+  }
+
+  bool _matchesRecipient(
+    SosRecipientStatus recipient,
+    SosDeliveryStatusChange change,
+  ) {
+    if (change.recipientUserId != null) {
+      return recipient.recipientUserId == change.recipientUserId;
+    }
+    if (change.emergencyContactId != null) {
+      return recipient.emergencyContactId == change.emergencyContactId;
+    }
+    return false;
   }
 
   Future<void> _rehydrate() async {

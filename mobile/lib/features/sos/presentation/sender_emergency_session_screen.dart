@@ -11,6 +11,7 @@ import '../../../shared_widgets/primary_button.dart';
 import '../application/sos_controller.dart';
 import '../application/sos_session_state.dart';
 import '../data/sos_models.dart';
+import 'delivery_status_chip.dart';
 
 /// Full-screen sender emergency session (03-UI-SPEC.md "Full-Screen Sender
 /// Emergency Session — State Machine"). This is the one screen in the app
@@ -62,8 +63,8 @@ class _SenderEmergencySessionScreenState
         key: ValueKey('sos-error'),
         headline: 'Not sent yet',
         message:
-            "We couldn't confirm delivery yet. Keep trying — this screen "
-            'will keep retrying automatically.',
+            "We couldn't confirm delivery to anyone yet. Keep trying — this "
+            'screen will keep retrying automatically.',
       );
     } else if (sessionState == null) {
       // arm() has generated and persisted the session id, but the network
@@ -88,7 +89,9 @@ class _SenderEmergencySessionScreenState
                 "We've received your alert and are notifying your "
                 'guardians.',
           ),
-          SosDelivering(:final session) => _DeliveringBody(session: session),
+          SosDelivering(:final session) => _DeliveringWithRecipientsBody(
+            session: session,
+          ),
           // Owned by plan 03-07: offline/retrying chrome ("Not sent yet,
           // retrying… Last retry: {relative time}") plus local fallback
           // actions ("Call {emergency contact}", "Copy my location") that
@@ -214,6 +217,106 @@ class _DeliveringBody extends StatelessWidget {
   Future<void> _call911() async {
     final uri = Uri(scheme: 'tel', path: '911');
     await launchUrl(uri);
+  }
+}
+
+/// The Delivering state's real body (03-UI-SPEC.md "Delivery Status
+/// Vocabulary", D-09/D-10): the elapsed header plus a scrollable list of one
+/// [RecipientDeliveryRow] per recipient — never a single aggregate
+/// checkmark. Shows the locked empty-state copy (see [_NoRecipientsEmptyState])
+/// when the server resolved zero recipients, so a nowhere-to-send SOS never
+/// silently looks like it is working.
+class _DeliveringWithRecipientsBody extends StatelessWidget {
+  const _DeliveringWithRecipientsBody({required this.session});
+
+  final SosSession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final elapsed = DateTime.now().toUtc().difference(session.triggeredAtUtc);
+    final recipients = session.recipients;
+
+    return Column(
+      children: [
+        const SizedBox(height: AppSpacing.md),
+        _FrostedCard(
+          child: Text(
+            'Alert active · ${_formatElapsed(elapsed)} elapsed',
+            textAlign: TextAlign.center,
+            style: AppTypography.caption.copyWith(
+              color: Colors.white,
+              letterSpacing: 0,
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Expanded(
+          child: recipients.isEmpty
+              ? const _NoRecipientsEmptyState()
+              : ListView.separated(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                  ),
+                  itemCount: recipients.length,
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(height: AppSpacing.sm),
+                  itemBuilder: (context, index) =>
+                      RecipientDeliveryRow(recipient: recipients[index]),
+                ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          child: PrimaryButton(
+            label: 'Call 911',
+            backgroundColor: AppColors.ink,
+            foregroundColor: Colors.white,
+            onPressed: () => _call911(),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+      ],
+    );
+  }
+
+  Future<void> _call911() async {
+    final uri = Uri(scheme: 'tel', path: '911');
+    await launchUrl(uri);
+  }
+}
+
+/// D-11's server-side recipient resolution can legitimately return zero
+/// recipients (no Guardians/emergency contacts configured yet) — this must
+/// never silently look like the alert is working when it has nowhere to go.
+class _NoRecipientsEmptyState extends StatelessWidget {
+  const _NoRecipientsEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'No one to alert yet.',
+              textAlign: TextAlign.center,
+              style: AppTypography.heading.copyWith(color: Colors.white),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _FrostedCard(
+              child: Text(
+                'Add a guardian or emergency contact in your Family Circle '
+                'so SOS has somewhere to send help.',
+                textAlign: TextAlign.center,
+                style: AppTypography.body.copyWith(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
