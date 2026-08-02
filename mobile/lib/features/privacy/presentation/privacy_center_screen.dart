@@ -260,6 +260,8 @@ class PrivacyCenterScreen extends ConsumerWidget {
                 onExport: () => _exportMyData(context, ref),
                 onDelete: () => _confirmDelete(context, ref),
                 onPolicy: () => context.go('/privacy/policy'),
+                onEmergencyContacts: () =>
+                    context.go('/settings/emergency-contacts'),
               ),
             ],
           ),
@@ -289,6 +291,7 @@ class _PrivacyActionsSection extends StatelessWidget {
     required this.onExport,
     required this.onDelete,
     required this.onPolicy,
+    required this.onEmergencyContacts,
   });
 
   final bool isExporting;
@@ -296,6 +299,7 @@ class _PrivacyActionsSection extends StatelessWidget {
   final VoidCallback onExport;
   final VoidCallback onDelete;
   final VoidCallback onPolicy;
+  final VoidCallback onEmergencyContacts;
 
   @override
   Widget build(BuildContext context) {
@@ -315,6 +319,11 @@ class _PrivacyActionsSection extends StatelessWidget {
                   )
                 : const Icon(Icons.file_download_outlined),
             label: const Text('Export my data'),
+          ),
+          TextButton.icon(
+            onPressed: onEmergencyContacts,
+            icon: const Icon(Icons.contact_phone_outlined),
+            label: const Text('Emergency contacts'),
           ),
           TextButton.icon(
             onPressed: onPolicy,

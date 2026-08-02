@@ -26,6 +26,7 @@ import '../../features/location/presentation/permission_priming_screen.dart';
 import '../../features/privacy/presentation/privacy_policy_screen.dart';
 import '../../features/profile/application/profile_controller.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/sos/presentation/emergency_contacts_screen.dart';
 import '../../features/sos/presentation/responder_alert_screen.dart';
 import '../../features/sos/presentation/sender_emergency_session_screen.dart';
 import '../../features/splash/application/splash_providers.dart';
@@ -60,6 +61,7 @@ const _authenticatedOnlyRoutes = {
   '/profile',
   '/sos/session',
   '/sos/responder/:sessionId',
+  '/settings/emergency-contacts',
 };
 
 /// Bridges [authControllerProvider] changes to go_router's
@@ -264,6 +266,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => ResponderAlertScreen(
           sessionId: state.pathParameters['sessionId']!,
         ),
+      ),
+      GoRoute(
+        path: '/settings/emergency-contacts',
+        name: 'emergency-contacts',
+        builder: (context, state) => const EmergencyContactsScreen(),
       ),
       GoRoute(
         path: '/circle/create',
