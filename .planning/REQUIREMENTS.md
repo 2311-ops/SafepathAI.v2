@@ -58,14 +58,14 @@
 - [x] **SOS-02**: Guardian/emergency contact receives the SOS alert through multiple channels (SignalR push + FCM + SMS fallback) with server-side delivery-acknowledgment tracking
 - [x] **SOS-03**: If there's no network connectivity at the moment of SOS trigger, the app queues and retries delivery and shows the user a clear "not sent yet" state
 - [ ] **SOS-04**: User's location streams live to responders for a fixed window after an SOS trigger
-- [ ] **SOS-05**: User can cancel a false SOS alarm via a self-cancel channel that runs in parallel to — and never delays — the guardian alert
+- [x] **SOS-05**: User can cancel a false SOS alarm via a self-cancel channel that runs in parallel to — and never delays — the guardian alert
 - [ ] **SOS-06**: SOS can also be triggered via an OS-level backup shortcut (side-button sequence, Android Accessibility shortcut, or lock-screen widget)
 
 ### Smart Notifications (NOTIF)
 
 - [x] **NOTIF-01**: User receives a low-battery alert for themselves or a family member
 - [ ] **NOTIF-02**: User receives a geofence enter/exit alert
-- [ ] **NOTIF-03**: User receives an SOS alert
+- [x] **NOTIF-03**: User receives an SOS alert
 - [ ] **NOTIF-04**: User receives an inactivity alert
 - [ ] **NOTIF-05**: Alert push notifications carry the plain-language explanation, not just a bare alert
 
@@ -202,9 +202,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SOS-02 | Phase 3 | Complete |
 | SOS-03 | Phase 3 | Complete |
 | SOS-04 | Phase 3 | Pending |
-| SOS-05 | Phase 3 | Pending |
+| SOS-05 | Phase 3 | Complete |
 | SOS-06 | Phase 3 | Pending |
-| NOTIF-03 | Phase 3 | Pending |
+| NOTIF-03 | Phase 3 | Complete |
 | DESIGN-02 | Phase 3 | Complete |
 | GEO-01 | Phase 4 | Pending |
 | GEO-02 | Phase 4 | Pending |
