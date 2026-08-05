@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: sos-fast-path
 status: executing
-stopped_at: Completed 03-07-PLAN.md
-last_updated: "2026-08-02T18:14:12.247Z"
-last_activity: 2026-08-01
-last_activity_desc: Phase 03 execution resumed (wave continue)
+stopped_at: Completed 03-06-PLAN.md (Task 3 manual FCM verification, Android-only)
+last_updated: "2026-08-05T19:10:00.000Z"
+last_activity: 2026-08-05
+last_activity_desc: Closed 03-06's Task 3 human-verify checkpoint (real FCM push + deep-link confirmed on Android)
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 44
-  completed_plans: 41
-  percent: 38
+  completed_plans: 42
+  percent: 39
 ---
 
 # Project State
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 03 (sos-fast-path) — EXECUTING
-Plan: 8 of 9
-Status: Ready to execute
-Last activity: 2026-08-05 — Completed quick task 260805-t3h: Raised Live Map family pin staleness opacity floor (was fading to 30%, now floors at 75%)
+Plan: 7 of 9 complete — next: 03-08 (live-location streaming window)
+Status: Ready to plan/execute 03-08
+Last activity: 2026-08-05 — Closed 03-06's Task 3 human-verify checkpoint: real FCM push arrived on a terminated Guardian device and deep-linked into the Responder screen; delivery chip confirmed Queued->Delivered->Acknowledged server-side. Android-only — iOS/APNs and D-32 multi-device still untested.
 
 Progress: [██████████] 100%
 
@@ -173,17 +173,18 @@ Recent decisions affecting current work:
 - [Phase 03-07]: SosController's retry loop is a single injectable SosRetryScheduler seam (schedule(Duration, callback) -> SosRetryHandle), not a bespoke backoff package -- idempotency stays server-side (03-01) as the only part that must not be improvised.
 - [Phase 03-07]: sosHubClientProvider's default construction depends on an initialized Supabase client, absent in the unit-test process -- every test container reading sosControllerProvider now overrides sosHubClientProvider with FakeSosHubClient so SosController.build() actually completes (including its connectivity subscription) instead of silently failing into an unobserved AsyncError.
 - [Phase 03-07]: Corrected the pre-existing generic AsyncError-state copy on the sender screen: since Task 1 routes every network failure through SosOfflineQueued instead, the AsyncError branch is now reached only for a genuine non-network rejection that will not retry automatically, so it surfaces the server's own rejection message instead of a false 'keep trying' claim.
+- [Phase 03-06]: Task 3's manual FCM verification closed 2026-08-05, Android-only: physical device (sender) + Android emulator (Guardian, terminated) confirmed real push delivery, correct deep-link into ResponderAlertScreen, and Queued->Delivered->Acknowledged server-side via a direct GET /sos/{id} read. iOS/APNs and D-32 multi-device explicitly not tested -- see 03-06-SUMMARY.md.
 
 ### Pending Todos
 
 | Title | Area | File |
 |-------|------|------|
-| Provision Firebase/APNs and verify FCM push deep-link (03-06 Task 3) | verification | [todos/pending/2026-08-02-provision-firebase-apns-and-verify-fcm-push-deep-link.md](./todos/pending/2026-08-02-provision-firebase-apns-and-verify-fcm-push-deep-link.md) |
 | Manual airplane-mode offline SOS smoke test (03-07 D4) | verification | [todos/pending/2026-08-02-manual-airplane-mode-offline-sos-smoke-test.md](./todos/pending/2026-08-02-manual-airplane-mode-offline-sos-smoke-test.md) |
+| Investigate sender-screen delivery chip not visually updating on Device A despite correct server-side Queued->Delivered tracking (found during 03-06 Task 3 verification 2026-08-05) | investigation | see 03-06-SUMMARY.md "Issues Encountered" |
 
 ### Blockers/Concerns
 
-- [2026-08-05] Firebase provisioning (03-06 Task 3) is split: Firebase project `safepath-ai-c11bd` is created, Android + iOS apps registered, `google-services.json`/`GoogleService-Info.plist` placed and verified, backend `Firebase__ProjectId`/`Firebase__CredentialsPath` confirmed active (`FirebasePushSender`), and Supabase DB connectivity restored via the Session Pooler (IPv4 fix for the direct-connection host's IPv6-only DNS). Apple Developer Program enrollment / APNs auth key / iOS TestFlight path has **not** been started — do not pick this up until the user explicitly decides to pursue it. Next action is device testing: the Android-only FCM end-to-end SOS push verification (03-06 checkpoint) and the 03-07 airplane-mode offline SOS smoke test (03-07 D4) can both run in the same testing session since neither depends on Apple/iOS.
+- [2026-08-05] 03-06 Task 3 (FCM push verification) is now **closed for Android**: Firebase project `safepath-ai-c11bd` provisioned, backend confirmed using `FirebasePushSender`, real push delivery + deep-link confirmed on a terminated Guardian device, delivery status confirmed Queued->Delivered->Acknowledged server-side. Apple Developer Program enrollment / APNs auth key / iOS TestFlight path has **not** been started — do not pick this up until the user explicitly decides to pursue it. The 03-07 airplane-mode offline SOS smoke test (03-07 D4) remains outstanding and can run in the same kind of session since it doesn't depend on Apple/iOS either.
 - [2026-08-05] 03-08-PLAN.md (live-location streaming window, SOS-04) is missing an explicit requirement: today's `LocationController` uses a plain `Geolocator.getPositionStream()` with no foreground-service wrapper, so it does not survive backgrounding or app-kill; 03-08's own plan only commits to surviving the phone being locked/backgrounded via `flutter_foreground_task`, not the sender fully force-killing the app (Android `stopWithTask` isn't addressed). Flagged directly in the plan file — resolve (or explicitly accept as a limitation) before/during 03-08's execution.
 
 Carried forward from research (see .planning/research/SUMMARY.md "Research Flags" and "Gaps to Address"):
