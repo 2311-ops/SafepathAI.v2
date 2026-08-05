@@ -22,6 +22,7 @@ import 'package:mobile/features/family/application/family_controller.dart';
 import 'package:mobile/features/home/presentation/main_shell.dart';
 import 'package:mobile/features/location/application/location_controller.dart';
 import 'package:mobile/features/privacy/application/privacy_controller.dart';
+import 'package:mobile/features/sos/application/emergency_contacts_controller.dart';
 import 'package:mobile/features/sos/presentation/sos_arm_button.dart';
 import 'package:mobile/features/sos/presentation/sos_arm_ring_painter.dart';
 
@@ -98,6 +99,18 @@ class _EmptyPrivacyController extends PrivacyController {
   PrivacyState build() => const PrivacyState();
 }
 
+/// `PrivacyCenterScreen` now also watches `sosReachProvider`, which reads
+/// `emergencyContactsControllerProvider` — its real `build()` calls a Dio
+/// client, leaving a pending network `Future`/timer that trips
+/// `flutter_test`'s "no pending timers after dispose" invariant in this
+/// widget test. Overriding straight to a resolved, empty state (mirroring
+/// `_EmptyPrivacyController` above) sidesteps that entirely.
+class _EmptyEmergencyContactsController extends EmergencyContactsController {
+  @override
+  Future<EmergencyContactsState> build() async =>
+      const EmergencyContactsState();
+}
+
 Widget _wrapButton({
   required VoidCallback onArmComplete,
   bool reduceMotion = false,
@@ -120,6 +133,9 @@ Widget _wrapMainShell() {
       familyControllerProvider.overrideWith(_NoFamilyController.new),
       locationControllerProvider.overrideWith(_EmptyLocationController.new),
       privacyControllerProvider.overrideWith(_EmptyPrivacyController.new),
+      emergencyContactsControllerProvider.overrideWith(
+        _EmptyEmergencyContactsController.new,
+      ),
       authApiProvider.overrideWithValue(_FakeAuthApi()),
     ],
     child: const MaterialApp(home: MainShell()),
