@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 Phase: 03 (sos-fast-path) — EXECUTING
 Plan: 7 of 9 complete — next: 03-08 (live-location streaming window)
 Status: Ready to plan/execute 03-08
-Last activity: 2026-08-05 — Closed 03-06's Task 3 human-verify checkpoint: real FCM push arrived on a terminated Guardian device and deep-linked into the Responder screen; delivery chip confirmed Queued->Delivered->Acknowledged server-side. Android-only — iOS/APNs and D-32 multi-device still untested.
+Last activity: 2026-08-05 — Completed quick task 260805-uke: proactive zero-SOS-recipient nudge in Privacy Center + Guardian-role SOS access audit (no gap found), device-verified on emulator.
 
 Progress: [██████████] 100%
 
@@ -181,6 +181,7 @@ Recent decisions affecting current work:
 |-------|------|------|
 | Manual airplane-mode offline SOS smoke test (03-07 D4) | verification | [todos/pending/2026-08-02-manual-airplane-mode-offline-sos-smoke-test.md](./todos/pending/2026-08-02-manual-airplane-mode-offline-sos-smoke-test.md) |
 | Investigate sender-screen delivery chip not visually updating on Device A despite correct server-side Queued->Delivered tracking (found during 03-06 Task 3 verification 2026-08-05) | investigation | see 03-06-SUMMARY.md "Issues Encountered" |
+| Investigate FamilyController cold-start bootstrap issue: app relaunch showed "No circle yet" for a real family member until a full emulator reboot (found during 260805-uke Task 3 verification) | investigation | [todos/pending/2026-08-05-family-controller-cold-start-bootstrap-race.md](./todos/pending/2026-08-05-family-controller-cold-start-bootstrap-race.md) |
 
 ### Blockers/Concerns
 
@@ -206,6 +207,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 6 | Enable core library desugaring required by flutter_local_notifications (real Android build failure found during device testing) | 2026-08-05 | 2aee4de | — |
 | 260805-s33 | Fixed SOS arm ring paint-order (was fully hidden), added press-scale animation and a live 3-2-1 countdown label | 2026-08-05 | 10cb95f | [260805-s33-add-a-cool-smooth-press-animation-to-the](./quick/260805-s33-add-a-cool-smooth-press-animation-to-the/) |
 | 260805-t3h | Raised Live Map family pin staleness opacity floor (0.7/0.45/0.3 -> 0.92/0.85/0.75) so pins stay legible over map tiles | 2026-08-05 | 880aad6 | [260805-t3h-fix-the-opacity-of-family-member-map-pin](./quick/260805-t3h-fix-the-opacity-of-family-member-map-pin/) |
+| 260805-uke | Proactive zero-SOS-recipient warning card in Privacy Center (mirrors backend D-11 recipient resolution) + Guardian-role SOS access audit (no gap found) | 2026-08-05 | ac0d8d2 | [260805-uke-add-a-proactive-zero-sos-recipient-nudge](./quick/260805-uke-add-a-proactive-zero-sos-recipient-nudge/) |
 
 ## Deferred Items
 
