@@ -153,4 +153,45 @@ flutter run -d <DEVICE_B> --dart-define-from-file=env.json --dart-define=API_BAS
 2. Hold the SOS button — confirm the session shows "Not sent yet, retrying…" immediately, with the call-contact and copy-location fallback actions visible.
 3. Kill Device A's app entirely and reopen it — confirm it resumes the *same* queued session (same session id), not a new one.
 4. Turn networking back on — confirm the queued SOS submits automatically with no user action.
-5. Check Device B — confirm only one emergency session exists (no duplicate from the retry loop).
+5. Check Device B — confirm only one emergency session exists (no duplicate from the retry loop). This step is already single-device-friendly: see 5.7's `GET /sos/{sosSessionId}` command below to check server-side instead of using a second phone.
+
+### 5.7 Single-Device Variant Of Test 1 (No Second Phone Needed)
+
+Test 1 needs two roles — a trigger and a receiver — not two phones. The receiving side genuinely needs one real device (Guardian, backgrounded/terminated). The triggering side can be a direct API call instead of a second phone running the app.
+
+1. Sign in as the Guardian on your one phone (Device B from 5.4) and background or terminate it as in 5.5.
+2. Get an access token for the second family-member account via Supabase's password grant, using the `SUPABASE_URL` and `SUPABASE_ANON_KEY` already in `mobile/env.json`:
+
+```bash
+curl -X POST "<SUPABASE_URL>/auth/v1/token?grant_type=password" \
+  -H "apikey: <SUPABASE_ANON_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"<second-account-email>","password":"<second-account-password>"}'
+```
+
+Copy `access_token` from the response.
+
+3. Trigger SOS directly against the local backend with that token:
+
+```bash
+curl -X POST "http://127.0.0.1:5059/sos/trigger" \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sosSessionId": "<new-guid>",
+    "familyId": "<family-id>",
+    "latitude": 30.0444,
+    "longitude": 31.2357,
+    "accuracyMeters": 10,
+    "triggeredAtUtc": "2026-08-05T00:00:00Z"
+  }'
+```
+
+4. Confirm the push, deep-link, and delivery-status steps from 5.5 (steps 3–5) still hold.
+5. To check for a duplicate session instead of using a second phone (5.6 step 5), query it directly:
+
+```bash
+curl "http://127.0.0.1:5059/sos/<sosSessionId>" -H "Authorization: Bearer <access_token>"
+```
+
+This variant does not re-test the physical press-and-hold gesture — that is already covered by 03-02's own tests — but it exercises everything this verification actually cares about: server-side fan-out, FCM delivery, deep-link tap, and the delivery-status flip.
