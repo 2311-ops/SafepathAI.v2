@@ -18,21 +18,21 @@ StalenessBand stalenessFor(Duration age) {
 
   if (normalized < const Duration(minutes: 15)) {
     return StalenessBand(
-      opacity: 0.7,
+      opacity: 0.92,
       badgeText: 'Last seen ${normalized.inMinutes} min ago',
     );
   }
 
   if (normalized < const Duration(hours: 1)) {
     return StalenessBand(
-      opacity: 0.45,
+      opacity: 0.85,
       badgeText: 'Last seen ${normalized.inMinutes} min ago',
       badgeIsAmber: true,
     );
   }
 
   return StalenessBand(
-    opacity: 0.3,
+    opacity: 0.75,
     badgeText: 'Last seen ${_relativeAge(normalized)} ago',
     badgeIsAmber: true,
   );
