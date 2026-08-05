@@ -35,6 +35,7 @@ class _SosArmButtonState extends State<SosArmButton>
 
   int _lastAnnouncedSecond = 0;
   bool _completedFired = false;
+  bool _isPressed = false;
 
   @override
   void initState() {
@@ -59,6 +60,7 @@ class _SosArmButtonState extends State<SosArmButton>
     final wholeSeconds = (_controller.value * 3).floor();
     if (wholeSeconds > _lastAnnouncedSecond && wholeSeconds < 3) {
       _lastAnnouncedSecond = wholeSeconds;
+      if (mounted) setState(() {});
       SemanticsService.sendAnnouncement(
         View.of(context),
         'Holding, $wholeSeconds of 3 seconds',
@@ -70,6 +72,7 @@ class _SosArmButtonState extends State<SosArmButton>
   void _handleStatus(AnimationStatus status) {
     if (status == AnimationStatus.completed && !_completedFired) {
       _completedFired = true;
+      if (mounted) setState(() => _isPressed = false);
       HapticFeedback.heavyImpact();
       SemanticsService.sendAnnouncement(
         View.of(context),
@@ -85,8 +88,9 @@ class _SosArmButtonState extends State<SosArmButton>
   void _startArm() {
     _completedFired = false;
     _lastAnnouncedSecond = 0;
+    if (!_isPressed) setState(() => _isPressed = true);
     HapticFeedback.selectionClick();
-    _controller.forward(from: _controller.value);
+    _controller.forward(from: 0);
   }
 
   void _cancelArm() {
@@ -96,6 +100,7 @@ class _SosArmButtonState extends State<SosArmButton>
     // element would otherwise throw.
     if (!mounted) return;
     if (_controller.value >= 1.0) return;
+    if (_isPressed) setState(() => _isPressed = false);
     if (_reduceMotion) {
       _controller.value = 0;
     } else {
@@ -134,10 +139,11 @@ class _SosArmButtonState extends State<SosArmButton>
                 ),
               ),
             ),
-            GestureDetector(
-              onTapDown: (_) => _startArm(),
-              onTapUp: (_) => _cancelArm(),
-              onTapCancel: _cancelArm,
+            Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: (_) => _startArm(),
+              onPointerUp: (_) => _cancelArm(),
+              onPointerCancel: (_) => _cancelArm(),
               child: Container(
                 width: 72,
                 height: 72,
@@ -156,19 +162,13 @@ class _SosArmButtonState extends State<SosArmButton>
                     ),
                   ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.sos, color: Colors.white, size: 24),
-                    Text(
-                      'SOS',
-                      style: AppTypography.caption.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'SOS',
+                  style: AppTypography.title.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0,
+                  ),
                 ),
               ),
             ),

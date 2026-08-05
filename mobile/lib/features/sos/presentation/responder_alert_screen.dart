@@ -9,6 +9,7 @@ import '../../../shared_widgets/primary_button.dart';
 import '../../family/application/family_controller.dart';
 import '../../family/data/family_models.dart';
 import '../application/sos_responder_controller.dart';
+import '../data/sos_api.dart';
 import '../data/sos_models.dart';
 
 /// Guardian-side full-screen responder experience
@@ -34,16 +35,59 @@ class ResponderAlertScreen extends ConsumerStatefulWidget {
 
 class _ResponderAlertScreenState extends ConsumerState<ResponderAlertScreen> {
   bool _acknowledging = false;
+  String? _loadingSessionId;
+  Object? _loadError;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(_loadSessionIfMissing);
+  }
+
+  @override
+  void didUpdateWidget(covariant ResponderAlertScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sessionId != widget.sessionId) {
+      _loadError = null;
+      Future.microtask(_loadSessionIfMissing);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final responderState = ref.watch(sosResponderControllerProvider).value;
-    final session = responderState?.activeSession;
+    final activeSession = responderState?.activeSession;
+    final session = activeSession?.sosSessionId == widget.sessionId
+        ? activeSession
+        : null;
     final acknowledgedAtUtc = responderState?.acknowledgedAtUtc;
 
     if (session == null) {
-      return const Scaffold(
-        body: SafeArea(child: Center(child: CircularProgressIndicator())),
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: _loadError == null
+                ? const CircularProgressIndicator()
+                : Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          "Couldn't load this SOS.",
+                          textAlign: TextAlign.center,
+                          style: AppTypography.heading,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        PrimaryButton(
+                          label: 'Retry',
+                          onPressed: _loadSessionIfMissing,
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ),
       );
     }
 
@@ -68,6 +112,38 @@ class _ResponderAlertScreenState extends ConsumerState<ResponderAlertScreen> {
       await ref.read(sosResponderControllerProvider.notifier).acknowledge();
     } finally {
       if (mounted) setState(() => _acknowledging = false);
+    }
+  }
+
+  Future<void> _loadSessionIfMissing() async {
+    final current = ref
+        .read(sosResponderControllerProvider)
+        .value
+        ?.activeSession;
+    if (current?.sosSessionId == widget.sessionId) return;
+    if (_loadingSessionId == widget.sessionId) return;
+
+    setState(() {
+      _loadingSessionId = widget.sessionId;
+      _loadError = null;
+    });
+
+    try {
+      final session = await ref
+          .read(sosApiProvider)
+          .getSession(widget.sessionId);
+      if (!mounted || _loadingSessionId != widget.sessionId) return;
+      ref.read(sosResponderControllerProvider.notifier).showSession(session);
+      setState(() {
+        _loadingSessionId = null;
+        _loadError = null;
+      });
+    } catch (error) {
+      if (!mounted || _loadingSessionId != widget.sessionId) return;
+      setState(() {
+        _loadingSessionId = null;
+        _loadError = error;
+      });
     }
   }
 }

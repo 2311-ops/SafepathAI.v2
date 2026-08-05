@@ -130,6 +130,9 @@ void main() {
   testWidgets('renders at the locked geometry', (tester) async {
     await tester.pumpWidget(_wrapButton(onArmComplete: () {}));
 
+    expect(find.text('SOS'), findsOneWidget);
+    expect(find.byIcon(Icons.sos), findsNothing);
+
     final sizedBox = tester.widget<SizedBox>(
       find
           .descendant(
@@ -187,6 +190,17 @@ void main() {
     await tester.pump(const Duration(milliseconds: 2000));
     await gesture.up();
     await tester.pump(const Duration(milliseconds: 500));
+
+    expect(armCount, 0);
+  });
+
+  testWidgets('quick tap never completes after release', (tester) async {
+    var armCount = 0;
+    await tester.pumpWidget(_wrapButton(onArmComplete: () => armCount++));
+
+    await tester.tap(find.byType(SosArmButton));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 3500));
 
     expect(armCount, 0);
   });
@@ -259,13 +273,24 @@ void main() {
 
     expect(find.text('No circle yet'), findsOneWidget);
 
-    // The button's raised, negative-offset Positioned footprint sits above
-    // its nav-bar Stack's own box, which trips the tap() finder's simplified
-    // pre-check even though the real hit test (and this test's outcome)
-    // resolves correctly — silence that heuristic warning.
-    await tester.tap(find.byType(SosArmButton), warnIfMissed: false);
+    await tester.tap(find.byType(SosArmButton));
     await tester.pump();
 
+    expect(find.text('No circle yet'), findsOneWidget);
+  });
+
+  testWidgets('system back returns a secondary tab to the map', (tester) async {
+    await tester.pumpWidget(_wrapMainShell());
+    await tester.pump();
+
+    await tester.tap(find.text('Insights'));
+    await tester.pump();
+    expect(find.text('Insights are coming soon'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+
+    expect(find.text('Insights are coming soon'), findsNothing);
     expect(find.text('No circle yet'), findsOneWidget);
   });
 }

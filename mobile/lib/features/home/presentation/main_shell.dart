@@ -53,72 +53,80 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      body: IndexedStack(
-        index: _index,
-        children: const [
-          LiveMapScreen(),
-          HistoryTimelineScreen(),
-          _PlainTabPlaceholder(
-            icon: Icons.insights,
-            title: 'Insights',
-            body: 'Insights are coming soon',
-          ),
-          PrivacyCenterScreen(),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 104,
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.bottomCenter,
-            children: [
-              Container(
-                height: 76,
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(22),
-                  ),
-                  border: const Border(
-                    top: BorderSide(color: AppColors.hairline),
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x160C3A3F),
-                      blurRadius: 22,
-                      offset: Offset(0, -8),
+    return PopScope(
+      canPop: _index == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop || _index == 0) return;
+        setState(() => _index = 0);
+      },
+      child: Scaffold(
+        extendBody: true,
+        body: IndexedStack(
+          index: _index,
+          children: const [
+            LiveMapScreen(),
+            HistoryTimelineScreen(),
+            _PlainTabPlaceholder(
+              icon: Icons.insights,
+              title: 'Insights',
+              body: 'Insights are coming soon',
+            ),
+            PrivacyCenterScreen(),
+          ],
+        ),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 124,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.bottomCenter,
+              children: [
+                Container(
+                  height: 76,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(22),
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    for (var i = 0; i < 5; i++)
-                      Expanded(
-                        // The centre slot (index 2) stays a plain spacer with
-                        // no tap forwarding — SOS is an action, not a nav
-                        // destination. Tabs beyond it shift down by one to
-                        // fill the four navigable slots.
-                        child: i == 2
-                            ? const SizedBox(width: 76)
-                            : _NavItem(
-                                tab: _tabs[i < 2 ? i : i - 1],
-                                selected: _index == (i < 2 ? i : i - 1),
-                                onTap: () =>
-                                    setState(() => _index = i < 2 ? i : i - 1),
-                              ),
+                    border: const Border(
+                      top: BorderSide(color: AppColors.hairline),
+                    ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x160C3A3F),
+                        blurRadius: 22,
+                        offset: Offset(0, -8),
                       ),
-                  ],
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < 5; i++)
+                        Expanded(
+                          // The centre slot (index 2) stays a plain spacer with
+                          // no tap forwarding — SOS is an action, not a nav
+                          // destination. Tabs beyond it shift down by one to
+                          // fill the four navigable slots.
+                          child: i == 2
+                              ? const SizedBox(width: 76)
+                              : _NavItem(
+                                  tab: _tabs[i < 2 ? i : i - 1],
+                                  selected: _index == (i < 2 ? i : i - 1),
+                                  onTap: () => setState(
+                                    () => _index = i < 2 ? i : i - 1,
+                                  ),
+                                ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              Positioned(
-                top: -40,
-                child: SosArmButton(onArmComplete: _onArmComplete),
-              ),
-            ],
+                Positioned(
+                  top: 0,
+                  child: SosArmButton(onArmComplete: _onArmComplete),
+                ),
+              ],
+            ),
           ),
         ),
       ),

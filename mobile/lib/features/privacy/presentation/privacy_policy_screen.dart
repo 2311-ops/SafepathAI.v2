@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared_widgets/safepath_back_button.dart';
 import '../../../shared_widgets/safepath_card.dart';
 import '../data/privacy_api.dart';
 import '../data/privacy_models.dart';
@@ -29,7 +30,10 @@ class _PrivacyPolicyScreenState extends ConsumerState<PrivacyPolicyScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.appBg,
-      appBar: AppBar(title: const Text('Privacy policy')),
+      appBar: AppBar(
+        leading: const SafePathBackButton(),
+        title: const Text('Privacy policy'),
+      ),
       body: SafeArea(
         child: FutureBuilder<PrivacyPolicy>(
           future: _policy,
@@ -38,7 +42,9 @@ class _PrivacyPolicyScreenState extends ConsumerState<PrivacyPolicyScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snapshot.hasError || !snapshot.hasData) {
-              return const Center(child: Text('Privacy policy is unavailable.'));
+              return const Center(
+                child: Text('Privacy policy is unavailable.'),
+              );
             }
             final policy = snapshot.data!;
             return ListView(

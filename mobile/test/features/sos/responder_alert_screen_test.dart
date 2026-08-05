@@ -103,6 +103,21 @@ void main() {
     expect(find.text('Call sender'), findsOneWidget);
   });
 
+  testWidgets('loads the session when opened from a notification tap', (
+    tester,
+  ) async {
+    final sosApi = FakeSosApi()
+      ..getSessionResponseBuilder = (_) => _incomingSession();
+
+    await tester.pumpWidget(
+      _wrap(initialState: const SosResponderState(), sosApi: sosApi),
+    );
+    await tester.pumpAndSettle();
+
+    expect(sosApi.getSessionCallCount, 1);
+    expect(find.text('Ana triggered SOS'), findsOneWidget);
+  });
+
   testWidgets('shows no mark-resolved control', (tester) async {
     await tester.pumpWidget(
       _wrap(

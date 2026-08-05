@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared_widgets/primary_button.dart';
+import '../../../shared_widgets/safepath_back_button.dart';
 import '../../../shared_widgets/safepath_card.dart';
 import '../../../shared_widgets/safepath_text_field.dart';
 import '../application/emergency_contacts_controller.dart';
@@ -20,8 +21,94 @@ String? _validateContactName(String? value) {
 String? _validateContactPhone(String? value) {
   final trimmed = (value ?? '').trim();
   if (trimmed.isEmpty) return 'Enter a phone number';
-  if (trimmed.length < 4) return "That number's too short";
+  final digits = trimmed.replaceAll(RegExp(r'\D'), '');
+  if (digits.length < 4) return "That number's too short";
   return null;
+}
+
+class _CountryDialCode {
+  const _CountryDialCode({
+    required this.name,
+    required this.region,
+    required this.dialCode,
+  });
+
+  final String name;
+  final String region;
+  final String dialCode;
+
+  String get label => '$name ($dialCode)';
+}
+
+const _egyptDialCode = _CountryDialCode(
+  name: 'Egypt',
+  region: 'EG',
+  dialCode: '+20',
+);
+
+const _countryDialCodes = [
+  _egyptDialCode,
+  _CountryDialCode(name: 'United States', region: 'US', dialCode: '+1'),
+  _CountryDialCode(name: 'Canada', region: 'CA', dialCode: '+1'),
+  _CountryDialCode(name: 'United Kingdom', region: 'GB', dialCode: '+44'),
+  _CountryDialCode(name: 'Saudi Arabia', region: 'SA', dialCode: '+966'),
+  _CountryDialCode(
+    name: 'United Arab Emirates',
+    region: 'AE',
+    dialCode: '+971',
+  ),
+  _CountryDialCode(name: 'Kuwait', region: 'KW', dialCode: '+965'),
+  _CountryDialCode(name: 'Qatar', region: 'QA', dialCode: '+974'),
+  _CountryDialCode(name: 'Bahrain', region: 'BH', dialCode: '+973'),
+  _CountryDialCode(name: 'Oman', region: 'OM', dialCode: '+968'),
+  _CountryDialCode(name: 'Jordan', region: 'JO', dialCode: '+962'),
+  _CountryDialCode(name: 'Lebanon', region: 'LB', dialCode: '+961'),
+  _CountryDialCode(name: 'Morocco', region: 'MA', dialCode: '+212'),
+  _CountryDialCode(name: 'Algeria', region: 'DZ', dialCode: '+213'),
+  _CountryDialCode(name: 'Tunisia', region: 'TN', dialCode: '+216'),
+  _CountryDialCode(name: 'Turkey', region: 'TR', dialCode: '+90'),
+  _CountryDialCode(name: 'Germany', region: 'DE', dialCode: '+49'),
+  _CountryDialCode(name: 'France', region: 'FR', dialCode: '+33'),
+  _CountryDialCode(name: 'Italy', region: 'IT', dialCode: '+39'),
+  _CountryDialCode(name: 'Spain', region: 'ES', dialCode: '+34'),
+  _CountryDialCode(name: 'India', region: 'IN', dialCode: '+91'),
+  _CountryDialCode(name: 'Pakistan', region: 'PK', dialCode: '+92'),
+];
+
+_CountryDialCode _countryForRegion(String? region) {
+  final normalized = region?.toUpperCase();
+  return _countryDialCodes.firstWhere(
+    (country) => country.region == normalized,
+    orElse: () => _egyptDialCode,
+  );
+}
+
+_CountryDialCode _countryForPhoneNumber(
+  String phoneNumber, [
+  _CountryDialCode fallback = _egyptDialCode,
+]) {
+  final compact = phoneNumber.replaceAll(RegExp(r'\s+'), '');
+  final sorted = [..._countryDialCodes]
+    ..sort((a, b) => b.dialCode.length.compareTo(a.dialCode.length));
+  return sorted.firstWhere(
+    (country) => compact.startsWith(country.dialCode),
+    orElse: () => fallback,
+  );
+}
+
+String _composePhoneNumber(String rawPhoneNumber, _CountryDialCode country) {
+  final trimmed = rawPhoneNumber.trim();
+  if (trimmed.startsWith('+')) {
+    return trimmed.replaceAll(RegExp(r'\s+'), '');
+  }
+
+  final digits = trimmed.replaceAll(RegExp(r'\D'), '');
+  if (digits.startsWith('00') && digits.length > 2) {
+    return '+${digits.substring(2)}';
+  }
+
+  final nationalNumber = digits.replaceFirst(RegExp(r'^0+'), '');
+  return '${country.dialCode}$nationalNumber';
 }
 
 /// Add/edit/remove emergency contacts (D-30). An ordinary settings surface,
@@ -40,7 +127,16 @@ class _EmergencyContactsScreenState
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+  _CountryDialCode? _selectedCountry;
   bool _isSubmitting = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _selectedCountry ??= _countryForRegion(
+      Localizations.localeOf(context).countryCode,
+    );
+  }
 
   @override
   void dispose() {
@@ -49,18 +145,11 @@ class _EmergencyContactsScreenState
     super.dispose();
   }
 
-  /// A default-region hint for the server's phone-number normaliser, derived
-  /// from the device locale — the server remains the sole authority on
-  /// whether the resulting number is valid.
-  String? _defaultRegion() {
-    final countryCode = Localizations.localeOf(context).countryCode;
-    return (countryCode == null || countryCode.isEmpty) ? null : countryCode;
-  }
-
   Future<void> _addContact() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() => _isSubmitting = true);
+    final selectedCountry = _selectedCountry ?? _egyptDialCode;
     final contactsBefore = ref
         .read(emergencyContactsControllerProvider)
         .value
@@ -70,8 +159,8 @@ class _EmergencyContactsScreenState
         .read(emergencyContactsControllerProvider.notifier)
         .add(
           _nameController.text.trim(),
-          _phoneController.text.trim(),
-          region: _defaultRegion(),
+          _composePhoneNumber(_phoneController.text, selectedCountry),
+          region: selectedCountry.region,
         );
     if (!mounted) return;
     setState(() => _isSubmitting = false);
@@ -88,10 +177,16 @@ class _EmergencyContactsScreenState
     // and disposes them itself once the framework unmounts the dialog route —
     // disposing them manually right after `showDialog` returns races the
     // dialog's own exit animation and can use-after-dispose the controller.
-    final result = await showDialog<({String name, String phoneNumber})>(
-      context: context,
-      builder: (_) => _EditContactDialog(contact: contact),
-    );
+    final result =
+        await showDialog<
+          ({String name, String phoneNumber, _CountryDialCode country})
+        >(
+          context: context,
+          builder: (_) => _EditContactDialog(
+            contact: contact,
+            initialCountry: _selectedCountry ?? _egyptDialCode,
+          ),
+        );
     if (result == null) return;
 
     await ref
@@ -99,8 +194,8 @@ class _EmergencyContactsScreenState
         .updateContact(
           contact.id,
           result.name,
-          result.phoneNumber,
-          region: _defaultRegion(),
+          _composePhoneNumber(result.phoneNumber, result.country),
+          region: result.country.region,
         );
   }
 
@@ -122,7 +217,10 @@ class _EmergencyContactsScreenState
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text(
               'Remove',
-              style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: AppColors.ink,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -143,7 +241,10 @@ class _EmergencyContactsScreenState
 
     return Scaffold(
       backgroundColor: AppColors.appBg,
-      appBar: AppBar(title: const Text('Emergency Contacts')),
+      appBar: AppBar(
+        leading: const SafePathBackButton(),
+        title: const Text('Emergency Contacts'),
+      ),
       body: SafeArea(
         child: asyncState.isLoading && contacts.isEmpty && !asyncState.hasValue
             ? const Center(child: CircularProgressIndicator())
@@ -172,6 +273,9 @@ class _EmergencyContactsScreenState
                     formKey: _formKey,
                     nameController: _nameController,
                     phoneController: _phoneController,
+                    selectedCountry: _selectedCountry ?? _egyptDialCode,
+                    onCountryChanged: (country) =>
+                        setState(() => _selectedCountry = country),
                     isSubmitting: _isSubmitting,
                     error: state.error,
                     onSubmit: _addContact,
@@ -188,9 +292,13 @@ class _EmergencyContactsScreenState
 /// this State (and its controllers) only after the dialog has fully
 /// unmounted, avoiding a use-after-dispose race.
 class _EditContactDialog extends StatefulWidget {
-  const _EditContactDialog({required this.contact});
+  const _EditContactDialog({
+    required this.contact,
+    required this.initialCountry,
+  });
 
   final EmergencyContact contact;
+  final _CountryDialCode initialCountry;
 
   @override
   State<_EditContactDialog> createState() => _EditContactDialogState();
@@ -204,6 +312,10 @@ class _EditContactDialogState extends State<_EditContactDialog> {
     text: widget.contact.phoneNumberE164,
   );
   final _formKey = GlobalKey<FormState>();
+  late _CountryDialCode _selectedCountry = _countryForPhoneNumber(
+    widget.contact.phoneNumberE164,
+    widget.initialCountry,
+  );
 
   @override
   void dispose() {
@@ -217,6 +329,7 @@ class _EditContactDialogState extends State<_EditContactDialog> {
     Navigator.of(context).pop((
       name: _nameController.text.trim(),
       phoneNumber: _phoneController.text.trim(),
+      country: _selectedCountry,
     ));
   }
 
@@ -235,11 +348,11 @@ class _EditContactDialogState extends State<_EditContactDialog> {
               validator: _validateContactName,
             ),
             const SizedBox(height: AppSpacing.md),
-            SafePathTextField(
-              label: 'Phone number',
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              validator: _validateContactPhone,
+            _PhoneInputGroup(
+              selectedCountry: _selectedCountry,
+              onCountryChanged: (country) =>
+                  setState(() => _selectedCountry = country),
+              phoneController: _phoneController,
             ),
           ],
         ),
@@ -327,6 +440,8 @@ class _AddContactCard extends StatelessWidget {
     required this.formKey,
     required this.nameController,
     required this.phoneController,
+    required this.selectedCountry,
+    required this.onCountryChanged,
     required this.isSubmitting,
     required this.error,
     required this.onSubmit,
@@ -335,6 +450,8 @@ class _AddContactCard extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController nameController;
   final TextEditingController phoneController;
+  final _CountryDialCode selectedCountry;
+  final ValueChanged<_CountryDialCode> onCountryChanged;
   final bool isSubmitting;
   final String? error;
   final VoidCallback onSubmit;
@@ -356,11 +473,10 @@ class _AddContactCard extends StatelessWidget {
               validator: _validateContactName,
             ),
             const SizedBox(height: AppSpacing.md),
-            SafePathTextField(
-              label: 'Phone number',
-              controller: phoneController,
-              keyboardType: TextInputType.phone,
-              validator: _validateContactPhone,
+            _PhoneInputGroup(
+              selectedCountry: selectedCountry,
+              onCountryChanged: onCountryChanged,
+              phoneController: phoneController,
             ),
             if (error != null) ...[
               const SizedBox(height: AppSpacing.md),
@@ -374,6 +490,53 @@ class _AddContactCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PhoneInputGroup extends StatelessWidget {
+  const _PhoneInputGroup({
+    required this.selectedCountry,
+    required this.onCountryChanged,
+    required this.phoneController,
+  });
+
+  final _CountryDialCode selectedCountry;
+  final ValueChanged<_CountryDialCode> onCountryChanged;
+  final TextEditingController phoneController;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        DropdownButtonFormField<_CountryDialCode>(
+          key: const ValueKey('country-code-field'),
+          initialValue: selectedCountry,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Country code',
+            prefixIcon: Icon(Icons.public_outlined, size: 20),
+          ),
+          items: [
+            for (final country in _countryDialCodes)
+              DropdownMenuItem(value: country, child: Text(country.label)),
+          ],
+          onChanged: (country) {
+            if (country == null) return;
+            onCountryChanged(country);
+          },
+        ),
+        const SizedBox(height: AppSpacing.md),
+        SafePathTextField(
+          label: 'Phone number',
+          controller: phoneController,
+          keyboardType: TextInputType.phone,
+          textInputAction: TextInputAction.done,
+          helperText:
+              'Use a local number, or paste a full number starting with +.',
+          validator: _validateContactPhone,
+        ),
+      ],
     );
   }
 }

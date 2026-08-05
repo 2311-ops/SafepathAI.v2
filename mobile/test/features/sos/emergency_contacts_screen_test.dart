@@ -90,6 +90,28 @@ void main() {
     expect(api.addCalls.single.phoneNumber, '+15551234567');
   });
 
+  testWidgets('adds a local number with the selected country code', (
+    tester,
+  ) async {
+    final api = FakeEmergencyContactApi();
+
+    await _pumpScreen(tester, api);
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'Mona');
+    await tester.tap(find.byKey(const ValueKey('country-code-field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Egypt (+20)').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(1), '01113133589');
+    await tester.tap(find.text('Add contact'));
+    await tester.pumpAndSettle();
+
+    expect(api.addCalls, hasLength(1));
+    expect(api.addCalls.single.name, 'Mona');
+    expect(api.addCalls.single.phoneNumber, '+201113133589');
+    expect(api.addCalls.single.region, 'EG');
+  });
+
   testWidgets("surfaces the server's rejection of an invalid number", (
     tester,
   ) async {

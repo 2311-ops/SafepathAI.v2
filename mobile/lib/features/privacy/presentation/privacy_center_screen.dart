@@ -259,9 +259,9 @@ class PrivacyCenterScreen extends ConsumerWidget {
                 isDeleting: privacyState.isDeleting,
                 onExport: () => _exportMyData(context, ref),
                 onDelete: () => _confirmDelete(context, ref),
-                onPolicy: () => context.go('/privacy/policy'),
+                onPolicy: () => context.push('/privacy/policy'),
                 onEmergencyContacts: () =>
-                    context.go('/settings/emergency-contacts'),
+                    context.push('/settings/emergency-contacts'),
               ),
             ],
           ),
@@ -595,4 +595,3 @@ class _PrivacyMessage extends StatelessWidget {
     );
   }
 }
-

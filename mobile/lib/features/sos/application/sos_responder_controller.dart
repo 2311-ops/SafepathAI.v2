@@ -87,6 +87,13 @@ class SosResponderController extends AsyncNotifier<SosResponderState> {
     _navigate = navigate;
   }
 
+  /// Seeds the responder state from an authenticated fetch, used when the
+  /// guardian opens an SOS notification before the SignalR event has hydrated
+  /// this controller in memory.
+  void showSession(SosSession session) {
+    state = AsyncData(_current.copyWith(activeSession: session));
+  }
+
   SosResponderState get _current => state.value ?? const SosResponderState();
 
   Future<void> _bootstrap() async {

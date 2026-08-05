@@ -9,18 +9,20 @@ void main() {
   group('PushService', () {
     late FakePushMessagingClient messaging;
     late FakeDeviceTokenApi deviceTokenApi;
+    late FakeLocalNotificationPresenter notifier;
     late List<String> navigateCalls;
     late PushService service;
 
     setUp(() {
       messaging = FakePushMessagingClient();
       deviceTokenApi = FakeDeviceTokenApi();
+      notifier = FakeLocalNotificationPresenter();
       navigateCalls = [];
       service = PushService(
         messaging: messaging,
         deviceTokenApi: deviceTokenApi,
         navigate: (sessionId) => navigateCalls.add(sessionId),
-        notifier: FakeLocalNotificationPresenter(),
+        notifier: notifier,
         platform: 'android',
       );
     });
@@ -90,7 +92,9 @@ void main() {
       await service.initialize();
       await service.onAuthStateChanged(true);
 
-      messaging.emitMessageOpenedApp(const PushMessageData(data: {'type': 'sos'}));
+      messaging.emitMessageOpenedApp(
+        const PushMessageData(data: {'type': 'sos'}),
+      );
       await Future<void>.delayed(Duration.zero);
 
       expect(navigateCalls, isEmpty);
@@ -111,6 +115,29 @@ void main() {
 
       expect(deviceTokenApi.confirmPushReceiptCalls, ['session-xyz']);
       expect(navigateCalls, isEmpty);
+    });
+
+    test('routes a foreground local SOS notification tap', () async {
+      await service.initialize();
+      await service.onAuthStateChanged(true);
+
+      messaging.emitMessage(
+        const PushMessageData(
+          data: {'type': 'sos', 'sosSessionId': 'session-xyz'},
+          title: 'SafePath SOS',
+          body: 'Alex needs help.',
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      notifier.tapLast();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(navigateCalls, ['session-xyz']);
+      expect(deviceTokenApi.confirmPushReceiptCalls, [
+        'session-xyz',
+        'session-xyz',
+      ]);
     });
   });
 }
@@ -164,14 +191,32 @@ class FakePushMessagingClient implements PushMessagingClient {
 class FakeLocalNotificationPresenter implements LocalNotificationPresenter {
   int initializeCallCount = 0;
   final List<({String title, String body})> shownCalls = [];
+  void Function(String payload)? _onTap;
 
   @override
-  Future<void> initialize() async {
+  Future<void> initialize({
+    required void Function(String payload) onTap,
+  }) async {
     initializeCallCount++;
+    _onTap = onTap;
   }
 
   @override
-  Future<void> show({required String title, required String body}) async {
+  Future<void> show({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
     shownCalls.add((title: title, body: body));
+    _lastPayload = payload;
+  }
+
+  String? _lastPayload;
+
+  void tapLast() {
+    final payload = _lastPayload;
+    if (payload != null) {
+      _onTap?.call(payload);
+    }
   }
 }

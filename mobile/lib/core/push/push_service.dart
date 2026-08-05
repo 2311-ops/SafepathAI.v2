@@ -83,15 +83,14 @@ class FirebaseMessagingClient implements PushMessagingClient {
       fcm.FirebaseMessaging.instance.onTokenRefresh;
 
   @override
-  Stream<PushMessageData> get onMessage => fcm.FirebaseMessaging.onMessage.map(
-    PushMessageData.fromRemoteMessage,
-  );
+  Stream<PushMessageData> get onMessage =>
+      fcm.FirebaseMessaging.onMessage.map(PushMessageData.fromRemoteMessage);
 
   @override
-  Stream<PushMessageData> get onMessageOpenedApp =>
-      fcm.FirebaseMessaging.onMessageOpenedApp.map(
-        PushMessageData.fromRemoteMessage,
-      );
+  Stream<PushMessageData> get onMessageOpenedApp => fcm
+      .FirebaseMessaging
+      .onMessageOpenedApp
+      .map(PushMessageData.fromRemoteMessage);
 
   @override
   Future<PushMessageData?> getInitialMessage() async {
@@ -117,8 +116,12 @@ Future<void> firebasePushBackgroundHandler(fcm.RemoteMessage message) async {}
 /// gives a backgrounded guardian (belt-and-braces alongside the OS's own
 /// FCM-notification-block rendering).
 abstract class LocalNotificationPresenter {
-  Future<void> initialize();
-  Future<void> show({required String title, required String body});
+  Future<void> initialize({required void Function(String payload) onTap});
+  Future<void> show({
+    required String title,
+    required String body,
+    String? payload,
+  });
 }
 
 class FlutterLocalNotificationPresenter implements LocalNotificationPresenter {
@@ -126,9 +129,13 @@ class FlutterLocalNotificationPresenter implements LocalNotificationPresenter {
     : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   final FlutterLocalNotificationsPlugin _plugin;
+  void Function(String payload)? _onTap;
 
   @override
-  Future<void> initialize() async {
+  Future<void> initialize({
+    required void Function(String payload) onTap,
+  }) async {
+    _onTap = onTap;
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
     );
@@ -138,6 +145,11 @@ class FlutterLocalNotificationPresenter implements LocalNotificationPresenter {
         android: androidSettings,
         iOS: iosSettings,
       ),
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload == null || payload.isEmpty) return;
+        _onTap?.call(payload);
+      },
     );
 
     const channel = AndroidNotificationChannel(
@@ -154,7 +166,11 @@ class FlutterLocalNotificationPresenter implements LocalNotificationPresenter {
   }
 
   @override
-  Future<void> show({required String title, required String body}) async {
+  Future<void> show({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
     await _plugin.show(
       id: DateTime.now().millisecondsSinceEpoch.remainder(1 << 31),
       title: title,
@@ -167,8 +183,11 @@ class FlutterLocalNotificationPresenter implements LocalNotificationPresenter {
           importance: Importance.max,
           priority: Priority.max,
         ),
-        iOS: DarwinNotificationDetails(interruptionLevel: InterruptionLevel.critical),
+        iOS: DarwinNotificationDetails(
+          interruptionLevel: InterruptionLevel.critical,
+        ),
       ),
+      payload: payload,
     );
   }
 }
@@ -215,7 +234,7 @@ class PushService {
     _initialized = true;
 
     await _messaging.requestPermission();
-    await _notifier?.initialize();
+    await _notifier?.initialize(onTap: _handleLocalNotificationTap);
 
     _onMessageSubscription = _messaging.onMessage.listen(_handleForeground);
     _onMessageOpenedAppSubscription = _messaging.onMessageOpenedApp.listen(
@@ -272,14 +291,15 @@ class PushService {
   void _handleForeground(PushMessageData message) {
     if (!_isSos(message)) return;
 
+    final sessionId = message.data['sosSessionId'];
     unawaited(
       _notifier?.show(
         title: message.title ?? 'SafePath SOS',
         body: message.body ?? 'A family member needs help.',
+        payload: sessionId,
       ),
     );
 
-    final sessionId = message.data['sosSessionId'];
     if (sessionId != null && sessionId.isNotEmpty) {
       unawaited(_deviceTokenApi.confirmPushReceipt(sessionId));
     }
@@ -295,10 +315,22 @@ class PushService {
     final sessionId = message.data['sosSessionId'];
     if (sessionId == null || sessionId.isEmpty) return;
 
+    _handleSosTap(sessionId);
+  }
+
+  bool _isSos(PushMessageData message) => message.data['type'] == sosPushMarker;
+
+  void _handleLocalNotificationTap(String sessionId) {
+    if (sessionId.isEmpty) return;
+    _handleSosTap(sessionId);
+  }
+
+  void _handleSosTap(String sessionId) {
     unawaited(_deviceTokenApi.confirmPushReceipt(sessionId));
+    _navigate(sessionId);
 
     if (_isAuthenticated) {
-      _navigate(sessionId);
+      _pendingSessionId = null;
     } else {
       // The tap arrived before auth settled (e.g. a fresh cold start still
       // resolving the Supabase session) — replay it once
@@ -306,8 +338,6 @@ class PushService {
       _pendingSessionId = sessionId;
     }
   }
-
-  bool _isSos(PushMessageData message) => message.data['type'] == sosPushMarker;
 
   void dispose() {
     unawaited(_tokenRefreshSubscription?.cancel());
@@ -346,17 +376,20 @@ class PushServiceController extends Notifier<void> {
 
     unawaited(
       service.initialize().catchError((Object error, StackTrace stack) {
-        debugPrint('PushService.initialize failed (Firebase not configured yet?): $error');
+        debugPrint(
+          'PushService.initialize failed (Firebase not configured yet?): $error',
+        );
       }),
     );
 
     ref.listen<AuthState>(authControllerProvider, (previous, next) {
       unawaited(
-        service
-            .onAuthStateChanged(next is AuthAuthenticated)
-            .catchError((Object error, StackTrace stack) {
-              debugPrint('PushService.onAuthStateChanged failed: $error');
-            }),
+        service.onAuthStateChanged(next is AuthAuthenticated).catchError((
+          Object error,
+          StackTrace stack,
+        ) {
+          debugPrint('PushService.onAuthStateChanged failed: $error');
+        }),
       );
     }, fireImmediately: true);
 
@@ -364,6 +397,5 @@ class PushServiceController extends Notifier<void> {
   }
 }
 
-final pushServiceControllerProvider = NotifierProvider<PushServiceController, void>(
-  PushServiceController.new,
-);
+final pushServiceControllerProvider =
+    NotifierProvider<PushServiceController, void>(PushServiceController.new);
