@@ -279,6 +279,91 @@ void main() {
     expect(find.text('No circle yet'), findsOneWidget);
   });
 
+  testWidgets('shows a seconds-remaining countdown while held', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_wrapButton(onArmComplete: () {}));
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(SosArmButton)),
+    );
+    await tester.pump();
+    expect(find.text('3'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 1000));
+    expect(find.text('2'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 1000));
+    expect(find.text('1'), findsOneWidget);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('returns to the SOS label after release', (tester) async {
+    await tester.pumpWidget(_wrapButton(onArmComplete: () {}));
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(SosArmButton)),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1500));
+    await gesture.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('SOS'), findsOneWidget);
+    expect(find.text('1'), findsNothing);
+    expect(find.text('2'), findsNothing);
+    expect(find.text('3'), findsNothing);
+  });
+
+  testWidgets('paints the arm ring above the disc', (tester) async {
+    await tester.pumpWidget(_wrapButton(onArmComplete: () {}));
+
+    final stacks = tester.widgetList<Stack>(
+      find.descendant(of: find.byType(SosArmButton), matching: find.byType(Stack)),
+    );
+    final armStack = stacks.firstWhere(
+      (stack) => stack.children.length == 2,
+    );
+    expect(armStack.children.last, isA<IgnorePointer>());
+
+    expect(
+      find.descendant(
+        of: find.byType(SosArmButton),
+        matching: find.byType(CustomPaint),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows the countdown under reduced motion', (tester) async {
+    var armCount = 0;
+    await tester.pumpWidget(
+      _wrapButton(onArmComplete: () => armCount++, reduceMotion: true),
+    );
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(SosArmButton)),
+    );
+    await tester.pump();
+    expect(find.text('3'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 1000));
+    expect(find.text('2'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 1000));
+    expect(find.text('1'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 1000));
+    await tester.pump(const Duration(milliseconds: 1));
+
+    expect(armCount, 1);
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('system back returns a secondary tab to the map', (tester) async {
     await tester.pumpWidget(_wrapMainShell());
     await tester.pump();

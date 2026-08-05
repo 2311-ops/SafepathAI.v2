@@ -27,10 +27,18 @@ class SosArmButton extends StatefulWidget {
 }
 
 class _SosArmButtonState extends State<SosArmButton>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 3000),
+  );
+
+  /// Decorative press-in/settle animation — transform-only, never gates the
+  /// 3000ms arm timing or `onArmComplete` dispatch.
+  late final AnimationController _pressController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 140),
+    reverseDuration: const Duration(milliseconds: 220),
   );
 
   int _lastAnnouncedSecond = 0;
@@ -49,10 +57,16 @@ class _SosArmButtonState extends State<SosArmButton>
     _controller.removeStatusListener(_handleStatus);
     _controller.removeListener(_handleProgress);
     _controller.dispose();
+    _pressController.dispose();
     super.dispose();
   }
 
   bool get _reduceMotion => MediaQuery.of(context).disableAnimations;
+
+  /// Whole seconds remaining before the alert fires, derived from the same
+  /// floor `_handleProgress` already uses — a `ceil` would flicker exactly on
+  /// the 1s/2s boundaries.
+  int get _secondsRemaining => (3 - (_controller.value * 3).floor()).clamp(1, 3);
 
   void _handleProgress() {
     // Throttled to once per whole second of hold — never per-frame, which
@@ -82,6 +96,7 @@ class _SosArmButtonState extends State<SosArmButton>
       // Do not await anything before firing — the hold completing and the
       // arm-complete callback must run in the same frame (D-02).
       widget.onArmComplete();
+      _pressController.reverse();
     }
   }
 
@@ -91,6 +106,7 @@ class _SosArmButtonState extends State<SosArmButton>
     if (!_isPressed) setState(() => _isPressed = true);
     HapticFeedback.selectionClick();
     _controller.forward(from: 0);
+    _pressController.forward();
   }
 
   void _cancelArm() {
@@ -101,6 +117,7 @@ class _SosArmButtonState extends State<SosArmButton>
     if (!mounted) return;
     if (_controller.value >= 1.0) return;
     if (_isPressed) setState(() => _isPressed = false);
+    _pressController.reverse();
     if (_reduceMotion) {
       _controller.value = 0;
     } else {
@@ -127,47 +144,87 @@ class _SosArmButtonState extends State<SosArmButton>
         child: Stack(
           alignment: Alignment.center,
           children: [
-            RepaintBoundary(
-              child: AnimatedBuilder(
-                animation: _controller,
-                builder: (context, _) => CustomPaint(
-                  size: const Size(72, 72),
-                  painter: SosArmRingPainter(
-                    progress: _controller.value,
-                    reduceMotion: reduceMotion,
+            AnimatedBuilder(
+              animation: Listenable.merge([_pressController, _controller]),
+              child: Listener(
+                behavior: HitTestBehavior.opaque,
+                onPointerDown: (_) => _startArm(),
+                onPointerUp: (_) => _cancelArm(),
+                onPointerCancel: (_) => _cancelArm(),
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: AppColors.sosRed,
+                    shape: BoxShape.circle,
+                    border: Border.fromBorderSide(
+                      BorderSide(color: Colors.white, width: 4),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x73DE3B40),
+                        blurRadius: 22,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: reduceMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 180),
+                    switchInCurve: Curves.easeOut,
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(
+                        scale: Tween<double>(
+                          begin: 0.8,
+                          end: 1.0,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    ),
+                    child: _isPressed
+                        ? Text(
+                            '$_secondsRemaining',
+                            key: ValueKey('countdown-$_secondsRemaining'),
+                            style: AppTypography.code.copyWith(
+                              color: Colors.white,
+                              letterSpacing: 0,
+                            ),
+                          )
+                        : Text(
+                            'SOS',
+                            key: const ValueKey('sos-label'),
+                            style: AppTypography.title.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0,
+                            ),
+                          ),
                   ),
                 ),
               ),
+              builder: (context, child) {
+                final pressCurved = reduceMotion
+                    ? 0.0
+                    : Curves.easeOutCubic.transform(_pressController.value);
+                final scale = reduceMotion
+                    ? 1.0
+                    : 1.0 - 0.06 * pressCurved - 0.04 * _controller.value;
+                return Transform.scale(scale: scale, child: child);
+              },
             ),
-            Listener(
-              behavior: HitTestBehavior.opaque,
-              onPointerDown: (_) => _startArm(),
-              onPointerUp: (_) => _cancelArm(),
-              onPointerCancel: (_) => _cancelArm(),
-              child: Container(
-                width: 72,
-                height: 72,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  color: AppColors.sosRed,
-                  shape: BoxShape.circle,
-                  border: Border.fromBorderSide(
-                    BorderSide(color: Colors.white, width: 4),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x73DE3B40),
-                      blurRadius: 22,
-                      offset: Offset(0, 10),
+            IgnorePointer(
+              child: RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) => CustomPaint(
+                    size: const Size(72, 72),
+                    painter: SosArmRingPainter(
+                      progress: _controller.value,
+                      reduceMotion: reduceMotion,
                     ),
-                  ],
-                ),
-                child: Text(
-                  'SOS',
-                  style: AppTypography.title.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0,
                   ),
                 ),
               ),

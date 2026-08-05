@@ -38,13 +38,13 @@ class SosArmRingPainter extends CustomPainter {
       return;
     }
 
-    _paintTrack(canvas, center);
+    _paintTrack(canvas, center, clampedProgress);
     _paintArc(canvas, center, clampedProgress);
   }
 
-  void _paintTrack(Canvas canvas, Offset center) {
+  void _paintTrack(Canvas canvas, Offset center, double progress) {
     final trackPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.35)
+      ..color = Colors.white.withValues(alpha: 0.35 + 0.15 * progress)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
     canvas.drawCircle(center, _ringRadius, trackPaint);
@@ -61,10 +61,21 @@ class SosArmRingPainter extends CustomPainter {
     final arcPaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
+      ..strokeWidth = 4.0 + 1.5 * progress
       ..strokeCap = StrokeCap.round;
     final rect = Rect.fromCircle(center: center, radius: _ringRadius);
     canvas.drawArc(rect, -pi / 2, 2 * pi * progress, false, arcPaint);
+
+    if (progress > 0.02) {
+      final headAngle = -pi / 2 + 2 * pi * progress;
+      final headCenter =
+          center + Offset(cos(headAngle), sin(headAngle)) * _ringRadius;
+      final headPaint = Paint()
+        ..color = color
+        ..style = PaintingStyle.fill
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+      canvas.drawCircle(headCenter, 3.5 + 1.5 * progress, headPaint);
+    }
   }
 
   void _paintTicks(Canvas canvas, Offset center, double progress) {
