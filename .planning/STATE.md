@@ -202,6 +202,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260717-pwh | Rail-card tap on the Live Map recenters the map instead of opening the member sheet | 2026-07-17 | 4ddb746 | [260717-pwh-on-the-live-map-screen-tapping-a-family-](./quick/260717-pwh-on-the-live-map-screen-tapping-a-family-/) |
 | 260720-3u4 | Add Semantics labels to MemberMapPin for screen-reader support | 2026-07-24 | 7246356 | [260720-3u4-add-semantics-labels-to-membermappin-so-](./quick/260720-3u4-add-semantics-labels-to-membermappin-so-/) |
 | 260802-w1e | Codemagic CI config for iOS TestFlight/Android APK + Firebase/APNs/ASC external-setup runbook | 2026-08-02 | 92abded, 20fd982 | [260802-w1e-codemagic-ci-config-and-firebase-apns-se](./quick/260802-w1e-codemagic-ci-config-and-firebase-apns-se/) |
+| 6 | Enable core library desugaring required by flutter_local_notifications (real Android build failure found during device testing) | 2026-08-05 | 2aee4de | — |
 
 ## Deferred Items
 
