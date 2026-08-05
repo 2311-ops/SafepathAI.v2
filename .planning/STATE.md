@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 Phase: 03 (sos-fast-path) — EXECUTING
 Plan: 8 of 9
 Status: Ready to execute
-Last activity: 2026-08-05 — Completed quick task 260805-s33: SOS arm button press animation + visible ring + 3-2-1 countdown
+Last activity: 2026-08-05 — Completed quick task 260805-t3h: Raised Live Map family pin staleness opacity floor (was fading to 30%, now floors at 75%)
 
 Progress: [██████████] 100%
 
@@ -204,6 +204,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260802-w1e | Codemagic CI config for iOS TestFlight/Android APK + Firebase/APNs/ASC external-setup runbook | 2026-08-02 | 92abded, 20fd982 | [260802-w1e-codemagic-ci-config-and-firebase-apns-se](./quick/260802-w1e-codemagic-ci-config-and-firebase-apns-se/) |
 | 6 | Enable core library desugaring required by flutter_local_notifications (real Android build failure found during device testing) | 2026-08-05 | 2aee4de | — |
 | 260805-s33 | Fixed SOS arm ring paint-order (was fully hidden), added press-scale animation and a live 3-2-1 countdown label | 2026-08-05 | 10cb95f | [260805-s33-add-a-cool-smooth-press-animation-to-the](./quick/260805-s33-add-a-cool-smooth-press-animation-to-the/) |
+| 260805-t3h | Raised Live Map family pin staleness opacity floor (0.7/0.45/0.3 -> 0.92/0.85/0.75) so pins stay legible over map tiles | 2026-08-05 | 880aad6 | [260805-t3h-fix-the-opacity-of-family-member-map-pin](./quick/260805-t3h-fix-the-opacity-of-family-member-map-pin/) |
 
 ## Deferred Items
 
