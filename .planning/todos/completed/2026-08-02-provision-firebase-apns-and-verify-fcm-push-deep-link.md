@@ -25,3 +25,14 @@ Follow the 10-step verification script in `.planning/phases/03-sos-fast-path/03-
 5. With two devices (or emulator + real device): sign in as a Guardian on device B, background/terminate it, trigger SOS from device A, confirm the heads-up notification arrives and tapping it deep-links into the Responder screen from BOTH backgrounded and terminated states, and confirm device A's delivery chip for device B moves Queued → Delivered.
 
 Once verified (or if it fails), report back so a continuation agent can write `03-06-SUMMARY.md` and close the plan (STATE/ROADMAP/REQUIREMENTS updates).
+
+## Resolution (2026-08-05)
+
+Android half closed. Firebase provisioned; real FCM push confirmed delivered to a terminated
+Guardian device and deep-linked into `ResponderAlertScreen`; delivery status confirmed
+Queued -> Delivered -> Acknowledged via a direct `GET /sos/{id}` server read. Automated suites
+(`PushFanOutTests` 9/9, `push_service_test.dart` 8/8) re-confirmed green. See
+`.planning/phases/03-sos-fast-path/03-06-SUMMARY.md` for full evidence.
+
+**Not resolved:** iOS/APNs (no Apple Developer enrollment yet) and the D-32 multi-device case
+remain untested — do not treat NOTIF-03 as fully closed cross-platform.
