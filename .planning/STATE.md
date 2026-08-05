@@ -183,6 +183,8 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
+- [2026-08-05] Firebase provisioning (03-06 Task 3) is split: Firebase project `safepath-ai-c11bd` is created, Android + iOS apps registered, `google-services.json`/`GoogleService-Info.plist` placed and verified, backend `Firebase__ProjectId`/`Firebase__CredentialsPath` confirmed active (`FirebasePushSender`), and Supabase DB connectivity restored via the Session Pooler (IPv4 fix for the direct-connection host's IPv6-only DNS). Apple Developer Program enrollment / APNs auth key / iOS TestFlight path has **not** been started — do not pick this up until the user explicitly decides to pursue it. Next action is device testing: the Android-only FCM end-to-end SOS push verification (03-06 checkpoint) and the 03-07 airplane-mode offline SOS smoke test (03-07 D4) can both run in the same testing session since neither depends on Apple/iOS.
+
 Carried forward from research (see .planning/research/SUMMARY.md "Research Flags" and "Gaps to Address"):
 
 - Phase 3 (SOS): SMS-fallback provider choice (e.g. Twilio) needs a concrete decision during planning.
