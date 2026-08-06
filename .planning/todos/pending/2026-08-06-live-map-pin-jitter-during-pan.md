@@ -22,7 +22,21 @@ This is a related-but-distinct issue from two things already known/documented:
 - RESEARCH.md's Pitfall 4 (accepted, expected): reprojection lagging the basemap by ~1 frame during motion, settling correctly on `onCameraIdle`. A single consistent frame of lag reads as "trailing," not "vibrating" -- if what's being seen is genuinely a back-and-forth jitter rather than a one-directional lag, that points at the race above, not Pitfall 4.
 - The code review's WR-02 finding (advisory, not yet fixed): flagged the exact same "no in-flight guard on overlapping async calls" pattern for `_drawAnnotations()`, but explicitly did not check whether `_reprojectMarkers()` has the same structural gap. It does look structurally identical (no generation counter/token, no cancellation of a superseded call).
 
-## First steps (not yet done)
+## Status update (2026-08-06)
+
+Investigated via `/gsd-debug` in session `.planning/debug/map-pin-jitter-bad-location.md`
+(status: paused, mid-cycle-2). The original hypothesis below (out-of-order async
+`_reprojectMarkers()` replies) was tested and **falsified**: the entire async round-trip was
+deleted and projection made synchronous (commit `7d465a8`), and the jitter was still present
+on-device afterward. Root cause is still open — see the debug session file for the live
+candidate list (camera-data arrival lag, hybrid-composition pipeline mismatch, per-tick
+rebuild cost) and resume with `/gsd-debug continue map-pin-jitter-bad-location`.
+
+The companion "wrong location" bug reported alongside this one **is fixed and confirmed**
+(same commit) — a backend `ReportLocation` failure was discarding every GPS fix, there was no
+one-shot GPS read, and the camera never followed a corrected position after map creation.
+
+## First steps (not yet done) — superseded, see Status update above
 
 1. Confirm the visual symptom directly on-device (screen-record a slow, deliberate left-right pan) before changing code, to distinguish "one consistent frame of lag" (expected, Pitfall 4) from "position jumping backward/forward mid-pan" (the race hypothesis above).
 2. If it's the race: add a generation counter to `_reprojectMarkers()` (same pattern suggested for WR-02) so a newer call's result always wins and a superseded in-flight call's `setState` is dropped rather than applied.
