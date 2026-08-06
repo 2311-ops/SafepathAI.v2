@@ -19,6 +19,28 @@ String hexColor(Color color) {
   return '#${argb.toRadixString(16).padLeft(6, '0')}';
 }
 
+/// Converts a native screen-projection result (from `toScreenLocation`/
+/// `toScreenLocationBatch`) into the logical-pixel [Offset] that
+/// Positioned/Offset expect in the Flutter widget layer.
+///
+/// Confirmed via on-device testing that the plugin's native Android side
+/// returns coordinates in PHYSICAL pixels (raw View/Projection pixel space),
+/// not logical pixels - e.g. at devicePixelRatio 2.625 on a 1080x2400
+/// physical-pixel device, a marker at the exact camera-centre coordinate
+/// projected to `Point(540.75, 1200.9375)` (exactly half of 1080/2400, the
+/// physical centre) rather than the ~205.7/~457 logical centre. Left
+/// unconverted, every marker renders roughly `devicePixelRatio`x further
+/// right/down than its correct on-screen position - typically far enough to
+/// fall outside the enclosing Stack's default hard-edge clip and disappear
+/// entirely.
+@visibleForTesting
+Offset physicalToLogicalOffset(Point<num> point, double devicePixelRatio) {
+  return Offset(
+    point.x.toDouble() / devicePixelRatio,
+    point.y.toDouble() / devicePixelRatio,
+  );
+}
+
 /// An immutable camera-move intent: where the camera should go and at what
 /// zoom. Written by screens, forwarded to the native camera by [VectorMap],
 /// and read back by widget tests via [VectorMapController.lastCommand].
@@ -317,6 +339,17 @@ class _VectorMapState extends State<VectorMap> {
       return;
     }
 
+    // toScreenLocationBatch (and the singular toScreenLocation) return
+    // PHYSICAL pixel coordinates from the native side, but Positioned/Offset
+    // in the Flutter widget layer operate in LOGICAL pixels - confirmed by
+    // on-device testing (the raw returned x/y exactly matched half the
+    // device's physical screen dimensions, ~2.6x the logical centre at
+    // devicePixelRatio 2.625). Capture the ratio synchronously, before the
+    // await, while `context` is known valid - this method only ever runs
+    // while mounted, and awaiting first would make a post-await `context`
+    // read unsafe.
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+
     // A single batched screen-location call for every marker - never one
     // method-channel round trip per pin per frame. Explicit try/catch so a
     // platform-channel failure here is never silent (it would otherwise
@@ -341,9 +374,9 @@ class _VectorMapState extends State<VectorMap> {
 
     final positions = <String, Offset>{
       for (var i = 0; i < widget.markers.length; i++)
-        widget.markers[i].id: Offset(
-          points[i].x.toDouble(),
-          points[i].y.toDouble(),
+        widget.markers[i].id: physicalToLogicalOffset(
+          points[i],
+          devicePixelRatio,
         ),
     };
     setState(() => _screenPositions = positions);
