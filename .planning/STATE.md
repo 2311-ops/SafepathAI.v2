@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 Phase: 03 (sos-fast-path) — EXECUTING
 Plan: 7 of 9 complete — next: 03-08 (live-location streaming window)
 Status: Ready to plan/execute 03-08
-Last activity: 2026-08-05 — Completed quick task 260805-uke: proactive zero-SOS-recipient nudge in Privacy Center + Guardian-role SOS access audit (no gap found), device-verified on emulator.
+Last activity: 2026-08-06 — Completed quick task 260806-3zb: migrated Live Map + route sheet from flutter_map to maplibre_gl for OpenFreeMap Liberty vector tiles. Found and fixed 2 real on-device rendering bugs (hybrid-composition default, physical-vs-logical pixel units) across 3 verification rounds, plus 1 dispose-race blocker via code review. Status Needs Review — SOS responsiveness (the app's core non-negotiable) explicitly deferred to user confirmation, not yet done.
 
 Progress: [██████████] 100%
 
@@ -198,17 +198,18 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 
 ### Quick Tasks Completed
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260716-ue7 | Fix transparent person marker icon on live map | 2026-07-16 | 5cc9cd8 | [260716-ue7-fix-transparent-person-marker-icon-on-li](./quick/260716-ue7-fix-transparent-person-marker-icon-on-li/) |
-| 260717-oq0 | Display each family member's live battery on the Live Map | 2026-07-17 | 4701da1 | [260717-oq0-display-each-family-member-s-live-batter](./quick/260717-oq0-display-each-family-member-s-live-batter/) |
-| 260717-pwh | Rail-card tap on the Live Map recenters the map instead of opening the member sheet | 2026-07-17 | 4ddb746 | [260717-pwh-on-the-live-map-screen-tapping-a-family-](./quick/260717-pwh-on-the-live-map-screen-tapping-a-family-/) |
-| 260720-3u4 | Add Semantics labels to MemberMapPin for screen-reader support | 2026-07-24 | 7246356 | [260720-3u4-add-semantics-labels-to-membermappin-so-](./quick/260720-3u4-add-semantics-labels-to-membermappin-so-/) |
-| 260802-w1e | Codemagic CI config for iOS TestFlight/Android APK + Firebase/APNs/ASC external-setup runbook | 2026-08-02 | 92abded, 20fd982 | [260802-w1e-codemagic-ci-config-and-firebase-apns-se](./quick/260802-w1e-codemagic-ci-config-and-firebase-apns-se/) |
-| 6 | Enable core library desugaring required by flutter_local_notifications (real Android build failure found during device testing) | 2026-08-05 | 2aee4de | — |
-| 260805-s33 | Fixed SOS arm ring paint-order (was fully hidden), added press-scale animation and a live 3-2-1 countdown label | 2026-08-05 | 10cb95f | [260805-s33-add-a-cool-smooth-press-animation-to-the](./quick/260805-s33-add-a-cool-smooth-press-animation-to-the/) |
-| 260805-t3h | Raised Live Map family pin staleness opacity floor (0.7/0.45/0.3 -> 0.92/0.85/0.75) so pins stay legible over map tiles | 2026-08-05 | 880aad6 | [260805-t3h-fix-the-opacity-of-family-member-map-pin](./quick/260805-t3h-fix-the-opacity-of-family-member-map-pin/) |
-| 260805-uke | Proactive zero-SOS-recipient warning card in Privacy Center (mirrors backend D-11 recipient resolution) + Guardian-role SOS access audit (no gap found) | 2026-08-05 | ac0d8d2 | [260805-uke-add-a-proactive-zero-sos-recipient-nudge](./quick/260805-uke-add-a-proactive-zero-sos-recipient-nudge/) |
+| # | Description | Date | Commit | Status | Directory |
+|---|-------------|------|--------|--------|-----------|
+| 260716-ue7 | Fix transparent person marker icon on live map | 2026-07-16 | 5cc9cd8 | | [260716-ue7-fix-transparent-person-marker-icon-on-li](./quick/260716-ue7-fix-transparent-person-marker-icon-on-li/) |
+| 260717-oq0 | Display each family member's live battery on the Live Map | 2026-07-17 | 4701da1 | | [260717-oq0-display-each-family-member-s-live-batter](./quick/260717-oq0-display-each-family-member-s-live-batter/) |
+| 260717-pwh | Rail-card tap on the Live Map recenters the map instead of opening the member sheet | 2026-07-17 | 4ddb746 | | [260717-pwh-on-the-live-map-screen-tapping-a-family-](./quick/260717-pwh-on-the-live-map-screen-tapping-a-family-/) |
+| 260720-3u4 | Add Semantics labels to MemberMapPin for screen-reader support | 2026-07-24 | 7246356 | | [260720-3u4-add-semantics-labels-to-membermappin-so-](./quick/260720-3u4-add-semantics-labels-to-membermappin-so-/) |
+| 260802-w1e | Codemagic CI config for iOS TestFlight/Android APK + Firebase/APNs/ASC external-setup runbook | 2026-08-02 | 92abded, 20fd982 | | [260802-w1e-codemagic-ci-config-and-firebase-apns-se](./quick/260802-w1e-codemagic-ci-config-and-firebase-apns-se/) |
+| 6 | Enable core library desugaring required by flutter_local_notifications (real Android build failure found during device testing) | 2026-08-05 | 2aee4de | | — |
+| 260805-s33 | Fixed SOS arm ring paint-order (was fully hidden), added press-scale animation and a live 3-2-1 countdown label | 2026-08-05 | 10cb95f | | [260805-s33-add-a-cool-smooth-press-animation-to-the](./quick/260805-s33-add-a-cool-smooth-press-animation-to-the/) |
+| 260805-t3h | Raised Live Map family pin staleness opacity floor (0.7/0.45/0.3 -> 0.92/0.85/0.75) so pins stay legible over map tiles | 2026-08-05 | 880aad6 | | [260805-t3h-fix-the-opacity-of-family-member-map-pin](./quick/260805-t3h-fix-the-opacity-of-family-member-map-pin/) |
+| 260805-uke | Proactive zero-SOS-recipient warning card in Privacy Center (mirrors backend D-11 recipient resolution) + Guardian-role SOS access audit (no gap found) | 2026-08-05 | ac0d8d2 | | [260805-uke-add-a-proactive-zero-sos-recipient-nudge](./quick/260805-uke-add-a-proactive-zero-sos-recipient-nudge/) |
+| 260806-3zb | Migrate Live Map + route sheet from flutter_map to maplibre_gl for OpenFreeMap Liberty vector tiles (found/fixed 2 on-device rendering bugs + 1 dispose-race blocker via code review) | 2026-08-06 | 4152e22, 5be73c6, 015bc72, b5aa00b, 8c8e68a | Needs Review | [260806-3zb-migrate-map-rendering-from-flutter-map-t](./quick/260806-3zb-migrate-map-rendering-from-flutter-map-t/) |
 
 ## Deferred Items
 
