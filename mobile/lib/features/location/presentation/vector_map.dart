@@ -174,6 +174,23 @@ class _VectorMapState extends State<VectorMap> {
   @override
   void initState() {
     super.initState();
+    // Force Hybrid Composition (texture-based rendering) on Android instead
+    // of the plugin's actual default of legacy Virtual-Display rendering
+    // (the doc comment on MapLibreMap.useHybridComposition claims a `true`
+    // default, but the underlying static field is initialized to `false`).
+    // Under Virtual Display, the native `getProjection().toScreenLocation()`
+    // calls behind toScreenLocationBatch return coordinates relative to the
+    // offscreen virtual-display surface, not this widget's real on-screen
+    // position - so every OverlayMarker gets a wrong/degenerate offset that
+    // falls outside the Stack's default hard-edge clip and never becomes
+    // visible, while native geometry (the accuracy circle, drawn directly in
+    // lat/lng space) is unaffected. This matches the plan's own threat
+    // register (T-3ZB-03), which already assumed hybrid composition would be
+    // active and pinned plugin 0.26.2 specifically because it fixed
+    // hybrid-composition crashes on older Android hardware. A global static
+    // setter is the plugin's own API for this - safe to set redundantly on
+    // every VectorMap instance.
+    MapLibreMap.useHybridComposition = true;
     widget.controller?.addListener(_onCameraCommand);
   }
 
@@ -301,10 +318,24 @@ class _VectorMapState extends State<VectorMap> {
     }
 
     // A single batched screen-location call for every marker - never one
-    // method-channel round trip per pin per frame.
-    final points = await controller.toScreenLocationBatch([
-      for (final marker in widget.markers) LatLng(marker.lat, marker.lng),
-    ]);
+    // method-channel round trip per pin per frame. Explicit try/catch so a
+    // platform-channel failure here is never silent (it would otherwise
+    // become an unhandled Future error on this fire-and-forget call site,
+    // easy to miss) - the previously-known positions are kept rather than
+    // cleared, so a transient failure doesn't blank out an already-correct
+    // pin.
+    final List<Point> points;
+    try {
+      points = await controller.toScreenLocationBatch([
+        for (final marker in widget.markers) LatLng(marker.lat, marker.lng),
+      ]);
+    } catch (error, stackTrace) {
+      debugPrint(
+        'VectorMap: toScreenLocationBatch failed for '
+        '${widget.markers.length} marker(s): $error\n$stackTrace',
+      );
+      return;
+    }
 
     if (!mounted) return;
 
