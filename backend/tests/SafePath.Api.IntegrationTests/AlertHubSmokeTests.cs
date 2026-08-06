@@ -1,6 +1,9 @@
+using System.Net;
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
+using SafePath.Application.Sos;
 using SafePath.Domain.Entities;
 using SafePath.Domain.Enums;
 using SafePath.Infrastructure.Persistence;
@@ -79,6 +82,53 @@ public class AlertHubSmokeTests : IClassFixture<FamilyApiFactory>
         Assert.Equal(HubConnectionState.Connected, connection.State);
     }
 
+    /// <summary>
+    /// Exercises 03-08's live-location window end-to-end: a triggered SOS session's guardian is
+    /// connected to AlertHub, the sender reports a position through the real HTTP endpoint, and
+    /// the guardian's hub connection receives the LiveLocationWindowUpdate invocation carrying
+    /// that position.
+    /// </summary>
+    [Fact]
+    public async Task AlertHub_DeliversLiveLocationUpdateToAConnectedRecipient()
+    {
+        var family = await SeedFamily();
+
+        await using var connection = CreateConnection(family.FamilyId, family.GuardianId);
+        var received = new TaskCompletionSource<SosLocationUpdateDto>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        connection.On<SosLocationUpdateDto>("LiveLocationWindowUpdate", update => received.TrySetResult(update));
+        await connection.StartAsync();
+
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, family.MemberId.ToString());
+        var sosSessionId = Guid.NewGuid();
+
+        var triggerResponse = await client.PostAsJsonAsync("/sos/trigger", new
+        {
+            SosSessionId = sosSessionId,
+            FamilyId = family.FamilyId,
+            Latitude = (double?)null,
+            Longitude = (double?)null,
+            AccuracyMeters = (double?)null,
+            TriggeredAtUtc = DateTime.UtcNow,
+        });
+        Assert.Equal(HttpStatusCode.OK, triggerResponse.StatusCode);
+
+        var locationResponse = await client.PostAsJsonAsync($"/sos/{sosSessionId}/location", new
+        {
+            Latitude = 30.0444,
+            Longitude = 31.2357,
+            AccuracyMeters = (double?)5.0,
+            RecordedAtUtc = DateTime.UtcNow,
+        });
+        Assert.Equal(HttpStatusCode.OK, locationResponse.StatusCode);
+
+        var update = await WaitFor(received.Task);
+        Assert.Equal(sosSessionId, update.SosSessionId);
+        Assert.Equal(30.0444, update.Latitude);
+        Assert.Equal(31.2357, update.Longitude);
+    }
+
     [Fact]
     public void AlertHub_UsesGroupNameDistinctFromLocationHub()
     {
@@ -110,6 +160,12 @@ public class AlertHubSmokeTests : IClassFixture<FamilyApiFactory>
         var memberId = Guid.NewGuid();
         var now = DateTime.UtcNow;
 
+        // Users rows are required so TriggerSosCommandHandler's recipient-resolution join (and
+        // the SosDeliveryAttempts.RecipientUserId foreign key it writes) succeed for the
+        // live-location test below, which drives a real /sos/trigger call through this seed.
+        db.Users.AddRange(
+            new User { Id = guardianId, Email = $"guardian-{guardianId}@example.com", FullName = "Guardian", Role = Role.Guardian, CreatedAt = now },
+            new User { Id = memberId, Email = $"member-{memberId}@example.com", FullName = "Member", Role = Role.Member, CreatedAt = now });
         db.Families.Add(new Family
         {
             Id = familyId,

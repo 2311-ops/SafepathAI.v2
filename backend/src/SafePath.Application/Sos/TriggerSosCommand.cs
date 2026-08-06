@@ -29,17 +29,20 @@ public class TriggerSosCommandHandler : ICommandHandler<TriggerSosCommand, Trigg
     private readonly IFamilyAuthorizationService _authorization;
     private readonly ISosAlertDispatcher _dispatcher;
     private readonly IServiceScopeFactory? _scopeFactory;
+    private readonly SosLiveWindowOptions _liveWindowOptions;
 
     public TriggerSosCommandHandler(
         IApplicationDbContext db,
         IFamilyAuthorizationService authorization,
         ISosAlertDispatcher dispatcher,
-        IServiceScopeFactory? scopeFactory = null)
+        IServiceScopeFactory? scopeFactory = null,
+        SosLiveWindowOptions? liveWindowOptions = null)
     {
         _db = db;
         _authorization = authorization;
         _dispatcher = dispatcher;
         _scopeFactory = scopeFactory;
+        _liveWindowOptions = liveWindowOptions ?? new SosLiveWindowOptions();
     }
 
     public async Task<TriggerSosResult> Handle(TriggerSosCommand command, CancellationToken cancellationToken = default)
@@ -69,6 +72,13 @@ public class TriggerSosCommandHandler : ICommandHandler<TriggerSosCommand, Trigg
             TriggeredAtUtc = command.TriggeredAtUtc,
             ReceivedAtUtc = DateTime.UtcNow,
         };
+
+        // D-21/SOS-04: the window is anchored to the server's own receive time, never to the
+        // client-supplied TriggeredAtUtc, so a device with a skewed or manipulated clock cannot
+        // extend how long it is being tracked. The idempotent-replay branch above returns before
+        // reaching this line, so a retry never re-stamps (and therefore never silently extends)
+        // an already-running window.
+        session.LiveWindowEndsAtUtc = session.ReceivedAtUtc.AddMinutes(_liveWindowOptions.LiveWindowMinutes);
 
         _db.SosSessions.Add(session);
 

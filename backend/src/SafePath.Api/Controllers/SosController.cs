@@ -18,6 +18,7 @@ public class SosController : ControllerBase
     private readonly ICommandHandler<GetSosSessionQuery, GetSosSessionResult> _getSosSession;
     private readonly ICommandHandler<AcknowledgeSosCommand, AcknowledgeSosResult> _acknowledgeSos;
     private readonly ICommandHandler<CancelSosCommand, CancelSosResult> _cancelSos;
+    private readonly ICommandHandler<ReportSosLocationCommand, ReportSosLocationResult> _reportSosLocation;
     private readonly ICurrentUserService _currentUser;
 
     public SosController(
@@ -25,12 +26,14 @@ public class SosController : ControllerBase
         ICommandHandler<GetSosSessionQuery, GetSosSessionResult> getSosSession,
         ICommandHandler<AcknowledgeSosCommand, AcknowledgeSosResult> acknowledgeSos,
         ICommandHandler<CancelSosCommand, CancelSosResult> cancelSos,
+        ICommandHandler<ReportSosLocationCommand, ReportSosLocationResult> reportSosLocation,
         ICurrentUserService currentUser)
     {
         _triggerSos = triggerSos;
         _getSosSession = getSosSession;
         _acknowledgeSos = acknowledgeSos;
         _cancelSos = cancelSos;
+        _reportSosLocation = reportSosLocation;
         _currentUser = currentUser;
     }
 
@@ -134,6 +137,50 @@ public class SosController : ControllerBase
             return Forbid();
         }
     }
+
+    /// <summary>No rate-limit attribute here either — the live-location stream must keep working
+    /// under the same D-17 offline-retry-storm guarantee as the trigger endpoint itself. Always
+    /// echoes the server's own window-end time (even on a WindowClosed refusal) so the client can
+    /// self-terminate its foreground service instead of retrying forever.</summary>
+    [HttpPost("sos/{sosSessionId:guid}/location")]
+    public async Task<ActionResult<ReportSosLocationResult>> ReportLocation(
+        Guid sosSessionId,
+        [FromBody] ReportSosLocationRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (_currentUser.UserId is not { } userId)
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var result = await _reportSosLocation.Handle(
+                new ReportSosLocationCommand(
+                    sosSessionId,
+                    userId,
+                    request.Latitude,
+                    request.Longitude,
+                    request.AccuracyMeters,
+                    request.RecordedAtUtc),
+                cancellationToken);
+
+            if (result.Outcome == ReportSosLocationOutcome.SessionNotFound)
+            {
+                return NotFound();
+            }
+
+            return Ok(result);
+        }
+        catch (FamilyAuthorizationDeniedException)
+        {
+            return Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 }
 
 /// <summary>Request body for POST /sos/trigger — CallerUserId is never bound from here; it comes
@@ -145,3 +192,11 @@ public record TriggerSosRequest(
     double? Longitude,
     double? AccuracyMeters,
     DateTime TriggeredAtUtc);
+
+/// <summary>Request body for POST /sos/{sosSessionId}/location — CallerUserId is never bound
+/// from here either; it comes exclusively from <see cref="ICurrentUserService"/>.</summary>
+public record ReportSosLocationRequest(
+    double Latitude,
+    double Longitude,
+    double? AccuracyMeters,
+    DateTime RecordedAtUtc);
