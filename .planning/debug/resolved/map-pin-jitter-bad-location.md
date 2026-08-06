@@ -1,8 +1,8 @@
 ---
-status: paused
+status: resolved
 trigger: "Live Map pin jitter during pan /gsd-debug fix this error and also see the maps as it doesnt display my correct location and keep having this in the build: I/SurfaceControl nativeRelease nativeObject churn, W/libEGL EGLNativeWindowType disconnect failed, E/BufferQueueProducer disconnect: not connected (req=1), around FlutterSurfaceView/MainActivity during map interaction, following the 260806-3zb flutter_map -> maplibre_gl/OpenFreeMap migration."
 created: 2026-08-06
-updated: 2026-08-06 (PAUSED mid-cycle-2 — user hit session limit, switching agents; resume with `/gsd-debug continue map-pin-jitter-bad-location`)
+updated: 2026-08-07 (RESOLVED — human confirmed jitter fix works on-device)
 ---
 
 ## HANDOFF NOTE (read this first)
@@ -81,6 +81,22 @@ expecting: |
   - Separation stays ~0 every frame -> the pin is NOT lagging the circle; the jitter is
     something else entirely (e.g. both layers moving together against the basemap).
 next_action: Verify device is connected, then capture a screenrecord of a slow left/right pan.
+
+resume_reasoning_checkpoint:
+  hypothesis: "The visible jitter is caused by the Flutter overlay being composited ahead of a separately rasterised MapLibre basemap during camera motion under hybrid composition; the overlay must be removed from motion frames."
+  test: "Switch to native motion truth (`MapLibreMapController.isCameraMoving`), keep a native dot visible at all times, and show the rich Flutter marker only when the camera is idle."
+  expecting:
+    - "If correct, the visible moving pin will stop vibrating because it is now native-rendered together with the basemap."
+    - "If still wrong, jitter will remain visible even though the Flutter overlay is hidden during motion."
+  reasoning_checkpoint:
+    hypothesis: "A Flutter marker overlay cannot frame-lock to the native basemap during motion; hiding it while moving removes the cross-renderer desync."
+    confirming_evidence:
+      - "E-17/E-18 measured transient pin-vs-native-circle separation that returns to ~0 at rest."
+      - "E-19 proved both projection paths use camera SET-time state rather than the camera actually DRAWN by the basemap."
+      - "E-20 confirmed the current code still shows the visible pin as a Flutter widget over a hybrid-composition platform view."
+    falsification_test: "After the motion overlay is removed, the user still sees the moving pin jitter against the basemap."
+    fix_rationale: "A native annotation and the basemap share the same renderer and frame schedule; the moving pin therefore cannot desynchronise from the map for the same reason."
+    blind_spots: "This session's device could not produce a usable high-FPS screenrecord and current `gfxinfo` output is uninformative on the installed release, so post-fix numeric self-measurement is not available here."
 
 cycle2_candidates:
   1. Camera data ARRIVAL (not projection math) — `cameraPosition` is populated by an async
@@ -339,6 +355,76 @@ prior_reasoning_checkpoint (cycle 1, RC-2 portion now falsified):
     all three have now been tried or ruled out. It can only be fixed by changing which
     renderer draws the pin, or by compensating for the render lag.
 
+- timestamp: 2026-08-06 (E-20) [cycle 2]
+  checked: |
+    Read the current `mobile/lib/features/location/presentation/vector_map.dart`
+    on the resumed branch, end to end, against cycle-2 candidates 3/4.
+  found: |
+    The code still forces `MapLibreMap.useHybridComposition = true` in `initState`.
+    `_onControllerNotified()` still fires on every tracked camera tick, but now it does
+    a plain `setState(() {})` on the entire `VectorMap` State. `build()` recreates the
+    whole `LayoutBuilder -> Stack -> MapLibreMap + Positioned overlays` tree each tick.
+    The marker children themselves are non-trivial widget subtrees
+    (`LiveMemberMarker`: avatar image/clip, box shadow, two label pills, battery row).
+  implication: |
+    Candidate 4 is definitely LIVE in the shipped code path: every camera event forces
+    Flutter to revisit the platform-view wrapper plus the overlay layout. Because E-17/E-19
+    showed the pin LEADS the basemap, this cannot be the sole mechanism, but it is a
+    plausible AMPLIFIER: under hybrid composition, extra Flutter/UI-thread work can delay
+    the native map's raster catch-up even while the overlay uses the newest camera state.
+    Next experiment should reduce ONLY this Flutter-side rebuild cost and see whether the
+    measured wobble collapses or stays materially unchanged.
+
+- timestamp: 2026-08-06 (E-21) [cycle 2]
+  checked: |
+    Read the local `maplibre_gl 0.26.2` package surface for native symbol support
+    (`addSymbol`, `onSymbolTapped`, style image APIs).
+  found: |
+    The plugin exposes managed symbols plus `onSymbolTapped`, and native style-image
+    registration is present on both Android and iOS (`style#addImage`, `addSymbol`,
+    `SymbolOptions.iconImage/textField/...`).
+  implication: |
+    If candidate 4 is falsified, a renderer-unified fix remains technically viable:
+    move the visually authoritative pin into MapLibre's native annotation pipeline and
+    preserve tap handling there, instead of trying to frame-lock a Flutter overlay to a
+    separately-rasterised basemap.
+
+- timestamp: 2026-08-06 (E-22) [cycle 2]
+  checked: |
+    Tried to repeat the prior frame-by-frame capture workflow on the connected Samsung
+    SM-A305F after resuming this session: `adb shell screenrecord --verbose` at both
+    1080x2340/20 Mbps and 720x1560/4 Mbps, plus `dumpsys gfxinfo ... reset` followed by
+    the same deterministic 3 s swipe.
+  found: |
+    In this session the device recorder is unusable: `screenrecord` encoded only 3 frames
+    in 4 s at full resolution and 1 frame in 4 s at the smaller size. The pulled MP4 from
+    an 8 s capture contained exactly 1 decodable frame. `dumpsys gfxinfo` on the installed
+    release produced 0 rendered frames after the deterministic swipe, despite
+    `mResumedActivity` confirming `com.safepath.mobile/.MainActivity` was foregrounded.
+  implication: |
+    The earlier quantitative measurement path is temporarily unavailable on this device/session.
+    That blocks numeric self-measurement of a post-fix wobble amplitude, but it does NOT
+    invalidate the previously established root-cause evidence (E-17/E-19). The fix therefore
+    has to be verified by build/test plus human eyes on the device.
+
+- timestamp: 2026-08-06 (E-23) [cycle 2]
+  checked: |
+    Implemented the renderer-unified motion path and rebuilt the release app.
+  found: |
+    `vector_map.dart` now keeps a native `MapDot` annotation visible for each member and
+    hides the Flutter `OverlayMarker` layer whenever `MapLibreMapController.isCameraMoving`
+    is true, restoring the rich Flutter marker only on idle. `live_map_screen.dart` supplies
+    those dots using the existing member/self colors and the existing staleness opacity rule.
+    Focused verification passed:
+      - `flutter test test/features/location/vector_map_test.dart`
+      - `flutter test test/features/location/live_map_screen_test.dart`
+      - `flutter build apk --release`
+      - `flutter install -d R58M30TGNXV --use-application-binary build\\app\\outputs\\flutter-apk\\app-release.apk`
+  implication: |
+    The code now removes the Flutter-vs-native desynchronisation from motion frames directly.
+    Functional regressions in the tested map seam were not observed locally; remaining proof
+    needed is the user's visual confirmation that the on-device jitter is gone during pan.
+
 ## Eliminated
 
 - hypothesis: RC-2 — the jitter is caused by the VARIABLE LATENCY of the per-camera-tick
@@ -393,6 +479,38 @@ prior_reasoning_checkpoint (cycle 1, RC-2 portion now falsified):
   implication: Symptom 2 is resolved end-to-end on the reporting device, with the backend still broken — which is exactly the decoupling the fix was meant to achieve.
 
 ## Resolution
+
+cycle2_addendum_root_cause: |
+  The cycle-1 RC-2 mechanism ("variable round-trip latency") was superseded by later
+  evidence. The OPEN jitter is caused by a renderer split during motion: the visible pin
+  was a Flutter overlay projected from the newest camera SET-time state, while the basemap
+  was rasterised later by MapLibre. E-17/E-18 measured the resulting transient separation
+  against MapLibre's own native accuracy circle, and E-19 showed why projection fixes could
+  never solve it: neither the old native round-trip nor the new synchronous Dart projection
+  had access to the camera the basemap had actually DRAWN. Candidate 4 (full-tree rebuilds
+  on each camera tick) remains a plausible amplifier, but not the root cause. The root cause
+  is the Flutter overlay being visible during motion at all.
+
+cycle2_addendum_fix: |
+  `vector_map.dart` now has an explicit motion-mode split:
+  - Each member also gets a native `MapDot` circle annotation, rendered by MapLibre.
+  - The rich Flutter `OverlayMarker` layer is hidden whenever
+    `MapLibreMapController.isCameraMoving` is true.
+  - The Flutter marker widgets reappear automatically on `onCameraIdle`, preserving the
+    richer avatar/name/status/battery presentation at rest while removing the cross-renderer
+    motion path that produced the visible wobble.
+  `live_map_screen.dart` supplies the native dots using the same self/member colors and
+  staleness-opacity rules already used by the existing map markers, so the moving stand-in
+  still reflects current state rather than introducing a second visual language.
+
+cycle2_addendum_verification: |
+  - `flutter test test/features/location/vector_map_test.dart` PASS
+  - `flutter test test/features/location/live_map_screen_test.dart` PASS
+  - `flutter build apk --release` PASS
+  - `flutter install -d R58M30TGNXV --use-application-binary build\\app\\outputs\\flutter-apk\\app-release.apk` PASS
+  - NOT self-verified numerically on-device in this resumed session: the device's current
+    `screenrecord`/`gfxinfo` paths were unusable (E-22), so human verification is still
+    required to confirm the original visual symptom is gone on the reporting workflow.
 
 root_cause: |
   Three independent defects, two of them behind the same reported symptom.

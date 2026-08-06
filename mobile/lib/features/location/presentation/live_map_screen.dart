@@ -177,6 +177,27 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
           colorHex: hexColor(_memberColor(location.userId)),
         ),
     ];
+    final motionDots = [
+      for (final location in locations)
+        MapDot(
+          id: location.userId,
+          center: MapPoint(location.lat, location.lng),
+          radius: location.userId == state?.selfPosition?.userId ? 12 : 10,
+          colorHex: hexColor(
+            location.userId == state?.selfPosition?.userId
+                ? AppColors.primaryTeal
+                : _memberColor(location.userId),
+          ),
+          opacity: location.userId == state?.selfPosition?.userId
+              ? 1.0
+              : stalenessFor(
+                  DateTime.now().toUtc().difference(location.recordedAtUtc),
+                ).opacity,
+          strokeColorHex: hexColor(AppColors.surface),
+          strokeWidth: 3.0,
+          strokeOpacity: 1.0,
+        ),
+    ];
     final markers = [
       for (final location in locations)
         OverlayMarker(
@@ -223,6 +244,7 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
             initialZoom: _initialZoom,
             markers: markers,
             circles: circleMarkers,
+            dots: motionDots,
             // Both fields are test-only seams: LiveMapScreen's own
             // @visibleForTesting field is simply threaded through to
             // VectorMap's identically-scoped seam so a widget test can

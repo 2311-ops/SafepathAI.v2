@@ -183,6 +183,34 @@ class MapLine {
   final double opacity;
 }
 
+/// A native-rendered screen-pixel dot anchored to a geographic point.
+///
+/// Used as the in-motion stand-in for a richer Flutter marker widget: the dot
+/// moves in lockstep with the basemap because both are rendered natively,
+/// while the richer Flutter widget can remain reserved for idle frames where
+/// it does not jitter against the map.
+class MapDot {
+  const MapDot({
+    required this.id,
+    required this.center,
+    required this.radius,
+    required this.colorHex,
+    required this.opacity,
+    required this.strokeColorHex,
+    this.strokeWidth = 3.0,
+    this.strokeOpacity = 1.0,
+  });
+
+  final String id;
+  final MapPoint center;
+  final double radius;
+  final String colorHex;
+  final double opacity;
+  final String strokeColorHex;
+  final double strokeWidth;
+  final double strokeOpacity;
+}
+
 /// The single widget in `mobile/lib` permitted to import `maplibre_gl` (a
 /// grep gate enforces this). Both `LiveMapScreen` and `RouteStatsSheet`
 /// describe *what* to draw via [markers]/[circles]/[lines] and never touch a
@@ -204,6 +232,7 @@ class VectorMap extends StatefulWidget {
     this.markers = const [],
     this.circles = const [],
     this.lines = const [],
+    this.dots = const [],
     @visibleForTesting this.platformViewBuilder,
   });
 
@@ -213,6 +242,7 @@ class VectorMap extends StatefulWidget {
   final List<OverlayMarker> markers;
   final List<MapCircle> circles;
   final List<MapLine> lines;
+  final List<MapDot> dots;
 
   /// Test seam: when supplied, this builder replaces the native map view
   /// entirely so a widget test never mounts a real platform view (which has
@@ -228,6 +258,9 @@ class VectorMap extends StatefulWidget {
 class _VectorMapState extends State<VectorMap> {
   MapLibreMapController? _mapController;
   bool _styleLoaded = false;
+  late final ValueNotifier<CameraPosition?> _cameraPosition =
+      ValueNotifier<CameraPosition?>(null);
+  late final ValueNotifier<bool> _isCameraMoving = ValueNotifier<bool>(false);
 
   @override
   void initState() {
@@ -261,9 +294,8 @@ class _VectorMapState extends State<VectorMap> {
     }
     if (_styleLoaded &&
         (!identical(oldWidget.circles, widget.circles) ||
-            !identical(oldWidget.lines, widget.lines)) &&
-        (oldWidget.circles != widget.circles ||
-            oldWidget.lines != widget.lines)) {
+            !identical(oldWidget.lines, widget.lines) ||
+            !identical(oldWidget.dots, widget.dots))) {
       _drawAnnotations();
     }
     // Markers need no explicit reprojection step any more: they are projected
@@ -282,6 +314,8 @@ class _VectorMapState extends State<VectorMap> {
     // _onControllerNotified's own `if (!mounted) return;` guard is a second,
     // independent line of defence for that same race.
     _mapController?.removeListener(_onControllerNotified);
+    _cameraPosition.dispose();
+    _isCameraMoving.dispose();
     super.dispose();
   }
 
@@ -300,6 +334,8 @@ class _VectorMapState extends State<VectorMap> {
 
   void _onMapCreated(MapLibreMapController controller) {
     _mapController = controller;
+    _cameraPosition.value = controller.cameraPosition;
+    _isCameraMoving.value = controller.isCameraMoving;
     controller.addListener(_onControllerNotified);
     // A camera command issued before the native map existed would otherwise be
     // dropped on the floor by _onCameraCommand's null-controller guard. That is
@@ -310,14 +346,11 @@ class _VectorMapState extends State<VectorMap> {
   }
 
   void _onControllerNotified() {
-    // The controller is a ChangeNotifier that fires on every camera movement
-    // while trackCameraPosition is true. Rebuilding is all that's needed:
-    // build() reads controller.cameraPosition and projects markers
-    // synchronously, so the freshest camera state always wins and there is no
-    // in-flight async result that could land out of order. Repeated calls
-    // before the next frame coalesce into a single rebuild.
+    // Keep camera-tick rebuilds off the PlatformView subtree itself: only the
+    // overlay layer needs the new camera, not the MapLibre widget config.
     if (!mounted) return;
-    setState(() {});
+    _cameraPosition.value = _mapController?.cameraPosition;
+    _isCameraMoving.value = _mapController?.isCameraMoving ?? false;
   }
 
   Future<void> _onStyleLoaded() async {
@@ -326,11 +359,11 @@ class _VectorMapState extends State<VectorMap> {
   }
 
   void _onCameraIdle() {
-    // Markers already track the camera exactly during motion now, but the
-    // final idle notification is still worth a rebuild so the settled camera
-    // position is the one rendered.
+    // Seed the final settled camera even if the last move callback was skipped
+    // or coalesced by the native side.
     if (!mounted) return;
-    setState(() {});
+    _cameraPosition.value = _mapController?.cameraPosition;
+    _isCameraMoving.value = false;
   }
 
   Future<void> _drawAnnotations() async {
@@ -339,6 +372,7 @@ class _VectorMapState extends State<VectorMap> {
 
     await controller.clearFills();
     await controller.clearLines();
+    await controller.clearCircles();
 
     for (final circle in widget.circles) {
       final ring = geodesicRing(circle.center, circle.radiusMeters);
@@ -379,6 +413,21 @@ class _VectorMapState extends State<VectorMap> {
         ),
       );
     }
+
+    if (widget.dots.isNotEmpty) {
+      await controller.addCircles([
+        for (final dot in widget.dots)
+          CircleOptions(
+            geometry: LatLng(dot.center.lat, dot.center.lng),
+            circleRadius: dot.radius,
+            circleColor: dot.colorHex,
+            circleOpacity: dot.opacity,
+            circleStrokeColor: dot.strokeColorHex,
+            circleStrokeWidth: dot.strokeWidth,
+            circleStrokeOpacity: dot.strokeOpacity,
+          ),
+      ]);
+    }
   }
 
   @override
@@ -417,43 +466,66 @@ class _VectorMapState extends State<VectorMap> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final viewport = constraints.biggest;
-        final camera = _mapController?.cameraPosition;
-        // Before the platform view reports a camera (or under the widget-test
-        // platformViewBuilder seam, which never creates one) there is nothing
-        // to project against, so markers stay hidden exactly as they did while
-        // the old async reprojection had not yet returned its first result.
-        final canProject = camera != null && viewport.isFinite;
-
-        final screenPositions = <String, Offset>{
-          if (canProject)
-            for (final marker in widget.markers)
-              marker.id: projectToScreen(
-                lat: marker.lat,
-                lng: marker.lng,
-                cameraLat: camera.target.latitude,
-                cameraLng: camera.target.longitude,
-                zoom: camera.zoom,
-                viewport: viewport,
-              ),
-        };
-
         return Stack(
           children: [
             Positioned.fill(child: base),
-            for (final marker in widget.markers)
-              Positioned(
-                left: (screenPositions[marker.id]?.dx ?? 0) - marker.width / 2,
-                top: (screenPositions[marker.id]?.dy ?? 0) - marker.height / 2,
-                width: marker.width,
-                height: marker.height,
-                child: Visibility(
-                  visible: screenPositions.containsKey(marker.id),
-                  maintainState: true,
-                  maintainSize: true,
-                  maintainAnimation: true,
-                  child: marker.child,
-                ),
+            Positioned.fill(
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _isCameraMoving,
+                builder: (context, isCameraMoving, _) {
+                  if (isCameraMoving) {
+                    return const SizedBox.shrink();
+                  }
+                  return ValueListenableBuilder<CameraPosition?>(
+                    valueListenable: _cameraPosition,
+                    builder: (context, camera, _) {
+                      // Before the platform view reports a camera (or under
+                      // the widget-test platformViewBuilder seam, which never
+                      // creates one) there is nothing to project against, so
+                      // markers stay hidden exactly as they did while the old
+                      // async reprojection had not yet returned its first
+                      // result.
+                      final canProject = camera != null && viewport.isFinite;
+                      final screenPositions = <String, Offset>{
+                        if (canProject)
+                          for (final marker in widget.markers)
+                            marker.id: projectToScreen(
+                              lat: marker.lat,
+                              lng: marker.lng,
+                              cameraLat: camera.target.latitude,
+                              cameraLng: camera.target.longitude,
+                              zoom: camera.zoom,
+                              viewport: viewport,
+                            ),
+                      };
+
+                      return Stack(
+                        children: [
+                          for (final marker in widget.markers)
+                            Positioned(
+                              left:
+                                  (screenPositions[marker.id]?.dx ?? 0) -
+                                  marker.width / 2,
+                              top:
+                                  (screenPositions[marker.id]?.dy ?? 0) -
+                                  marker.height / 2,
+                              width: marker.width,
+                              height: marker.height,
+                              child: Visibility(
+                                visible: screenPositions.containsKey(marker.id),
+                                maintainState: true,
+                                maintainSize: true,
+                                maintainAnimation: true,
+                                child: marker.child,
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  );
+                },
               ),
+            ),
           ],
         );
       },
