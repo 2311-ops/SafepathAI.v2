@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:battery_plus/battery_plus.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -26,6 +27,7 @@ class LocationState {
     this.members = const {},
     this.memberPresence = const {},
     this.lowBatteryAlert,
+    this.hasDeviceFix = false,
     this.isLoading = false,
     this.error,
   });
@@ -34,6 +36,18 @@ class LocationState {
   final Map<String, LiveLocation> members;
   final Map<String, MemberPresence> memberPresence;
   final LowBatteryAlert? lowBatteryAlert;
+
+  /// Whether [selfPosition] has been confirmed by *this device's own* GPS at
+  /// least once this session, as opposed to being carried over from the
+  /// server's `/live-locations` snapshot or a hub broadcast.
+  ///
+  /// The distinction matters because the snapshot is simply the last position
+  /// this user ever reported from anywhere — it can be days old and thousands
+  /// of kilometres away. The map centres itself on the first genuine device fix
+  /// (see `LiveMapScreen`), which is the only moment it can know the camera is
+  /// pointing somewhere the user did not choose and does not want.
+  final bool hasDeviceFix;
+
   final bool isLoading;
   final String? error;
 
@@ -43,6 +57,7 @@ class LocationState {
     Map<String, MemberPresence>? memberPresence,
     LowBatteryAlert? lowBatteryAlert,
     bool clearLowBatteryAlert = false,
+    bool? hasDeviceFix,
     bool? isLoading,
     String? error,
     bool clearError = false,
@@ -54,6 +69,7 @@ class LocationState {
       lowBatteryAlert: clearLowBatteryAlert
           ? null
           : (lowBatteryAlert ?? this.lowBatteryAlert),
+      hasDeviceFix: hasDeviceFix ?? this.hasDeviceFix,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
     );
@@ -74,6 +90,24 @@ final positionStreamProvider = Provider<Stream<Position>>((ref) {
       accuracy: LocationAccuracy.high,
       distanceFilter: 10,
     ),
+  );
+});
+
+/// A one-shot "where is this device right now" read, used once per bootstrap.
+///
+/// [positionStreamProvider] carries a 10 m `distanceFilter` — a deliberate
+/// battery trade-off — which means it emits nothing at all while the user
+/// stays put. Without this one-shot companion read, a stationary device can
+/// run an entire session without its own location ever being established, and
+/// the map keeps rendering whatever coordinate the server last had on record
+/// for this user (potentially from a different device, city, or day).
+///
+/// Exposed as a function rather than a bare `Future` so every bootstrap gets a
+/// fresh fix instead of one cached by the provider, and so tests can substitute
+/// a deterministic position.
+final currentPositionProvider = Provider<Future<Position> Function()>((ref) {
+  return () => Geolocator.getCurrentPosition(
+    locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
   );
 });
 
@@ -244,6 +278,14 @@ class LocationController extends AsyncNotifier<LocationState> {
       _lowBatterySubscription = lowBatterySubscription;
       _profileUpdatesSubscription = profileUpdatesSubscription;
       _positionSubscription = positionSubscription;
+
+      // Deliberately not awaited: acquiring a fix can take tens of seconds
+      // indoors and must never hold up the map, the hub, or anything on the
+      // SOS path. Runs last so _connectedFamilyId and the subscriptions are
+      // already in place when it reports.
+      unawaited(
+        _reportCurrentPositionOnce(familyId, bootstrapToken, generation),
+      );
     } on LocationApiException catch (error) {
       if (bootstrapToken != _bootstrapToken || generation != _generation) {
         return;
@@ -302,6 +344,26 @@ class LocationController extends AsyncNotifier<LocationState> {
     }
   }
 
+  /// Takes a single immediate GPS fix at bootstrap and pushes it through the
+  /// normal report path, so the map shows where the user actually is instead of
+  /// where the server last heard from them.
+  Future<void> _reportCurrentPositionOnce(
+    String familyId,
+    int bootstrapToken,
+    int generation,
+  ) async {
+    try {
+      final position = await ref.read(currentPositionProvider)();
+      if (!_ownsBootstrap(familyId, bootstrapToken, generation)) return;
+      await _reportPosition(position);
+    } catch (_) {
+      // A denied, timed-out or otherwise unavailable one-shot fix is not fatal
+      // — the position stream stays the steady-state source. Swallowed so a
+      // location-service error can never take down an otherwise healthy
+      // bootstrap.
+    }
+  }
+
   Future<void> _reportPosition(Position position) async {
     final familyId = _connectedFamilyId;
     final currentUserId = ref.read(authApiProvider).currentSession?.user.id;
@@ -321,19 +383,15 @@ class LocationController extends AsyncNotifier<LocationState> {
 
     if (!_canReport(familyId, currentUserId)) return;
 
-    final payload = ReportLocationPayload(
-      latitude: position.latitude,
-      longitude: position.longitude,
-      accuracyMeters: position.accuracy,
-      batteryPercent: batteryPercent,
-      recordedAtUtc: position.timestamp.toUtc(),
-    );
-    final hubClient = _hubClient;
-    if (hubClient == null) return;
-
-    await hubClient.reportLocation(payload);
-    if (!_canReport(familyId, currentUserId)) return;
-
+    // Show the user their own position FIRST, and unconditionally. Rendering
+    // your own location on your own map must never depend on the backend
+    // accepting the ping: the report used to be awaited before this line, so a
+    // failing `ReportLocation` (server down, transient 500, membership check
+    // rejecting) returned early and the map silently went on displaying
+    // whatever stale coordinate the server last had on record — observed live
+    // as `Unhandled Exception: An unexpected error occurred invoking
+    // 'ReportLocation' on the server` with the pin left on a position from a
+    // previous session.
     _applyLocation(
       LiveLocation(
         userId: currentUserId,
@@ -343,7 +401,31 @@ class LocationController extends AsyncNotifier<LocationState> {
         batteryPercent: batteryPercent,
         recordedAtUtc: position.timestamp.toUtc(),
       ),
+      fromDevice: true,
     );
+
+    final hubClient = _hubClient;
+    if (hubClient == null) return;
+
+    try {
+      await hubClient.reportLocation(
+        ReportLocationPayload(
+          latitude: position.latitude,
+          longitude: position.longitude,
+          accuracyMeters: position.accuracy,
+          batteryPercent: batteryPercent,
+          recordedAtUtc: position.timestamp.toUtc(),
+        ),
+      );
+    } catch (error, stackTrace) {
+      // Sharing the fix onward is best-effort; the next fix will try again.
+      // Caught rather than propagated because this method is invoked
+      // fire-and-forget from the position-stream listener, where a thrown
+      // Future becomes an unhandled async error that reaches no one useful.
+      debugPrint(
+        'LocationController: ReportLocation failed: $error\n$stackTrace',
+      );
+    }
   }
 
   bool _ownsBootstrap(String familyId, int bootstrapToken, int generation) {
@@ -373,7 +455,9 @@ class LocationController extends AsyncNotifier<LocationState> {
         currentFamilyId == familyId;
   }
 
-  void _applyLocation(LiveLocation location) {
+  /// [fromDevice] marks a fix that came from this device's own GPS rather than
+  /// from the server snapshot or a hub broadcast — see [LocationState.hasDeviceFix].
+  void _applyLocation(LiveLocation location, {bool fromDevice = false}) {
     final currentUserId = ref.read(authApiProvider).currentSession?.user.id;
     final existing = _current.members[location.userId];
     final isOnline =
@@ -408,13 +492,16 @@ class LocationController extends AsyncNotifier<LocationState> {
             isOnline: mergedLocation.isOnline,
             lastSeenAtUtc: location.lastSeenAtUtc ?? location.recordedAtUtc,
           );
+    final isSelf = location.userId == currentUserId;
     state = AsyncData(
       _current.copyWith(
-        selfPosition: location.userId == currentUserId
-            ? mergedLocation
-            : _current.selfPosition,
+        selfPosition: isSelf ? mergedLocation : _current.selfPosition,
         members: nextMembers,
         memberPresence: nextPresence,
+        // Latches true and stays true for the life of this bootstrap; a later
+        // hub broadcast for self must not demote a position we already know
+        // came from this device's own GPS.
+        hasDeviceFix: _current.hasDeviceFix || (fromDevice && isSelf),
         isLoading: false,
         clearError: true,
       ),

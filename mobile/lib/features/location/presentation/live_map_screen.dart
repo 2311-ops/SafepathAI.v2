@@ -46,6 +46,10 @@ class LiveMapScreen extends ConsumerStatefulWidget {
   ConsumerState<LiveMapScreen> createState() => _LiveMapScreenState();
 }
 
+/// Zoom the live map opens at, and the zoom it returns to when it first
+/// centres on this device's own GPS fix.
+const double _initialZoom = 15;
+
 class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
   late final bool _ownsController = widget.mapController == null;
   late final VectorMapController _mapController =
@@ -61,6 +65,38 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Centre the camera on the user the first time this device's own GPS
+    // reports, and only then.
+    //
+    // `VectorMap.initialTarget` cannot do this job: the plugin reads
+    // `initialCameraPosition` only when the native platform view is created and
+    // its `didUpdateWidget` diffs map *options*, which carry no camera — so a
+    // corrected position arriving later moves the pin but leaves the camera
+    // stranded wherever the bootstrap snapshot pointed. That snapshot is just
+    // the last position the server ever recorded for this user, so the observed
+    // failure was a map sitting on a coordinate from a previous session with
+    // the user's pin thousands of kilometres off-screen and no way to reach it
+    // except tapping their own status-rail card.
+    //
+    // Fires on the false -> true edge only, so it can never fight the user's
+    // panning afterwards, and re-uses `initialZoom` so the result is exactly
+    // "as if the map had opened here".
+    ref.listen<AsyncValue<LocationState>>(locationControllerProvider, (
+      previous,
+      next,
+    ) {
+      if (previous?.value?.hasDeviceFix ?? false) return;
+      final fixed = next.value;
+      if (fixed == null || !fixed.hasDeviceFix) return;
+      final self = fixed.selfPosition;
+      if (self == null) return;
+      _mapController.animateTo(
+        lat: self.lat,
+        lng: self.lng,
+        zoom: _initialZoom,
+      );
+    });
+
     final asyncState = ref.watch(locationControllerProvider);
     final state = asyncState.value;
     final familyState = ref.watch(familyControllerProvider).value;
@@ -184,7 +220,7 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
           VectorMap(
             controller: _mapController,
             initialTarget: cameraTarget,
-            initialZoom: 15,
+            initialZoom: _initialZoom,
             markers: markers,
             circles: circleMarkers,
             // Both fields are test-only seams: LiveMapScreen's own
@@ -567,10 +603,7 @@ class _MemberStatusCard extends StatelessWidget {
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
             width: 136,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 8,
-              vertical: 6,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(999),
               border: Border.all(

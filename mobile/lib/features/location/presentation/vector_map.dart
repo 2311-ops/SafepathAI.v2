@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:math' show Point;
 
 import 'package:flutter/material.dart';
@@ -19,25 +20,61 @@ String hexColor(Color color) {
   return '#${argb.toRadixString(16).padLeft(6, '0')}';
 }
 
-/// Converts a native screen-projection result (from `toScreenLocation`/
-/// `toScreenLocationBatch`) into the logical-pixel [Offset] that
-/// Positioned/Offset expect in the Flutter widget layer.
+/// MapLibre's core renderer projects through 512-pixel tiles, so at zoom `z`
+/// the whole world spans `512 * 2^z` pixels. Those are LOGICAL (density-
+/// independent) pixels: MapLibre Android hands the core a viewport already
+/// divided by the display density (`resizeView(w / pixelRatio, ...)`) and
+/// multiplies the core's answer back up in `NativeMapView.pixelForLatLng`.
+/// Working in the core's own units therefore lands directly in the logical
+/// pixel space `Positioned` expects, with no density conversion anywhere.
+const double _kTileSize = 512.0;
+
+/// The latitude at which the Web Mercator projection is truncated to keep the
+/// world square. Beyond it the projection diverges toward infinity.
+const double _kMaxMercatorLatitude = 85.05112878;
+
+/// Normalised Web Mercator northing in `[0, 1]`, increasing southward.
+double _mercatorY(double latitude) {
+  final clamped = latitude.clamp(-_kMaxMercatorLatitude, _kMaxMercatorLatitude);
+  final radians = clamped * math.pi / 180.0;
+  return 0.5 - math.log(math.tan(math.pi / 4 + radians / 2)) / (2 * math.pi);
+}
+
+/// Projects a geographic coordinate to a logical-pixel [Offset] within a map
+/// viewport of [viewport] size, given the camera's current centre and zoom.
 ///
-/// Confirmed via on-device testing that the plugin's native Android side
-/// returns coordinates in PHYSICAL pixels (raw View/Projection pixel space),
-/// not logical pixels - e.g. at devicePixelRatio 2.625 on a 1080x2400
-/// physical-pixel device, a marker at the exact camera-centre coordinate
-/// projected to `Point(540.75, 1200.9375)` (exactly half of 1080/2400, the
-/// physical centre) rather than the ~205.7/~457 logical centre. Left
-/// unconverted, every marker renders roughly `devicePixelRatio`x further
-/// right/down than its correct on-screen position - typically far enough to
-/// fall outside the enclosing Stack's default hard-edge clip and disappear
-/// entirely.
+/// This deliberately replaces the previous `toScreenLocationBatch()` platform-
+/// channel round trip. The plugin assigns `controller.cameraPosition`
+/// synchronously *before* it fires the change notification that drives
+/// reprojection, so every input needed here is already in Dart memory at that
+/// moment - asking the native side to recompute it bought nothing but latency,
+/// and because that latency varies per call the marker's applied offset
+/// advanced in irregular increments during a pan, which is what read as the
+/// pin "rolling"/vibrating rather than trailing smoothly.
+///
+/// Assumes a north-up, unpitched camera. That is not an assumption about
+/// defaults but an invariant this widget enforces: D-01 requires the map stay
+/// flat and top-down, and [VectorMap] hard-disables both tilt and rotate
+/// gestures, so bearing and pitch are always zero.
 @visibleForTesting
-Offset physicalToLogicalOffset(Point<num> point, double devicePixelRatio) {
+Offset projectToScreen({
+  required double lat,
+  required double lng,
+  required double cameraLat,
+  required double cameraLng,
+  required double zoom,
+  required Size viewport,
+}) {
+  final worldSize = _kTileSize * math.pow(2.0, zoom);
+
+  // Normalise across the antimeridian so a marker just east of +180 doesn't
+  // project a whole world-width away from a camera just west of it. Dart's `%`
+  // takes the divisor's sign, so this maps any delta into (-180, 180].
+  final deltaLng = (lng - cameraLng + 180.0) % 360.0 - 180.0;
+
   return Offset(
-    point.x.toDouble() / devicePixelRatio,
-    point.y.toDouble() / devicePixelRatio,
+    viewport.width / 2 + (deltaLng / 360.0) * worldSize,
+    viewport.height / 2 + (_mercatorY(lat) - _mercatorY(cameraLat)) * worldSize,
   );
 }
 
@@ -190,7 +227,6 @@ class VectorMap extends StatefulWidget {
 
 class _VectorMapState extends State<VectorMap> {
   MapLibreMapController? _mapController;
-  Map<String, Offset> _screenPositions = const {};
   bool _styleLoaded = false;
 
   @override
@@ -230,9 +266,9 @@ class _VectorMapState extends State<VectorMap> {
             oldWidget.lines != widget.lines)) {
       _drawAnnotations();
     }
-    if (oldWidget.markers != widget.markers) {
-      _reprojectMarkers();
-    }
+    // Markers need no explicit reprojection step any more: they are projected
+    // synchronously in build() from the live camera, so this rebuild has
+    // already repositioned them.
   }
 
   @override
@@ -242,9 +278,9 @@ class _VectorMapState extends State<VectorMap> {
     // - without this, a camera-changed notification firing after this State
     // disposes but before the native platform view itself fully tears down
     // (a real race when popping the screen or switching tabs mid-pan) would
-    // still invoke _onControllerNotified -> _reprojectMarkers() on a
-    // disposed State. _reprojectMarkers()'s own `if (!mounted) return;`
-    // guard is a second, independent line of defence for that same race.
+    // still invoke _onControllerNotified on a disposed State.
+    // _onControllerNotified's own `if (!mounted) return;` guard is a second,
+    // independent line of defence for that same race.
     _mapController?.removeListener(_onControllerNotified);
     super.dispose();
   }
@@ -265,29 +301,36 @@ class _VectorMapState extends State<VectorMap> {
   void _onMapCreated(MapLibreMapController controller) {
     _mapController = controller;
     controller.addListener(_onControllerNotified);
+    // A camera command issued before the native map existed would otherwise be
+    // dropped on the floor by _onCameraCommand's null-controller guard. That is
+    // a real ordering, not a hypothetical: the screen asks to centre on the
+    // user's live position as soon as it knows it, which can easily land while
+    // the platform view is still being created.
+    _onCameraCommand();
   }
 
   void _onControllerNotified() {
-    // The controller is a ChangeNotifier that fires on every camera
-    // movement while trackCameraPosition is true; reproject on each one so
-    // pins visibly track the basemap during a pan/zoom, not just when it
-    // comes to rest.
-    if (!_styleLoaded) return;
-    _reprojectMarkers();
+    // The controller is a ChangeNotifier that fires on every camera movement
+    // while trackCameraPosition is true. Rebuilding is all that's needed:
+    // build() reads controller.cameraPosition and projects markers
+    // synchronously, so the freshest camera state always wins and there is no
+    // in-flight async result that could land out of order. Repeated calls
+    // before the next frame coalesce into a single rebuild.
+    if (!mounted) return;
+    setState(() {});
   }
 
   Future<void> _onStyleLoaded() async {
     _styleLoaded = true;
     await _drawAnnotations();
-    await _reprojectMarkers();
   }
 
   void _onCameraIdle() {
-    // Reprojection is asynchronous over a method channel and visibly lags
-    // the basemap by roughly a frame during fast motion; this call is what
-    // guarantees pins settle exactly on their coordinate once the camera
-    // comes to rest.
-    _reprojectMarkers();
+    // Markers already track the camera exactly during motion now, but the
+    // final idle notification is still worth a rebuild so the settled camera
+    // position is the one rendered.
+    if (!mounted) return;
+    setState(() {});
   }
 
   Future<void> _drawAnnotations() async {
@@ -338,66 +381,6 @@ class _VectorMapState extends State<VectorMap> {
     }
   }
 
-  Future<void> _reprojectMarkers() async {
-    // Belt-and-braces against the dispose-path race this class's listener
-    // wiring is designed to prevent (see dispose()'s comment): checked here,
-    // as the very first line, before _mapController or context are touched
-    // at all, so a stray notification arriving between listener-removal and
-    // the State actually finishing disposal still can't reach a context
-    // read or a native platform-channel call.
-    if (!mounted) return;
-
-    final controller = _mapController;
-    if (controller == null || widget.markers.isEmpty) {
-      if (_screenPositions.isNotEmpty) {
-        setState(() => _screenPositions = const {});
-      }
-      return;
-    }
-
-    // toScreenLocationBatch (and the singular toScreenLocation) return
-    // PHYSICAL pixel coordinates from the native side, but Positioned/Offset
-    // in the Flutter widget layer operate in LOGICAL pixels - confirmed by
-    // on-device testing (the raw returned x/y exactly matched half the
-    // device's physical screen dimensions, ~2.6x the logical centre at
-    // devicePixelRatio 2.625). Capture the ratio synchronously, before the
-    // await, while `context` is known valid - this method only ever runs
-    // while mounted, and awaiting first would make a post-await `context`
-    // read unsafe.
-    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
-
-    // A single batched screen-location call for every marker - never one
-    // method-channel round trip per pin per frame. Explicit try/catch so a
-    // platform-channel failure here is never silent (it would otherwise
-    // become an unhandled Future error on this fire-and-forget call site,
-    // easy to miss) - the previously-known positions are kept rather than
-    // cleared, so a transient failure doesn't blank out an already-correct
-    // pin.
-    final List<Point> points;
-    try {
-      points = await controller.toScreenLocationBatch([
-        for (final marker in widget.markers) LatLng(marker.lat, marker.lng),
-      ]);
-    } catch (error, stackTrace) {
-      debugPrint(
-        'VectorMap: toScreenLocationBatch failed for '
-        '${widget.markers.length} marker(s): $error\n$stackTrace',
-      );
-      return;
-    }
-
-    if (!mounted) return;
-
-    final positions = <String, Offset>{
-      for (var i = 0; i < widget.markers.length; i++)
-        widget.markers[i].id: physicalToLogicalOffset(
-          points[i],
-          devicePixelRatio,
-        ),
-    };
-    setState(() => _screenPositions = positions);
-  }
-
   @override
   Widget build(BuildContext context) {
     final Widget base =
@@ -427,24 +410,53 @@ class _VectorMapState extends State<VectorMap> {
           onCameraIdle: _onCameraIdle,
         );
 
-    return Stack(
-      children: [
-        Positioned.fill(child: base),
-        for (final marker in widget.markers)
-          Positioned(
-            left: (_screenPositions[marker.id]?.dx ?? 0) - marker.width / 2,
-            top: (_screenPositions[marker.id]?.dy ?? 0) - marker.height / 2,
-            width: marker.width,
-            height: marker.height,
-            child: Visibility(
-              visible: _screenPositions.containsKey(marker.id),
-              maintainState: true,
-              maintainSize: true,
-              maintainAnimation: true,
-              child: marker.child,
-            ),
-          ),
-      ],
+    // LayoutBuilder supplies the map's own logical size, which projectToScreen
+    // needs to place the camera centre. Reading it here rather than from
+    // MediaQuery keeps the projection correct for a VectorMap that doesn't fill
+    // the screen - RouteStatsSheet embeds one in a 360px-tall SizedBox.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final viewport = constraints.biggest;
+        final camera = _mapController?.cameraPosition;
+        // Before the platform view reports a camera (or under the widget-test
+        // platformViewBuilder seam, which never creates one) there is nothing
+        // to project against, so markers stay hidden exactly as they did while
+        // the old async reprojection had not yet returned its first result.
+        final canProject = camera != null && viewport.isFinite;
+
+        final screenPositions = <String, Offset>{
+          if (canProject)
+            for (final marker in widget.markers)
+              marker.id: projectToScreen(
+                lat: marker.lat,
+                lng: marker.lng,
+                cameraLat: camera.target.latitude,
+                cameraLng: camera.target.longitude,
+                zoom: camera.zoom,
+                viewport: viewport,
+              ),
+        };
+
+        return Stack(
+          children: [
+            Positioned.fill(child: base),
+            for (final marker in widget.markers)
+              Positioned(
+                left: (screenPositions[marker.id]?.dx ?? 0) - marker.width / 2,
+                top: (screenPositions[marker.id]?.dy ?? 0) - marker.height / 2,
+                width: marker.width,
+                height: marker.height,
+                child: Visibility(
+                  visible: screenPositions.containsKey(marker.id),
+                  maintainState: true,
+                  maintainSize: true,
+                  maintainAnimation: true,
+                  child: marker.child,
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
