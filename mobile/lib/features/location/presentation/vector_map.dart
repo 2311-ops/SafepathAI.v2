@@ -238,6 +238,14 @@ class _VectorMapState extends State<VectorMap> {
   @override
   void dispose() {
     widget.controller?.removeListener(_onCameraCommand);
+    // Symmetric with _onMapCreated's controller.addListener(_onControllerNotified)
+    // - without this, a camera-changed notification firing after this State
+    // disposes but before the native platform view itself fully tears down
+    // (a real race when popping the screen or switching tabs mid-pan) would
+    // still invoke _onControllerNotified -> _reprojectMarkers() on a
+    // disposed State. _reprojectMarkers()'s own `if (!mounted) return;`
+    // guard is a second, independent line of defence for that same race.
+    _mapController?.removeListener(_onControllerNotified);
     super.dispose();
   }
 
@@ -331,9 +339,17 @@ class _VectorMapState extends State<VectorMap> {
   }
 
   Future<void> _reprojectMarkers() async {
+    // Belt-and-braces against the dispose-path race this class's listener
+    // wiring is designed to prevent (see dispose()'s comment): checked here,
+    // as the very first line, before _mapController or context are touched
+    // at all, so a stray notification arriving between listener-removal and
+    // the State actually finishing disposal still can't reach a context
+    // read or a native platform-channel call.
+    if (!mounted) return;
+
     final controller = _mapController;
     if (controller == null || widget.markers.isEmpty) {
-      if (mounted && _screenPositions.isNotEmpty) {
+      if (_screenPositions.isNotEmpty) {
         setState(() => _screenPositions = const {});
       }
       return;
