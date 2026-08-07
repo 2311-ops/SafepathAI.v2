@@ -24,6 +24,8 @@ abstract class ProfileApi {
 
   Future<UserProfile> updateDisplayName(String displayName);
 
+  Future<UserProfile> updatePhoneNumber(String? phoneNumber);
+
   Future<UserProfile> uploadProfileImage(List<int> bytes, String filename);
 
   Future<UserProfile> deleteProfileImage();
@@ -63,6 +65,19 @@ class DioProfileApi implements ProfileApi {
       final response = await _dio.patch<Map<String, dynamic>>(
         '/me/display-name',
         data: {'displayName': displayName},
+      );
+      return UserProfile.fromJson(response.data!);
+    } on DioException catch (error) {
+      throw _mapError(error);
+    }
+  }
+
+  @override
+  Future<UserProfile> updatePhoneNumber(String? phoneNumber) async {
+    try {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        '/me/phone-number',
+        data: {'phoneNumber': phoneNumber},
       );
       return UserProfile.fromJson(response.data!);
     } on DioException catch (error) {

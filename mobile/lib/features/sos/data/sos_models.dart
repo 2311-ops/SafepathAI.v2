@@ -132,6 +132,13 @@ class SosRecipientStatus {
 /// Mirrors `SosSessionDto`. Omits the wire's `kind` field deliberately — it
 /// is backend-only forward-compat for Phase 6 Silent/Duress and has no UI
 /// surface in this phase (D-29).
+///
+/// [triggeredByPhoneNumberE164] is scoped server-side (quick 260807-rk2,
+/// `SosSessionProjection`) to exactly this session's actual delivery
+/// recipients — never to the triggering user themselves, and never to a
+/// family member who merely passed membership authorization without a real
+/// delivery-attempt row. A null value here just means "not visible to this
+/// caller" or "the sender never stored a number" — never an error.
 class SosSession {
   const SosSession({
     required this.sosSessionId,
@@ -143,6 +150,7 @@ class SosSession {
     this.liveWindowEndsAtUtc,
     this.canceledAtUtc,
     this.recipients = const [],
+    this.triggeredByPhoneNumberE164,
   });
 
   final String sosSessionId;
@@ -154,6 +162,7 @@ class SosSession {
   final DateTime? liveWindowEndsAtUtc;
   final DateTime? canceledAtUtc;
   final List<SosRecipientStatus> recipients;
+  final String? triggeredByPhoneNumberE164;
 
   factory SosSession.fromJson(Map<String, dynamic> json) {
     final recipientsJson = json['recipients'] as List<dynamic>? ?? const [];
@@ -173,6 +182,7 @@ class SosSession {
                 SosRecipientStatus.fromJson(Map<String, dynamic>.from(entry)),
           )
           .toList(),
+      triggeredByPhoneNumberE164: json['triggeredByPhoneNumberE164'] as String?,
     );
   }
 }

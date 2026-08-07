@@ -322,15 +322,28 @@ class _IncomingBody extends ConsumerWidget {
   }
 
   Future<void> _callSender() async {
-    // No phone number is ever present on SosSession (threat T-03-03) — the
-    // OS dialler receives it without this screen ever displaying it. A real
-    // number requires a phone field on the wire contract that does not yet
-    // exist for family members (only EmergencyContact carries one, a
-    // separate sender-side fallback); this opens the bare dialler until
-    // that field lands. See 03-04-SUMMARY.md Known Stubs.
-    final uri = Uri(scheme: 'tel', path: '');
+    // The server only populates this field for this session's actual
+    // delivery recipients (SosSessionProjection, quick 260807-rk2) — this
+    // screen hands it straight to the OS dialler without ever rendering it
+    // anywhere on screen. A null value (a non-recipient, the sender's own
+    // screen, or a sender who never stored a number) keeps exactly today's
+    // bare-dialler fallback — no error, no crash.
+    final uri = sosDialUri(session.triggeredByPhoneNumberE164);
     await launchUrl(uri);
   }
+}
+
+/// Builds the tel-scheme URI `_callSender` hands to the OS dialler. A
+/// null/blank [phoneNumberE164] produces an empty-path `tel:` URI —
+/// reproducing today's bare-dialler behaviour exactly rather than crashing
+/// or silently doing nothing. Exposed at top level (rather than kept
+/// private) so `sos_call_sender_test.dart` can assert the URI construction
+/// directly instead of going through `launchUrl`, which has no platform
+/// channel handler in a widget test.
+@visibleForTesting
+Uri sosDialUri(String? phoneNumberE164) {
+  final trimmed = phoneNumberE164?.trim();
+  return Uri(scheme: 'tel', path: trimmed == null || trimmed.isEmpty ? '' : trimmed);
 }
 
 /// The live-location streaming window card (03-08-PLAN.md, D-21): the same

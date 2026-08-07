@@ -21,11 +21,14 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   bool _nameSeeded = false;
+  bool _phoneSeeded = false;
 
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -38,6 +41,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (profile != null && !_nameSeeded) {
       _nameController.text = profile.displayNameOrFallback;
       _nameSeeded = true;
+    }
+    if (profile != null && !_phoneSeeded) {
+      _phoneController.text = profile.phoneNumberE164 ?? '';
+      _phoneSeeded = true;
     }
 
     return Scaffold(
@@ -66,6 +73,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       onSave: () => _saveDisplayName(context),
                     ),
                     const SizedBox(height: AppSpacing.md),
+                    _PhoneNumberCard(
+                      controller: _phoneController,
+                      isLoading: state.isLoading,
+                      onSave: () => _savePhoneNumber(context),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
                     _PhotoCard(
                       profile: profile,
                       isLoading: state.isLoading,
@@ -92,6 +105,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (!context.mounted) return;
     final error = ref.read(profileControllerProvider).value?.error;
     _showMessage(context, error ?? 'Display name saved.');
+  }
+
+  Future<void> _savePhoneNumber(BuildContext context) async {
+    // Unlike display name, an empty field is a valid submission here: it
+    // means "remove my number", not "you forgot to type one" — the field
+    // stays genuinely optional and removable.
+    final phoneNumber = _phoneController.text.trim();
+    await ref
+        .read(profileControllerProvider.notifier)
+        .updatePhoneNumber(phoneNumber);
+    if (!context.mounted) return;
+    final error = ref.read(profileControllerProvider).value?.error;
+    if (error != null) {
+      _showMessage(context, error);
+      return;
+    }
+    _showMessage(
+      context,
+      phoneNumber.isEmpty ? 'Phone number removed.' : 'Phone number saved.',
+    );
   }
 
   Future<void> _pickAndUploadPhoto(BuildContext context) async {
@@ -247,6 +280,50 @@ class _DisplayNameCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           PrimaryButton(
             label: 'Save name',
+            onPressed: isLoading ? null : onSave,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PhoneNumberCard extends StatelessWidget {
+  const _PhoneNumberCard({
+    required this.controller,
+    required this.isLoading,
+    required this.onSave,
+  });
+
+  final TextEditingController controller;
+  final bool isLoading;
+  final VoidCallback onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafePathCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Phone number', style: AppTypography.title),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Guardians who receive your SOS alert can call this number.',
+            style: AppTypography.bodySecondary,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          TextField(
+            key: const ValueKey('phone-number-field'),
+            controller: controller,
+            keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.done,
+            decoration: const InputDecoration(labelText: 'Phone number'),
+            onSubmitted: (_) => onSave(),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          PrimaryButton(
+            label: 'Save phone number',
             onPressed: isLoading ? null : onSave,
           ),
         ],

@@ -121,6 +121,22 @@ class ProfileController extends AsyncNotifier<ProfileState> {
     }
   }
 
+  Future<void> updatePhoneNumber(String? phoneNumber) async {
+    final api = ref.read(profileApiProvider);
+    state = AsyncData(_current.copyWith(isLoading: true, clearError: true));
+    try {
+      final profile = await api.updatePhoneNumber(phoneNumber);
+      state = AsyncData(ProfileState(profile: profile));
+    } on ProfileApiException catch (error) {
+      state = AsyncData(
+        _current.copyWith(
+          isLoading: false,
+          error: error.message ?? 'Unable to save your phone number.',
+        ),
+      );
+    }
+  }
+
   Future<void> uploadProfileImage(List<int> bytes, String filename) async {
     final api = ref.read(profileApiProvider);
     state = AsyncData(_current.copyWith(isLoading: true, clearError: true));
