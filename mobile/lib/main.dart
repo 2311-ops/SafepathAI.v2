@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'core/config/supabase_config.dart';
+import 'core/os_shortcuts/quick_actions_service.dart';
 import 'core/push/push_service.dart';
 
 Future<void> main() async {
@@ -41,6 +42,10 @@ Future<void> main() async {
   // before the widget tree exists — mirrors DeepLinkService's own
   // startup-time wiring.
   container.read(pushServiceControllerProvider);
+  // Registers the home-screen "Emergency SOS" quick-action shortcut and its
+  // invocation handler (SOS-06) alongside the push/deep-link bootstrap
+  // above — same startup-time-wiring convention, one shared ProviderContainer.
+  container.read(quickActionsServiceProvider);
 
   runApp(
     UncontrolledProviderScope(container: container, child: const SafePathApp()),
