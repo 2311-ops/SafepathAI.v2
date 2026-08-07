@@ -71,6 +71,7 @@ dependencies:
   uuid: ^4.6.0
   url_launcher: ^6.3.2
   maplibre_gl: 0.26.2
+  country_picker: 2.0.28
 
 dev_dependencies:
   flutter_test:
