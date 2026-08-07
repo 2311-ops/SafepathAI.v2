@@ -171,8 +171,18 @@ class _StartupSplashOverlayState extends State<StartupSplashOverlay> {
   bool _visible = true;
   bool _startScheduled = false;
   bool _reduceMotion = false;
+  bool _clockRunning = false;
   double _progress = 0.0;
-  final Stopwatch _stopwatch = Stopwatch();
+  // Elapsed time is accumulated from the periodic timer's own fixed
+  // interval rather than read from a real-time `Stopwatch`. A `Stopwatch`
+  // is not driven by Flutter test's FakeAsync clock (`tester.pump(duration)`
+  // elapses only the fake zone, never real wall-clock time), which made this
+  // overlay's progress un-testable via the standard widget-test harness.
+  // Tick accumulation is deterministic under both real device conditions
+  // (Timer.periodic fires ~every _frameInterval, no catch-up bursts on a
+  // late tick) and FakeAsync (each elapsed `_frameInterval` reliably fires
+  // exactly one tick).
+  int _elapsedMs = 0;
   Timer? _startTimer;
   Timer? _frameTimer;
 
@@ -184,23 +194,24 @@ class _StartupSplashOverlayState extends State<StartupSplashOverlay> {
     _startScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startTimer = Timer(_postFrameStartDelay, () {
-        if (!mounted || !_visible || _stopwatch.isRunning) return;
+        if (!mounted || !_visible || _clockRunning) return;
         _startClock();
       });
     });
   }
 
   void _startClock() {
-    _stopwatch.start();
+    _clockRunning = true;
+    _elapsedMs = 0;
     _frameTimer = Timer.periodic(_frameInterval, (_) {
+      _elapsedMs += _frameInterval.inMilliseconds;
       final duration = _reduceMotion
           ? _reducedMotionDuration
           : _defaultDuration;
-      final nextProgress =
-          (_stopwatch.elapsedMilliseconds / duration.inMilliseconds).clamp(
-            0.0,
-            1.0,
-          );
+      final nextProgress = (_elapsedMs / duration.inMilliseconds).clamp(
+        0.0,
+        1.0,
+      );
 
       if (!mounted) return;
       if (nextProgress >= 1.0) {
