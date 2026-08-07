@@ -6,6 +6,7 @@ import 'package:mobile/features/sos/data/sos_models.dart';
 class FakeSosLocalStore implements SosLocalStore {
   String? savedSessionId;
   SosTriggerRequest? pendingTrigger;
+  String? savedFamilyId;
   int clearCallCount = 0;
 
   @override
@@ -34,5 +35,13 @@ class FakeSosLocalStore implements SosLocalStore {
   @override
   Future<void> clearPendingTrigger() async {
     pendingTrigger = null;
+  }
+
+  @override
+  Future<String?> readFamilyId() async => savedFamilyId;
+
+  @override
+  Future<void> writeFamilyId(String familyId) async {
+    savedFamilyId = familyId;
   }
 }

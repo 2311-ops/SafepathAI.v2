@@ -7,6 +7,7 @@ import 'sos_models.dart';
 
 const _sessionIdKey = 'sos.sessionId';
 const _pendingTriggerKey = 'sos.pendingTrigger';
+const _familyIdKey = 'sos.lastKnownFamilyId';
 
 /// Device-local persistence for the in-progress SOS session id and, once
 /// plan 03-07 lands, the last un-acknowledged trigger payload — so an
@@ -27,6 +28,15 @@ abstract class SosLocalStore {
   /// session stays resumable/closable via [readSessionId]/[clear] without
   /// re-queuing a payload that has already been accepted.
   Future<void> clearPendingTrigger();
+
+  /// The most recently resolved `familyId`, cached across app restarts so
+  /// `arm()` never has to send an empty `familyId` when it races
+  /// `FamilyController`'s own bootstrap fetch (cold start, WR-03). Not
+  /// cleared by [clear] — a stale-but-correct family id is strictly better
+  /// than none the next time an emergency is armed before the fresh value
+  /// resolves.
+  Future<String?> readFamilyId();
+  Future<void> writeFamilyId(String familyId);
 }
 
 class SharedPreferencesSosLocalStore implements SosLocalStore {
@@ -77,6 +87,18 @@ class SharedPreferencesSosLocalStore implements SosLocalStore {
   Future<void> clearPendingTrigger() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_pendingTriggerKey);
+  }
+
+  @override
+  Future<String?> readFamilyId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_familyIdKey);
+  }
+
+  @override
+  Future<void> writeFamilyId(String familyId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_familyIdKey, familyId);
   }
 }
 

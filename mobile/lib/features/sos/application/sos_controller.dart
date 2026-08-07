@@ -72,6 +72,15 @@ class SosController extends AsyncNotifier<SosSessionState> {
   late SosLiveLocationService _liveLocationService;
   bool _isLiveLocationActive = false;
 
+  /// The most recently resolved `familyId`, kept in memory (and mirrored to
+  /// [SosLocalStore]) so `arm()` never has to send an empty `familyId` to the
+  /// server when it races [familyControllerProvider]'s own bootstrap fetch
+  /// (WR-03) — e.g. an app launched cold and armed within the first second,
+  /// before the family circle has finished loading. Falls back to whatever
+  /// was persisted on a previous app run; only ever overwritten by a
+  /// non-empty resolved value, never cleared by [closeSession].
+  String? _cachedFamilyId;
+
   static const _initialRetryDelay = Duration(seconds: 4);
   static const _maxRetryDelay = Duration(seconds: 60);
 
@@ -97,6 +106,19 @@ class SosController extends AsyncNotifier<SosSessionState> {
         .read(connectivityServiceProvider)
         .onConnectivityChanged
         .listen(_onConnectivityChanged);
+    // WR-03: cache every non-empty familyId FamilyController resolves, both
+    // in memory and on disk, so _composeRequest always has a last-known-good
+    // fallback even if arm() races FamilyController's own bootstrap fetch.
+    ref.listen<AsyncValue<FamilyState>>(familyControllerProvider, (
+      previous,
+      next,
+    ) {
+      final familyId = next.value?.family?.id;
+      if (familyId != null && familyId.isNotEmpty) {
+        _cachedFamilyId = familyId;
+        unawaited(ref.read(sosLocalStoreProvider).writeFamilyId(familyId));
+      }
+    });
     ref.onDispose(() {
       unawaited(deliveryStatusSubscription.cancel());
       unawaited(sosCanceledSubscription.cancel());
@@ -269,6 +291,10 @@ class SosController extends AsyncNotifier<SosSessionState> {
 
   Future<void> _rehydrate() async {
     final localStore = ref.read(sosLocalStoreProvider);
+    // Seed the in-memory family-id cache from disk as early as possible
+    // (WR-03) — this runs before any real arm() has a chance to race it in
+    // practice, since it is scheduled the moment build() returns.
+    _cachedFamilyId ??= await localStore.readFamilyId();
     final persisted = await localStore.readSessionId();
     // A real arm() call may have already run (and generated its own fresh
     // session id) by the time this fire-and-forget bootstrap microtask gets
@@ -356,7 +382,15 @@ class SosController extends AsyncNotifier<SosSessionState> {
   }
 
   SosTriggerRequest _composeRequest(String sessionId) {
-    final familyId = ref.read(familyControllerProvider).value?.family?.id;
+    final resolvedFamilyId = ref.read(familyControllerProvider).value?.family?.id;
+    // WR-03: if FamilyController hasn't resolved yet (e.g. a cold start
+    // where arm() races its bootstrap fetch), fall back to the last-known
+    // familyId rather than sending an empty one the server can never accept
+    // — the Core Value ("SOS must always work") forbids blocking arm() on
+    // that fetch instead.
+    final familyId = (resolvedFamilyId != null && resolvedFamilyId.isNotEmpty)
+        ? resolvedFamilyId
+        : _cachedFamilyId;
     // Read the last known fix already held by LocationController rather than
     // starting a fresh geolocator request — waiting on a cold GPS fix would
     // delay the alert, which the Core Value forbids. Null coordinates are
