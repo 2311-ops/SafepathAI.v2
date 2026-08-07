@@ -52,6 +52,12 @@ public class TriggerSosCommandHandler : ICommandHandler<TriggerSosCommand, Trigg
 
         if (existing is not null)
         {
+            // T-03-04: an SOS session id is not itself proof of authorization to view it — verify
+            // against the *resolved* session's own FamilyId, not the caller-supplied one, since a
+            // replay could pass a mismatched FamilyId for an existing session. Matches the check
+            // every sibling handler (GetSosSessionQueryHandler, CancelSosCommandHandler,
+            // AcknowledgeSosCommandHandler) performs before returning any session data.
+            await _authorization.RequireMembership(command.CallerUserId, existing.FamilyId, cancellationToken);
             var existingDto = await SosSessionProjection.ProjectAsync(_db, existing, command.CallerUserId, cancellationToken);
             return new TriggerSosResult(existingDto, WasExistingSession: true);
         }

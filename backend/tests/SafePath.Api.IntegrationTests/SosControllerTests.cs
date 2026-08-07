@@ -125,6 +125,40 @@ public class SosControllerTests : IClassFixture<FamilyApiFactory>
     }
 
     [Fact]
+    public async Task Trigger_ReturnsForbiddenWhenReplayingAnotherFamilysSessionId()
+    {
+        var (familyId, callerId, _) = await SeedFamily();
+        var sosSessionId = Guid.NewGuid();
+        var owningClient = CreateClientAs(callerId);
+
+        var triggerResponse = await owningClient.PostAsJsonAsync("/sos/trigger", new
+        {
+            SosSessionId = sosSessionId,
+            FamilyId = familyId,
+            Latitude = (double?)null,
+            Longitude = (double?)null,
+            AccuracyMeters = (double?)null,
+            TriggeredAtUtc = DateTime.UtcNow,
+        });
+        Assert.Equal(HttpStatusCode.OK, triggerResponse.StatusCode);
+
+        var outsiderId = Guid.NewGuid();
+        var outsiderClient = CreateClientAs(outsiderId);
+
+        var replayResponse = await outsiderClient.PostAsJsonAsync("/sos/trigger", new
+        {
+            SosSessionId = sosSessionId,
+            FamilyId = familyId,
+            Latitude = (double?)null,
+            Longitude = (double?)null,
+            AccuracyMeters = (double?)null,
+            TriggeredAtUtc = DateTime.UtcNow,
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, replayResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task Get_ReturnsCurrentSessionStatus()
     {
         var (familyId, callerId, _) = await SeedFamily();
