@@ -19,6 +19,7 @@ import '../data/sos_api.dart';
 import '../data/sos_models.dart';
 import 'delivery_status_chip.dart';
 import 'sos_countdown.dart';
+import 'sos_hold_to_cancel_button.dart';
 
 /// Full-screen sender emergency session (03-UI-SPEC.md "Full-Screen Sender
 /// Emergency Session — State Machine"). This is the one screen in the app
@@ -26,11 +27,11 @@ import 'sos_countdown.dart';
 /// emergency, not a dilution of the reservation rule.
 ///
 /// [SosSubmitted], [SosDelivering] and [SosOfflineQueued] were rendered in
-/// full by earlier plans; 03-08 adds [SosLiveActive]'s own locked treatment
-/// (streaming headline, live indicator, pulse ring, countdown). The
-/// remaining sealed state ([SosCanceled]) still renders a non-empty
-/// placeholder body so the switch below stays exhaustive today — it is
-/// named at its call site with the plan that owns its locked treatment.
+/// full by earlier plans; 03-08 added [SosLiveActive]'s own locked treatment
+/// (streaming headline, live indicator, pulse ring, countdown). 03-09 adds
+/// the hold-to-cancel control to both Delivering and Live-active, plus
+/// [SosCanceled]'s own de-escalated Deep Teal chrome — the one sealed state
+/// where this screen's background is deliberately not the SOS-red gradient.
 class SenderEmergencySessionScreen extends ConsumerStatefulWidget {
   const SenderEmergencySessionScreen({super.key});
 
@@ -57,6 +58,26 @@ class _SenderEmergencySessionScreenState
   void dispose() {
     _elapsedTicker?.cancel();
     super.dispose();
+  }
+
+  /// `SosHoldToCancelButton.onCancelComplete` — fires in the same frame the
+  /// 2000ms hold completes, no confirmation gate in between (matches
+  /// `main_shell.dart`'s `_onArmComplete` not awaiting before acting).
+  void _handleCancel() {
+    ref.read(sosControllerProvider.notifier).cancel();
+  }
+
+  /// The Self-canceled state's single "Close" action: clears the resolved
+  /// session locally (so the next arm starts a fresh emergency) and returns
+  /// to wherever the user was before the session screen was pushed.
+  Future<void> _handleClose() async {
+    await ref.read(sosControllerProvider.notifier).closeSession();
+    if (!mounted) return;
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/home');
+    }
   }
 
   @override
@@ -106,6 +127,7 @@ class _SenderEmergencySessionScreenState
           ),
           SosDelivering(:final session) => _DeliveringWithRecipientsBody(
             session: session,
+            onCancel: _handleCancel,
           ),
           SosOfflineQueued(:final lastRetryAtUtc, :final retryCount) =>
             _OfflineQueuedBody(
@@ -118,22 +140,33 @@ class _SenderEmergencySessionScreenState
               session: session,
               windowEndsAtUtc: windowEndsAtUtc,
               reduceMotion: reduceMotion,
+              onCancel: _handleCancel,
             ),
-          // Owned by plan 03-09: hold-to-cancel gesture + the de-escalated
-          // Deep Teal canceled-state chrome (self-cancel is never red).
-          SosCanceled(:final session) => _DeliveringBody(session: session),
+          // The de-escalated Self-canceled state (D-05/D-24): Deep Teal
+          // chrome (never red — canceling is not "still an emergency"), the
+          // locked headline/body, and the recipient list left visible
+          // beneath it (nothing about the original delivery is retracted).
+          SosCanceled(:final session) => _CanceledBody(
+            session: session,
+            onClose: _handleClose,
+          ),
         },
       );
     }
 
+    final isCanceled = sessionState is SosCanceled;
+
     return Scaffold(
       body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            colors: [AppColors.sosRed, AppColors.sosRedDeep],
-            radius: 1.1,
-          ),
-        ),
+        key: const ValueKey('sender-chrome'),
+        decoration: isCanceled
+            ? const BoxDecoration(color: AppColors.deepTeal)
+            : const BoxDecoration(
+                gradient: RadialGradient(
+                  colors: [AppColors.sosRed, AppColors.sosRedDeep],
+                  radius: 1.1,
+                ),
+              ),
         child: SafeArea(
           child: reduceMotion
               ? body
@@ -191,48 +224,62 @@ class _SendingBody extends StatelessWidget {
   }
 }
 
-/// The delivering headline shows elapsed time since trigger: per-channel
-/// delivery is in progress and "Call 911" is the one non-red CTA on the
-/// screen — deliberate so the highest-urgency escalation never blends into
-/// the red chrome.
-class _DeliveringBody extends StatelessWidget {
-  const _DeliveringBody({required this.session});
+/// The Self-canceled state's real body (03-UI-SPEC.md "Self-canceled" row,
+/// D-05/D-24): the locked headline/body copy over the Deep Teal chrome the
+/// parent [SenderEmergencySessionScreen.build] switches to for this state,
+/// the recipient delivery list captured before cancelling left visible
+/// beneath it (nothing about the original alert's delivery is retracted),
+/// and a single "Close" action — no "Call 911", no re-arm affordance; this
+/// is the calm, resolved end of the session.
+class _CanceledBody extends StatelessWidget {
+  const _CanceledBody({required this.session, required this.onClose});
 
   final SosSession session;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
-    final elapsed = DateTime.now().toUtc().difference(session.triggeredAtUtc);
+    final canceledAt = session.canceledAtUtc;
+    final recipients = session.recipients;
+
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            'Alert canceled',
+            textAlign: TextAlign.center,
+            style: AppTypography.heading.copyWith(color: Colors.white),
+          ),
+          const SizedBox(height: AppSpacing.md),
           _FrostedCard(
             child: Text(
-              'Alert active · ${_formatElapsed(elapsed)} elapsed',
+              'You canceled this alert at '
+              '${canceledAt != null ? _formatClockTime(canceledAt) : "just now"}. '
+              'Your guardians can see it was triggered and then canceled.',
               textAlign: TextAlign.center,
-              style: AppTypography.caption.copyWith(
-                color: Colors.white,
-                letterSpacing: 0,
-              ),
+              style: AppTypography.body.copyWith(color: Colors.white),
             ),
           ),
-          const SizedBox(height: AppSpacing.xl),
-          PrimaryButton(
-            label: 'Call 911',
-            backgroundColor: AppColors.ink,
-            foregroundColor: Colors.white,
-            onPressed: () => _call911(),
+          const SizedBox(height: AppSpacing.md),
+          Expanded(
+            child: recipients.isEmpty
+                ? const SizedBox.shrink()
+                : ListView.separated(
+                    itemCount: recipients.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppSpacing.sm),
+                    itemBuilder: (context, index) =>
+                        RecipientDeliveryRow(recipient: recipients[index]),
+                  ),
           ),
+          const SizedBox(height: AppSpacing.md),
+          PrimaryButton(label: 'Close', onPressed: onClose),
         ],
       ),
     );
-  }
-
-  Future<void> _call911() async {
-    final uri = Uri(scheme: 'tel', path: '911');
-    await launchUrl(uri);
   }
 }
 
@@ -249,11 +296,13 @@ class _LiveActiveBody extends StatelessWidget {
     required this.session,
     required this.windowEndsAtUtc,
     required this.reduceMotion,
+    required this.onCancel,
   });
 
   final SosSession session;
   final DateTime windowEndsAtUtc;
   final bool reduceMotion;
+  final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -308,6 +357,8 @@ class _LiveActiveBody extends StatelessWidget {
             foregroundColor: Colors.white,
             onPressed: () => _call911(),
           ),
+          const SizedBox(height: AppSpacing.md),
+          SosHoldToCancelButton(onCancelComplete: onCancel),
         ],
       ),
     );
@@ -326,9 +377,13 @@ class _LiveActiveBody extends StatelessWidget {
 /// when the server resolved zero recipients, so a nowhere-to-send SOS never
 /// silently looks like it is working.
 class _DeliveringWithRecipientsBody extends StatelessWidget {
-  const _DeliveringWithRecipientsBody({required this.session});
+  const _DeliveringWithRecipientsBody({
+    required this.session,
+    required this.onCancel,
+  });
 
   final SosSession session;
+  final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -366,11 +421,17 @@ class _DeliveringWithRecipientsBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.xl),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: PrimaryButton(
-            label: 'Call 911',
-            backgroundColor: AppColors.ink,
-            foregroundColor: Colors.white,
-            onPressed: () => _call911(),
+          child: Column(
+            children: [
+              PrimaryButton(
+                label: 'Call 911',
+                backgroundColor: AppColors.ink,
+                foregroundColor: Colors.white,
+                onPressed: () => _call911(),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              SosHoldToCancelButton(onCancelComplete: onCancel),
+            ],
           ),
         ),
         const SizedBox(height: AppSpacing.lg),

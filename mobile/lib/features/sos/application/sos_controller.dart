@@ -445,6 +445,67 @@ class SosController extends AsyncNotifier<SosSessionState> {
     _replaceState(AsyncData(_deriveSessionState(session)));
   }
 
+  /// Self-cancel entry point for `SosHoldToCancelButton` (plan 03-09,
+  /// SOS-05, D-05/D-24). Never touches, clears or rolls back any delivery
+  /// state the session already accumulated — the guardians were alerted and
+  /// that history stays; the server-returned session (still carrying its
+  /// full recipient/delivery list) becomes [SosCanceled]'s payload verbatim.
+  ///
+  /// A network failure here is retried on the same backoff shape the
+  /// offline-trigger queue uses (D-17's persistence philosophy applied to
+  /// cancellation) rather than surfacing an error or silently dropping the
+  /// request — the current (still-honest) session state is left on screen
+  /// until the cancellation actually reaches the server. A non-network
+  /// rejection (e.g. the session was already resolved) is not retried
+  /// forever; it simply leaves the current state untouched.
+  Future<void> cancel() async {
+    final sessionId = _sessionId;
+    if (sessionId == null || sessionId.isEmpty) return;
+    await _attemptCancel(sessionId);
+  }
+
+  Future<void> _attemptCancel(String sessionId, {int retryCount = 0}) async {
+    try {
+      final session = await ref.read(sosApiProvider).cancel(sessionId);
+      _retryHandle?.cancel();
+      _retryHandle = null;
+      await ref.read(sosLocalStoreProvider).clearPendingTrigger();
+      // Unconditional (not gated on _isLiveLocationActive) — belt-and-
+      // suspenders alongside _replaceState's generic leaving-live-active
+      // handling below, mirroring _applySosCanceled's own comment. Both
+      // SosLiveLocationService.stop() itself and the underlying foreground
+      // host's stop() are idempotent, so a session that was never live-active
+      // simply no-ops here rather than needing a state check first.
+      unawaited(_liveLocationService.stop());
+      _replaceState(
+        AsyncData(
+          SosCanceled(session, session.canceledAtUtc ?? DateTime.now().toUtc()),
+        ),
+      );
+    } on SosApiException catch (error) {
+      if (error.issue == SosApiIssue.network) {
+        _scheduleCancelRetry(sessionId, retryCount);
+      }
+      // A non-network rejection (validation/forbidden) is not retried —
+      // forcing a rejected cancel forever helps nobody, and the current
+      // state (whatever it was) stays exactly as it was, which is the
+      // honest thing to show.
+    } catch (_) {
+      // Best-effort only — never risk a false "canceled" transition on an
+      // unexpected error.
+    }
+  }
+
+  void _scheduleCancelRetry(String sessionId, int retryCount) {
+    _retryHandle?.cancel();
+    final delay = _delayForRetry(retryCount + 1);
+    _retryHandle = ref
+        .read(sosRetrySchedulerProvider)
+        .schedule(delay, () {
+          unawaited(_attemptCancel(sessionId, retryCount: retryCount + 1));
+        });
+  }
+
   /// Clears the persisted session id so the next arm starts a fresh
   /// emergency.
   Future<void> closeSession() async {

@@ -47,6 +47,7 @@ class SosResponderState {
 /// streams.
 class SosResponderController extends AsyncNotifier<SosResponderState> {
   StreamSubscription<SosSession>? _sosTriggeredSubscription;
+  StreamSubscription<SosCancellation>? _sosCanceledSubscription;
   SosHubClient? _hubClient;
   String? _connectedFamilyId;
   SosResponderNavigate? _navigate;
@@ -124,13 +125,18 @@ class SosResponderController extends AsyncNotifier<SosResponderState> {
       return;
     }
 
-    final subscription = hubClient.sosTriggered.listen(_onSosTriggered);
+    final triggeredSubscription = hubClient.sosTriggered.listen(
+      _onSosTriggered,
+    );
+    final canceledSubscription = hubClient.sosCanceled.listen(_onSosCanceled);
     if (generation != _generation) {
-      await subscription.cancel();
+      await triggeredSubscription.cancel();
+      await canceledSubscription.cancel();
       return;
     }
 
-    _sosTriggeredSubscription = subscription;
+    _sosTriggeredSubscription = triggeredSubscription;
+    _sosCanceledSubscription = canceledSubscription;
     _connectedFamilyId = familyId;
   }
 
@@ -142,6 +148,8 @@ class SosResponderController extends AsyncNotifier<SosResponderState> {
     _connectedFamilyId = null;
     await _sosTriggeredSubscription?.cancel();
     _sosTriggeredSubscription = null;
+    await _sosCanceledSubscription?.cancel();
+    _sosCanceledSubscription = null;
     final hubClient = _hubClient;
     _hubClient = null;
     if (disconnect) {
@@ -169,6 +177,35 @@ class SosResponderController extends AsyncNotifier<SosResponderState> {
     // Force-navigation fires regardless of what the guardian is currently
     // doing in the app — SOS is never a dismissible card (D-20).
     _navigate?.call(session.sosSessionId);
+  }
+
+  /// Folds a `SosCanceled` hub push into the already-open responder screen
+  /// (D-05/D-24, plan 03-09): the session moves to its canceled status in
+  /// place, with the delivery/recipient history untouched — this never
+  /// navigates or dismisses anything. A guardian who is not currently
+  /// looking at this exact session (or who has none open yet) sees nothing;
+  /// this is a live update to an already-open screen, not a second alert.
+  void _onSosCanceled(SosCancellation cancellation) {
+    final session = _current.activeSession;
+    if (session == null || session.sosSessionId != cancellation.sosSessionId) {
+      return;
+    }
+
+    state = AsyncData(
+      _current.copyWith(
+        activeSession: SosSession(
+          sosSessionId: session.sosSessionId,
+          familyId: session.familyId,
+          triggeredByUserId: session.triggeredByUserId,
+          status: SosSessionStatus.canceled,
+          triggeredAtUtc: session.triggeredAtUtc,
+          receivedAtUtc: session.receivedAtUtc,
+          liveWindowEndsAtUtc: session.liveWindowEndsAtUtc,
+          canceledAtUtc: cancellation.canceledAtUtc,
+          recipients: session.recipients,
+        ),
+      ),
+    );
   }
 
   /// Guardian confirms they have seen the alert (D-22). Strictly stronger

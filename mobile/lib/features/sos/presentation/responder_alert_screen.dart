@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -161,7 +162,12 @@ class _ResponderAlertScreenState extends ConsumerState<ResponderAlertScreen> {
     return Scaffold(
       body: SafeArea(
         child: session.status == SosSessionStatus.canceled
-            ? _CanceledPlaceholderBody(session: session)
+            ? _CanceledBody(
+                session: session,
+                liveWindowEndsAtUtc: windowEndsAtUtc,
+                liveLocationUpdate: _liveLocationUpdate,
+                mapPlatformViewBuilder: widget.mapPlatformViewBuilder,
+              )
             : _IncomingBody(
                 session: session,
                 acknowledgedAtUtc: acknowledgedAtUtc,
@@ -447,26 +453,90 @@ class _AwaitingLivePositionPlaceholder extends StatelessWidget {
   }
 }
 
-/// Owned by plan 03-09: deep-teal chrome, the "Canceled by {sender name} at
-/// {time}" copy, and a "Close" action. This plan renders a minimal,
-/// non-empty placeholder so the switch above stays exhaustive today.
-class _CanceledPlaceholderBody extends StatelessWidget {
-  const _CanceledPlaceholderBody({required this.session});
+/// The sender-canceled state's real body (03-UI-SPEC.md "Sender-canceled"
+/// row, D-05/D-24): the header shifts from red to the same Deep Teal used
+/// on the sender's own Self-canceled screen, the locked copy names who
+/// canceled and when (see the `Text` below), Acknowledge is replaced by a
+/// single "Close" action, and the last known live-location card stays
+/// visible rather than being cleared — a guardian who glances at this
+/// screen after the fact still needs to see where the sender last reported
+/// from. This screen never auto-navigates away on its own; only the
+/// guardian's own tap on Close leaves it (D-23/D-24 — no auto-dismiss, no
+/// "mark resolved").
+class _CanceledBody extends ConsumerWidget {
+  const _CanceledBody({
+    required this.session,
+    required this.liveWindowEndsAtUtc,
+    required this.liveLocationUpdate,
+    required this.mapPlatformViewBuilder,
+  });
 
   final SosSession session;
+  final DateTime? liveWindowEndsAtUtc;
+  final SosLocationUpdate? liveLocationUpdate;
+  final WidgetBuilder? mapPlatformViewBuilder;
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Text(
-          'This alert was canceled.',
-          textAlign: TextAlign.center,
-          style: AppTypography.heading,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final members =
+        ref.watch(familyControllerProvider).value?.members ?? const [];
+    final senderName = _senderDisplayName(members, session.triggeredByUserId);
+    final canceledAt = session.canceledAtUtc;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DecoratedBox(
+          key: const ValueKey('responder-header-strip'),
+          decoration: const BoxDecoration(color: AppColors.deepTeal),
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Text(
+                'Canceled by $senderName'
+                '${canceledAt != null ? ' at ${_formatTime(canceledAt)}' : ''}',
+                textAlign: TextAlign.center,
+                style: AppTypography.heading.copyWith(color: Colors.white),
+              ),
+            ),
+          ),
         ),
-      ),
+        Expanded(
+          child: DecoratedBox(
+            decoration: const BoxDecoration(color: AppColors.appBg),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (liveWindowEndsAtUtc != null)
+                    _LiveLocationCard(
+                      windowEndsAtUtc: liveWindowEndsAtUtc!,
+                      update: liveLocationUpdate,
+                      mapPlatformViewBuilder: mapPlatformViewBuilder,
+                    )
+                  else
+                    const Spacer(),
+                  PrimaryButton(
+                    label: 'Close',
+                    onPressed: () => _handleClose(context),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
+  }
+
+  void _handleClose(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/home');
+    }
   }
 }
 

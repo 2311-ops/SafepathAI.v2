@@ -1,4 +1,5 @@
-// Behavior under test (03-04-PLAN.md Task 2, extended by 03-08-PLAN.md Task 3):
+// Behavior under test (03-04-PLAN.md Task 2, extended by 03-08-PLAN.md
+// Task 3 and 03-09-PLAN.md Task 1):
 // - renders the sender's name in the incoming headline
 // - shows both Phase 3 actions (Acknowledge, Call sender)
 // - shows no mark-resolved control (D-23)
@@ -13,13 +14,19 @@
 //   last known position and a zeroed countdown on screen
 // - renders the sender's position on the responder map
 // - the sender's own screen shows the matching live-active headline/copy
+// - shows a sender-canceled state without dismissing (D-05/D-24)
+// - offers only Close in the canceled state
+// - does not auto-navigate away on cancellation
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:mobile/core/theme/app_colors.dart';
+import 'package:mobile/features/auth/application/auth_controller.dart';
+import 'package:mobile/features/auth/application/auth_state.dart';
+import 'package:mobile/features/auth/data/auth_api.dart';
 import 'package:mobile/features/auth/data/auth_models.dart';
+import 'package:mobile/core/theme/app_colors.dart';
 import 'package:mobile/features/family/application/family_controller.dart';
 import 'package:mobile/features/family/data/family_models.dart';
 import 'package:mobile/features/location/presentation/vector_map.dart';
@@ -33,6 +40,7 @@ import 'package:mobile/features/sos/presentation/responder_alert_screen.dart';
 import 'package:mobile/features/sos/presentation/sender_emergency_session_screen.dart';
 import 'package:mobile/features/sos/presentation/sos_countdown.dart';
 
+import '../../helpers/fake_auth_api.dart';
 import '../../helpers/fake_sos_api.dart';
 import '../../helpers/fake_sos_hub_client.dart';
 
@@ -65,6 +73,15 @@ class _FixedResponderController extends SosResponderController {
 
   @override
   SosResponderState build() => initialState;
+}
+
+/// A fixed, always-authenticated `AuthController` — used only by the
+/// cancellation tests below, which drive the *real* `SosResponderController`
+/// (not `_FixedResponderController`) so its own `sosCanceled` hub
+/// subscription is actually wired up.
+class _FixedAuthController extends AuthController {
+  @override
+  AuthState build() => const AuthAuthenticated();
 }
 
 /// A fixed sender-side controller state — mirrors
@@ -489,4 +506,114 @@ void main() {
       expect(find.textContaining('Live until'), findsOneWidget);
     },
   );
+
+  group('sender-canceled (03-09)', () {
+    // Drives the *real* SosResponderController (not _FixedResponderController
+    // above) so its sosCanceled hub subscription actually fires — folding a
+    // cancellation into an already-open responder screen is the behaviour
+    // under test, which _FixedResponderController's build() override would
+    // otherwise bypass entirely.
+    Widget wrapReal({required FakeSosHubClient hubClient}) {
+      // getSessionResponseBuilder mirrors _incomingSession() so
+      // ResponderAlertScreen's own initState() auto-fetch (which races the
+      // hub-triggered event below) can never show a different, stale
+      // "self-user" placeholder session before settling on Ana's.
+      final sosApi = FakeSosApi()
+        ..getSessionResponseBuilder = (_) => _incomingSession();
+      return ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(_FixedAuthController.new),
+          authApiProvider.overrideWithValue(FakeAuthApi()),
+          familyControllerProvider.overrideWith(_FixedFamilyController.new),
+          sosApiProvider.overrideWithValue(sosApi),
+          sosHubClientProvider.overrideWithValue(hubClient),
+        ],
+        child: const MaterialApp(
+          home: ResponderAlertScreen(
+            sessionId: 'session-1',
+            mapPlatformViewBuilder: _fakePlatformViewBuilder,
+          ),
+        ),
+      );
+    }
+
+    Future<void> arriveThenCancel(
+      WidgetTester tester,
+      FakeSosHubClient hubClient,
+    ) async {
+      await tester.pumpWidget(wrapReal(hubClient: hubClient));
+      // Lets SosResponderController's Future.microtask(_bootstrap) connect
+      // and subscribe to sosTriggered/sosCanceled before anything is emitted.
+      await tester.pump();
+      await tester.pump();
+
+      hubClient.emitSosTriggered(_incomingSession());
+      await tester.pump();
+      expect(find.text('Ana triggered SOS'), findsOneWidget);
+
+      hubClient.emitSosCanceled(
+        SosCancellation(
+          sosSessionId: 'session-1',
+          canceledByUserId: 'ana-user-id',
+          canceledByDisplayName: 'Ana',
+          canceledAtUtc: DateTime.now().toUtc(),
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets(
+      'shows a sender-canceled state without dismissing',
+      (tester) async {
+        final hubClient = FakeSosHubClient();
+        await arriveThenCancel(tester, hubClient);
+
+        expect(find.byType(ResponderAlertScreen), findsOneWidget);
+        expect(find.textContaining('Canceled by Ana at'), findsOneWidget);
+
+        final header = tester.widget<DecoratedBox>(
+          find.byKey(const ValueKey('responder-header-strip')),
+        );
+        final decoration = header.decoration as BoxDecoration;
+        expect(decoration.color, AppColors.deepTeal);
+      },
+    );
+
+    testWidgets('offers only Close in the canceled state', (tester) async {
+      final hubClient = FakeSosHubClient();
+      await arriveThenCancel(tester, hubClient);
+
+      expect(find.text('Acknowledge'), findsNothing);
+      expect(find.text('Acknowledged'), findsNothing);
+      expect(find.text('Close'), findsOneWidget);
+    });
+
+    testWidgets(
+      'does not auto-navigate away on cancellation',
+      (tester) async {
+        final hubClient = FakeSosHubClient();
+        await tester.pumpWidget(wrapReal(hubClient: hubClient));
+        await tester.pump();
+        await tester.pump();
+
+        hubClient.emitSosTriggered(_incomingSession());
+        await tester.pump();
+
+        hubClient.emitSosCanceled(
+          SosCancellation(
+            sosSessionId: 'session-1',
+            canceledByUserId: 'ana-user-id',
+            canceledByDisplayName: 'Ana',
+            canceledAtUtc: DateTime.now().toUtc(),
+          ),
+        );
+        await tester.pump();
+
+        // Still the exact same route/screen — no navigation occurred as a
+        // side effect of the cancellation event arriving.
+        expect(find.byType(ResponderAlertScreen), findsOneWidget);
+        expect(find.byType(MaterialApp), findsOneWidget);
+      },
+    );
+  });
 }

@@ -16,15 +16,29 @@ import '../../../core/theme/app_colors.dart';
 ///   [AppColors.sosRedDeep] one at a time as progress crosses one third, two
 ///   thirds and one — no gradient, no easing (the 3000ms timing itself is
 ///   never shortened; only the decorative interpolation is removed).
+///
+/// [colorOverride], when set, replaces the arm's mint-to-red interpolation
+/// (and the reduced-motion ticks' fixed [AppColors.sosRedDeep]) with a single
+/// flat color for the whole hold — used by `SosHoldToCancelButton` (plan
+/// 03-09), which reuses this painter at a shorter duration but must never
+/// speak the arm's "mint-to-red" color language (canceling is not arming).
 class SosArmRingPainter extends CustomPainter {
-  const SosArmRingPainter({required this.progress, required this.reduceMotion});
+  const SosArmRingPainter({
+    required this.progress,
+    required this.reduceMotion,
+    this.colorOverride,
+  });
 
-  /// Fraction of the 3000ms hold completed, clamped to 0..1.
+  /// Fraction of the hold completed, clamped to 0..1.
   final double progress;
 
   /// Whether `MediaQuery.disableAnimations` is set — swaps the smooth arc for
   /// discrete, non-animated tick marks.
   final bool reduceMotion;
+
+  /// A flat color to paint the arc/ticks with, bypassing the default
+  /// mint-to-red interpolation. Null preserves the original arm-button look.
+  final Color? colorOverride;
 
   static const double _ringRadius = 34;
 
@@ -51,13 +65,14 @@ class SosArmRingPainter extends CustomPainter {
   }
 
   void _paintArc(Canvas canvas, Offset center, double progress) {
-    final color = progress < 0.6
-        ? AppColors.accentMint
-        : Color.lerp(
-            AppColors.accentMint,
-            AppColors.sosRedDeep,
-            ((progress - 0.6) / 0.4).clamp(0.0, 1.0),
-          )!;
+    final color = colorOverride ??
+        (progress < 0.6
+            ? AppColors.accentMint
+            : Color.lerp(
+                AppColors.accentMint,
+                AppColors.sosRedDeep,
+                ((progress - 0.6) / 0.4).clamp(0.0, 1.0),
+              )!);
     final arcPaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -82,7 +97,7 @@ class SosArmRingPainter extends CustomPainter {
     const tickCount = 3;
     const tickLength = 8.0;
     final tickPaint = Paint()
-      ..color = AppColors.sosRedDeep
+      ..color = colorOverride ?? AppColors.sosRedDeep
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;
@@ -102,6 +117,7 @@ class SosArmRingPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant SosArmRingPainter oldDelegate) {
     return oldDelegate.progress != progress ||
-        oldDelegate.reduceMotion != reduceMotion;
+        oldDelegate.reduceMotion != reduceMotion ||
+        oldDelegate.colorOverride != colorOverride;
   }
 }
