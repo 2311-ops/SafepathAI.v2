@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Application.Common;
 using SafePath.Application.Families;
@@ -156,6 +157,67 @@ public class ProfileCommandTests : IDisposable
 
         await Assert.ThrowsAsync<ArgumentException>(
             () => handler.Handle(new UpdatePhoneNumberCommand(userId, "not-a-phone-number", "US")));
+
+        var user = db.Users.Single(u => u.Id == userId);
+        Assert.Null(user.PhoneNumberE164);
+    }
+
+    [Theory]
+    [InlineData("+20234567890")] // Egypt
+    [InlineData("+441212345678")] // United Kingdom
+    [InlineData("+81312345678")] // Japan
+    [InlineData("+551123456789")] // Brazil
+    public async Task UpdatePhoneNumber_AcceptsE164FromAnyCountryWithNoRegionHint(string submitted)
+    {
+        await using var db = _factory.CreateContext();
+        var userId = Guid.NewGuid();
+        db.Users.Add(CreateUser(userId));
+        await db.SaveChangesAsync();
+
+        var handler = new UpdatePhoneNumberCommandHandler(db);
+
+        var result = await handler.Handle(new UpdatePhoneNumberCommand(userId, submitted, Region: null));
+
+        var user = db.Users.Single(u => u.Id == userId);
+        Assert.Equal(submitted, user.PhoneNumberE164);
+        Assert.Equal(submitted, result.PhoneNumberE164);
+    }
+
+    [Fact]
+    public async Task UpdatePhoneNumber_AcceptsE164WhenTheConfiguredDefaultRegionDisagrees()
+    {
+        await using var db = _factory.CreateContext();
+        var userId = Guid.NewGuid();
+        db.Users.Add(CreateUser(userId));
+        await db.SaveChangesAsync();
+        const string submitted = "+20234567890"; // Egyptian E.164 number
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sms:DefaultRegion"] = "JP",
+            })
+            .Build();
+        var handler = new UpdatePhoneNumberCommandHandler(db, configuration);
+
+        var result = await handler.Handle(new UpdatePhoneNumberCommand(userId, submitted, Region: null));
+
+        var user = db.Users.Single(u => u.Id == userId);
+        Assert.Equal(submitted, user.PhoneNumberE164);
+        Assert.Equal(submitted, result.PhoneNumberE164);
+    }
+
+    [Fact]
+    public async Task UpdatePhoneNumber_RejectsAnE164NumberThatIsInvalidForItsOwnCountryCode()
+    {
+        await using var db = _factory.CreateContext();
+        var userId = Guid.NewGuid();
+        db.Users.Add(CreateUser(userId));
+        await db.SaveChangesAsync();
+        var handler = new UpdatePhoneNumberCommandHandler(db);
+
+        // Valid Egyptian country code (+20) but a nonsense all-zero subscriber part.
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => handler.Handle(new UpdatePhoneNumberCommand(userId, "+20000000000", Region: null)));
 
         var user = db.Users.Single(u => u.Id == userId);
         Assert.Null(user.PhoneNumberE164);
