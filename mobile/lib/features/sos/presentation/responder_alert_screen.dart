@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,9 +10,13 @@ import '../../../core/theme/app_typography.dart';
 import '../../../shared_widgets/primary_button.dart';
 import '../../family/application/family_controller.dart';
 import '../../family/data/family_models.dart';
+import '../../location/application/map_geometry.dart';
+import '../../location/presentation/vector_map.dart';
 import '../application/sos_responder_controller.dart';
 import '../data/sos_api.dart';
+import '../data/sos_hub_client.dart';
 import '../data/sos_models.dart';
+import 'sos_countdown.dart';
 
 /// Guardian-side full-screen responder experience
 /// (03-UI-SPEC.md "Full-Screen Responder Alert Screen"). Force-navigated to
@@ -19,7 +25,11 @@ import '../data/sos_models.dart';
 /// sender (D-22) — there is no "mark resolved" or dismiss control anywhere
 /// on this screen (D-23).
 class ResponderAlertScreen extends ConsumerStatefulWidget {
-  const ResponderAlertScreen({super.key, required this.sessionId});
+  const ResponderAlertScreen({
+    super.key,
+    required this.sessionId,
+    @visibleForTesting this.mapPlatformViewBuilder,
+  });
 
   /// The `sosSessionId` route path parameter. The screen's content is
   /// driven by [sosResponderControllerProvider]'s live state (already
@@ -27,6 +37,12 @@ class ResponderAlertScreen extends ConsumerStatefulWidget {
   /// separate fetch-by-id — a cold-start fetch-by-id path is plan 03-06's
   /// FCM deep-link scope.
   final String sessionId;
+
+  /// Test seam threaded straight through to [VectorMap]'s identically-
+  /// scoped seam (`live_map_screen.dart`'s own convention) so a widget test
+  /// never mounts a real platform view. Production callers leave this null.
+  @visibleForTesting
+  final WidgetBuilder? mapPlatformViewBuilder;
 
   @override
   ConsumerState<ResponderAlertScreen> createState() =>
@@ -37,11 +53,23 @@ class _ResponderAlertScreenState extends ConsumerState<ResponderAlertScreen> {
   bool _acknowledging = false;
   String? _loadingSessionId;
   Object? _loadError;
+  StreamSubscription<SosLocationUpdate>? _liveLocationSubscription;
+  SosLocationUpdate? _liveLocationUpdate;
+  Timer? _liveWindowExpiryTimer;
+  bool _liveWindowExpired = false;
 
   @override
   void initState() {
     super.initState();
     Future.microtask(_loadSessionIfMissing);
+    // Read once (not watch): this subscription's own lifetime is owned by
+    // this State, not rebuilt on every provider change — mirrors
+    // SosResponderController's own one-subscription-per-connection
+    // convention, just scoped to this screen instead of that controller.
+    _liveLocationSubscription = ref
+        .read(sosHubClientProvider)
+        .liveLocationUpdates
+        .listen(_applyLiveLocationUpdate);
   }
 
   @override
@@ -49,8 +77,40 @@ class _ResponderAlertScreenState extends ConsumerState<ResponderAlertScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.sessionId != widget.sessionId) {
       _loadError = null;
+      _liveLocationUpdate = null;
+      _liveWindowExpired = false;
+      _liveWindowExpiryTimer?.cancel();
       Future.microtask(_loadSessionIfMissing);
     }
+  }
+
+  @override
+  void dispose() {
+    unawaited(_liveLocationSubscription?.cancel());
+    _liveWindowExpiryTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Updates stop applying the moment the window is known to have closed —
+  /// the last known position and countdown-at-zero stay on screen rather
+  /// than being blanked, since that is the most useful state to leave a
+  /// guardian with (the sender is presumably still wherever they last
+  /// reported, not "nowhere").
+  void _applyLiveLocationUpdate(SosLocationUpdate update) {
+    if (update.sosSessionId != widget.sessionId) return;
+    if (_liveWindowExpired) return;
+    if (!mounted) return;
+    setState(() => _liveLocationUpdate = update);
+    _scheduleLiveWindowExpiry(update.windowEndsAtUtc);
+  }
+
+  void _scheduleLiveWindowExpiry(DateTime windowEndsAtUtc) {
+    _liveWindowExpiryTimer?.cancel();
+    final delay = windowEndsAtUtc.difference(DateTime.now().toUtc());
+    _liveWindowExpiryTimer = Timer(delay.isNegative ? Duration.zero : delay, () {
+      if (!mounted) return;
+      setState(() => _liveWindowExpired = true);
+    });
   }
 
   @override
@@ -91,6 +151,13 @@ class _ResponderAlertScreenState extends ConsumerState<ResponderAlertScreen> {
       );
     }
 
+    // The window end this screen defers to: the most recent live update's
+    // own value once one arrives, falling back to the session's own
+    // server-issued liveWindowEndsAtUtc so the countdown renders
+    // immediately rather than waiting on the first hub push (D-21).
+    final windowEndsAtUtc =
+        _liveLocationUpdate?.windowEndsAtUtc ?? session.liveWindowEndsAtUtc;
+
     return Scaffold(
       body: SafeArea(
         child: session.status == SosSessionStatus.canceled
@@ -100,6 +167,9 @@ class _ResponderAlertScreenState extends ConsumerState<ResponderAlertScreen> {
                 acknowledgedAtUtc: acknowledgedAtUtc,
                 acknowledging: _acknowledging,
                 onAcknowledge: _acknowledge,
+                liveWindowEndsAtUtc: windowEndsAtUtc,
+                liveLocationUpdate: _liveLocationUpdate,
+                mapPlatformViewBuilder: widget.mapPlatformViewBuilder,
               ),
       ),
     );
@@ -154,12 +224,26 @@ class _IncomingBody extends ConsumerWidget {
     required this.acknowledgedAtUtc,
     required this.acknowledging,
     required this.onAcknowledge,
+    required this.liveWindowEndsAtUtc,
+    required this.liveLocationUpdate,
+    required this.mapPlatformViewBuilder,
   });
 
   final SosSession session;
   final DateTime? acknowledgedAtUtc;
   final bool acknowledging;
   final Future<void> Function() onAcknowledge;
+
+  /// The window end this screen defers to (D-21) — null only when this
+  /// session predates 03-08 or the server never opened a live window for
+  /// it, in which case the live-location card is omitted entirely.
+  final DateTime? liveWindowEndsAtUtc;
+
+  /// The sender's most recently reported live position, or null before the
+  /// first `LiveLocationWindowUpdate` arrives.
+  final SosLocationUpdate? liveLocationUpdate;
+
+  final WidgetBuilder? mapPlatformViewBuilder;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -194,9 +278,14 @@ class _IncomingBody extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  // Owned by plan 03-08: live-location map/pin card with an
-                  // explicit end-time/countdown (D-21).
-                  const Spacer(),
+                  if (liveWindowEndsAtUtc != null)
+                    _LiveLocationCard(
+                      windowEndsAtUtc: liveWindowEndsAtUtc!,
+                      update: liveLocationUpdate,
+                      mapPlatformViewBuilder: mapPlatformViewBuilder,
+                    )
+                  else
+                    const Spacer(),
                   if (isAcknowledged)
                     Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -235,6 +324,126 @@ class _IncomingBody extends ConsumerWidget {
     // that field lands. See 03-04-SUMMARY.md Known Stubs.
     final uri = Uri(scheme: 'tel', path: '');
     await launchUrl(uri);
+  }
+}
+
+/// The live-location streaming window card (03-08-PLAN.md, D-21): the same
+/// labelled live indicator and "Live until {end time} · {mm:ss} remaining"
+/// countdown vocabulary as the sender's own Live-active state, above a map
+/// showing the sender's latest reported position. Renders an explanatory
+/// placeholder instead of an empty map before the first position arrives,
+/// and keeps showing the last known position (rather than blanking) once
+/// [ResponderAlertScreen] stops applying further updates at window expiry —
+/// that is the most useful thing left on screen, not "nowhere".
+class _LiveLocationCard extends StatelessWidget {
+  const _LiveLocationCard({
+    required this.windowEndsAtUtc,
+    required this.update,
+    required this.mapPlatformViewBuilder,
+  });
+
+  final DateTime windowEndsAtUtc;
+  final SosLocationUpdate? update;
+  final WidgetBuilder? mapPlatformViewBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Column(
+        children: [
+          const SosLiveIndicator(color: AppColors.ink),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                'Live until ${_formatTime(windowEndsAtUtc)} · ',
+                style: AppTypography.body,
+              ),
+              SosCountdown(endsAtUtc: windowEndsAtUtc),
+              Text(' remaining', style: AppTypography.body),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              height: 200,
+              child: update == null
+                  ? const _AwaitingLivePositionPlaceholder()
+                  : VectorMap(
+                      initialTarget: MapPoint(update!.latitude, update!.longitude),
+                      initialZoom: 16,
+                      markers: [
+                        OverlayMarker(
+                          id: 'sender-live-location',
+                          lat: update!.latitude,
+                          lng: update!.longitude,
+                          width: 32,
+                          height: 32,
+                          child: const _SenderLiveMarker(),
+                        ),
+                      ],
+                      // Both fields are test-only seams, mirroring
+                      // live_map_screen.dart's identical pass-through.
+                      // ignore: invalid_use_of_visible_for_testing_member
+                      platformViewBuilder: mapPlatformViewBuilder,
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sender's live-position pin on the responder's map — SOS red, since this
+/// marker only ever exists during an active emergency.
+class _SenderLiveMarker extends StatelessWidget {
+  const _SenderLiveMarker();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.sosRed,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.surface, width: 3),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x330C3A3F),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: const Icon(Icons.person_pin_circle, color: Colors.white, size: 18),
+    );
+  }
+}
+
+/// Shown in place of the map before the first `LiveLocationWindowUpdate`
+/// arrives — an empty map with no explanation would read as broken, not as
+/// "still waiting for a fix" (mirrors the sender screen's own
+/// never-silently-empty rule for the offline session state).
+class _AwaitingLivePositionPlaceholder extends StatelessWidget {
+  const _AwaitingLivePositionPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppColors.hairlineSoft,
+      child: Center(
+        child: Text(
+          'Waiting for a live position…',
+          textAlign: TextAlign.center,
+          style: AppTypography.caption,
+        ),
+      ),
+    );
   }
 }
 

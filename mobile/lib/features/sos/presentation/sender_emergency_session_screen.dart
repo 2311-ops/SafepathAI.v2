@@ -18,17 +18,19 @@ import '../application/sos_session_state.dart';
 import '../data/sos_api.dart';
 import '../data/sos_models.dart';
 import 'delivery_status_chip.dart';
+import 'sos_countdown.dart';
 
 /// Full-screen sender emergency session (03-UI-SPEC.md "Full-Screen Sender
 /// Emergency Session — State Machine"). This is the one screen in the app
 /// where SOS red is the dominant surface — the screen literally *is* the
 /// emergency, not a dilution of the reservation rule.
 ///
-/// This plan renders [SosSubmitted], [SosDelivering] and [SosOfflineQueued]
-/// in full; the remaining sealed states ([SosLiveActive], [SosCanceled])
-/// render a non-empty placeholder body so the switch below stays exhaustive
-/// today — each is named at its call site with the plan that owns its
-/// locked treatment.
+/// [SosSubmitted], [SosDelivering] and [SosOfflineQueued] were rendered in
+/// full by earlier plans; 03-08 adds [SosLiveActive]'s own locked treatment
+/// (streaming headline, live indicator, pulse ring, countdown). The
+/// remaining sealed state ([SosCanceled]) still renders a non-empty
+/// placeholder body so the switch below stays exhaustive today — it is
+/// named at its call site with the plan that owns its locked treatment.
 class SenderEmergencySessionScreen extends ConsumerStatefulWidget {
   const SenderEmergencySessionScreen({super.key});
 
@@ -111,9 +113,12 @@ class _SenderEmergencySessionScreenState
               retryCount: retryCount,
               reduceMotion: reduceMotion,
             ),
-          // Owned by plan 03-08: live-location streaming window + countdown
-          // ("Live until {end time} · {mm:ss} remaining").
-          SosLiveActive(:final session) => _DeliveringBody(session: session),
+          SosLiveActive(:final session, :final windowEndsAtUtc) =>
+            _LiveActiveBody(
+              session: session,
+              windowEndsAtUtc: windowEndsAtUtc,
+              reduceMotion: reduceMotion,
+            ),
           // Owned by plan 03-09: hold-to-cancel gesture + the de-escalated
           // Deep Teal canceled-state chrome (self-cancel is never red).
           SosCanceled(:final session) => _DeliveringBody(session: session),
@@ -212,6 +217,89 @@ class _DeliveringBody extends StatelessWidget {
                 letterSpacing: 0,
               ),
             ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          PrimaryButton(
+            label: 'Call 911',
+            backgroundColor: AppColors.ink,
+            foregroundColor: Colors.white,
+            onPressed: () => _call911(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _call911() async {
+    final uri = Uri(scheme: 'tel', path: '911');
+    await launchUrl(uri);
+  }
+}
+
+/// The live-location streaming window state (03-08-PLAN.md, D-21/D-31): the
+/// locked headline (see the `Text` below), the labelled live indicator, the
+/// "Live until {end time} · {mm:ss} remaining" countdown
+/// copy (identical vocabulary to the responder screen so both sides of the
+/// emergency read the same authoritative end time), and the pulse ring
+/// behind the header icon. Keeps the same "Call 911" action as the
+/// Delivering state available — 03-09 adds hold-to-cancel here without
+/// removing it.
+class _LiveActiveBody extends StatelessWidget {
+  const _LiveActiveBody({
+    required this.session,
+    required this.windowEndsAtUtc,
+    required this.reduceMotion,
+  });
+
+  final SosSession session;
+  final DateTime windowEndsAtUtc;
+  final bool reduceMotion;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 72,
+            height: 72,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const SosPulseRing(size: 72),
+                const Icon(
+                  Icons.emergency_share,
+                  color: Colors.white,
+                  size: 36,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Streaming your live location',
+            textAlign: TextAlign.center,
+            style: AppTypography.heading.copyWith(color: Colors.white),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          const SosLiveIndicator(),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                'Live until ${_formatClockTime(windowEndsAtUtc)} · ',
+                style: AppTypography.body.copyWith(color: Colors.white),
+              ),
+              SosCountdown(endsAtUtc: windowEndsAtUtc, color: Colors.white),
+              Text(
+                ' remaining',
+                style: AppTypography.body.copyWith(color: Colors.white),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.xl),
           PrimaryButton(
@@ -575,4 +663,16 @@ String _formatElapsed(Duration elapsed) {
   final minutes = totalSeconds ~/ 60;
   final seconds = totalSeconds % 60;
   return '$minutes:${seconds.toString().padLeft(2, '0')}';
+}
+
+/// Human clock time for the "Live until {end time}" copy — same h:mm AM/PM
+/// shape as `responder_alert_screen.dart`'s own `_formatTime`, duplicated
+/// locally rather than shared since both are small, private, file-scoped
+/// helpers with no other consumer.
+String _formatClockTime(DateTime time) {
+  final local = time.toLocal();
+  final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+  final minute = local.minute.toString().padLeft(2, '0');
+  final suffix = local.hour >= 12 ? 'PM' : 'AM';
+  return '$hour:$minute $suffix';
 }
