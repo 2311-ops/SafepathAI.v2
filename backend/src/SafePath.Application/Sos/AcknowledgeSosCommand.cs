@@ -56,7 +56,7 @@ public class AcknowledgeSosCommandHandler : ICommandHandler<AcknowledgeSosComman
             await _db.SaveChangesAsync(cancellationToken);
         }
 
-        var dto = await SosSessionProjection.ProjectAsync(_db, session, cancellationToken);
+        var dto = await SosSessionProjection.ProjectAsync(_db, session, command.CallerUserId, cancellationToken);
 
         if (ownAttempts.Count > 0)
         {

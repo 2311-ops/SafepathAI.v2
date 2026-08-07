@@ -87,6 +87,32 @@ public class AlertFanOutTests : IDisposable
     }
 
     [Fact]
+    public async Task Dispatch_BroadcastsSendersPhoneNumberToTheRecipientAudienceOnlyAndExcludesTheSender()
+    {
+        await using var db = _factory.CreateContext();
+        var (_, sessionId, triggeredByUserId, recipientIds) = await SeedTriggeredSession(db, recipientCount: 2, senderPhoneNumber: "+12025550173");
+        SosSessionDto? captured = null;
+        IEnumerable<Guid>? capturedRecipientIds = null;
+        var broadcast = new Mock<IAlertBroadcastService>();
+        broadcast
+            .Setup(b => b.SosTriggered(It.IsAny<Guid>(), It.IsAny<IEnumerable<Guid>>(), It.IsAny<SosSessionDto>(), It.IsAny<CancellationToken>()))
+            .Callback<Guid, IEnumerable<Guid>, SosSessionDto, CancellationToken>((_, ids, dto, _) =>
+            {
+                captured = dto;
+                capturedRecipientIds = ids;
+            })
+            .Returns(Task.CompletedTask);
+        var dispatcher = new SosAlertDispatcher(db, broadcast.Object, new NoOpSmsGateway(), new NoOpPushSender());
+
+        await dispatcher.DispatchAsync(sessionId);
+
+        Assert.Equal("+12025550173", captured!.TriggeredByPhoneNumberE164);
+        Assert.NotNull(capturedRecipientIds);
+        Assert.DoesNotContain(triggeredByUserId, capturedRecipientIds!);
+        Assert.True(new HashSet<Guid>(capturedRecipientIds!).SetEquals(recipientIds));
+    }
+
+    [Fact]
     public async Task Dispatch_ContinuesWhenOneChannelThrows()
     {
         await using var db = _factory.CreateContext();
@@ -145,7 +171,8 @@ public class AlertFanOutTests : IDisposable
 
     private async Task<(Guid FamilyId, Guid SosSessionId, Guid TriggeredByUserId, List<Guid> RecipientIds)> SeedTriggeredSession(
         ApplicationDbContext db,
-        int recipientCount)
+        int recipientCount,
+        string? senderPhoneNumber = null)
     {
         var familyId = Guid.NewGuid();
         var triggeredByUserId = Guid.NewGuid();
@@ -158,6 +185,7 @@ public class AlertFanOutTests : IDisposable
             Email = $"caller-{triggeredByUserId}@example.com",
             FullName = "Caller",
             Role = Role.Member,
+            PhoneNumberE164 = senderPhoneNumber,
             CreatedAt = DateTime.UtcNow,
         });
         db.Families.Add(new Family { Id = familyId, Name = "Fan-out Family", CreatedByUserId = triggeredByUserId, CreatedAt = DateTime.UtcNow });

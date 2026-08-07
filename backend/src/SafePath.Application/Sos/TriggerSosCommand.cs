@@ -52,7 +52,7 @@ public class TriggerSosCommandHandler : ICommandHandler<TriggerSosCommand, Trigg
 
         if (existing is not null)
         {
-            var existingDto = await SosSessionProjection.ProjectAsync(_db, existing, cancellationToken);
+            var existingDto = await SosSessionProjection.ProjectAsync(_db, existing, command.CallerUserId, cancellationToken);
             return new TriggerSosResult(existingDto, WasExistingSession: true);
         }
 
@@ -161,7 +161,7 @@ public class TriggerSosCommandHandler : ICommandHandler<TriggerSosCommand, Trigg
                 TaskScheduler.Default);
         }
 
-        var dto = await SosSessionProjection.ProjectAsync(_db, session, cancellationToken);
+        var dto = await SosSessionProjection.ProjectAsync(_db, session, command.CallerUserId, cancellationToken);
         return new TriggerSosResult(dto, WasExistingSession: false);
     }
 

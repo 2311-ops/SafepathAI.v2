@@ -11,9 +11,46 @@ namespace SafePath.Application.Sos;
 /// </summary>
 internal static class SosSessionProjection
 {
+    /// <summary>
+    /// The standard entry point. <paramref name="callerUserId"/> is REQUIRED — no default
+    /// value — so the compiler forces every call site to state whose eyes this payload is
+    /// for; a defaulted parameter would let a future handler silently inherit blanket
+    /// visibility of the sender's phone number (T-RK2-01). Visibility is
+    /// <c>recipientIds.Contains(callerUserId)</c> against this session's own
+    /// delivery-attempt rows: because <see cref="TriggerSosCommandHandler"/> structurally
+    /// excludes the triggering user from that set, the sender never seeing their own number
+    /// falls out of this one expression with no special case, and a family member who merely
+    /// passed <c>RequireMembership</c> without an actual delivery-attempt row is excluded by
+    /// the same expression.
+    /// </summary>
     public static async Task<SosSessionDto> ProjectAsync(
         IApplicationDbContext db,
         SosSession session,
+        Guid callerUserId,
+        CancellationToken cancellationToken)
+    {
+        var recipientIds = await ResolveRecipientUserIds(db, session.Id, cancellationToken);
+        return await ProjectCoreAsync(db, session, phoneNumberVisible: recipientIds.Contains(callerUserId), cancellationToken);
+    }
+
+    /// <summary>
+    /// The ONLY legal caller of this entry point is a fan-out whose delivery audience is
+    /// exactly this session's distinct delivery-attempt recipient set —
+    /// <see cref="SosAlertDispatcher.DispatchSignalR"/>, and nowhere else. Any other use is a
+    /// leak (T-RK2-02): unlike <see cref="ProjectAsync"/>, there is no single caller id here,
+    /// so visibility is unconditionally true and relies entirely on the fan-out's own address
+    /// list already being scoped to that recipient set.
+    /// </summary>
+    public static Task<SosSessionDto> ProjectForRecipientAudienceAsync(
+        IApplicationDbContext db,
+        SosSession session,
+        CancellationToken cancellationToken) =>
+        ProjectCoreAsync(db, session, phoneNumberVisible: true, cancellationToken);
+
+    private static async Task<SosSessionDto> ProjectCoreAsync(
+        IApplicationDbContext db,
+        SosSession session,
+        bool phoneNumberVisible,
         CancellationToken cancellationToken)
     {
         var attempts = await db.SosDeliveryAttempts
@@ -65,6 +102,15 @@ internal static class SosSessionProjection
             })
             .ToList();
 
+        string? senderPhoneNumberE164 = null;
+        if (phoneNumberVisible)
+        {
+            senderPhoneNumberE164 = await db.Users
+                .Where(u => u.Id == session.TriggeredByUserId)
+                .Select(u => u.PhoneNumberE164)
+                .SingleOrDefaultAsync(cancellationToken);
+        }
+
         return new SosSessionDto(
             session.Id,
             session.FamilyId,
@@ -75,7 +121,8 @@ internal static class SosSessionProjection
             session.ReceivedAtUtc,
             session.LiveWindowEndsAtUtc,
             session.CanceledAtUtc,
-            recipients);
+            recipients,
+            senderPhoneNumberE164);
     }
 
     /// <summary>

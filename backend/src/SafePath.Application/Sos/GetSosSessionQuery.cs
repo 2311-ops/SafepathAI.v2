@@ -35,7 +35,7 @@ public class GetSosSessionQueryHandler : ICommandHandler<GetSosSessionQuery, Get
 
         await _authorization.RequireMembership(query.CallerUserId, session.FamilyId, cancellationToken);
 
-        var dto = await SosSessionProjection.ProjectAsync(_db, session, cancellationToken);
+        var dto = await SosSessionProjection.ProjectAsync(_db, session, query.CallerUserId, cancellationToken);
         return new GetSosSessionResult(dto);
     }
 }

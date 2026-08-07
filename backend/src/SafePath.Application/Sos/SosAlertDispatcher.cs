@@ -101,7 +101,11 @@ public class SosAlertDispatcher : ISosAlertDispatcher
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        var dto = await SosSessionProjection.ProjectAsync(_db, session, cancellationToken);
+        // The fan-out's own address list (recipientUserIds, above) is already exactly this
+        // session's distinct delivery-attempt recipient set — the one condition that makes
+        // ProjectForRecipientAudienceAsync's unconditional visibility safe (T-RK2-02). This is
+        // the only call site in the codebase allowed to use it.
+        var dto = await SosSessionProjection.ProjectForRecipientAudienceAsync(_db, session, cancellationToken);
         await _broadcast.SosTriggered(session.FamilyId, recipientUserIds, dto, cancellationToken);
     }
 

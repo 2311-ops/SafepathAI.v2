@@ -47,7 +47,17 @@ public record SosSessionDto(
     DateTime ReceivedAtUtc,
     DateTime? LiveWindowEndsAtUtc,
     DateTime? CanceledAtUtc,
-    IReadOnlyList<SosRecipientStatusDto> Recipients);
+    IReadOnlyList<SosRecipientStatusDto> Recipients,
+    /// <summary>
+    /// The TRIGGERING user's own stored phone number, populated only when this payload's
+    /// audience is contained in this session's distinct delivery-attempt recipient set
+    /// (<see cref="SosSessionProjection"/>) — never to the triggering user themselves, and
+    /// never to a family member who merely passed membership authorization without an
+    /// actual delivery-attempt row. This is a different subject and audience from
+    /// <see cref="SosRecipientStatusDto"/>, which remains untouched and still never carries
+    /// a recipient's own contact details (T-03-03).
+    /// </summary>
+    string? TriggeredByPhoneNumberE164 = null);
 
 /// <summary>
 /// Pushed to the family alert group whenever a single (recipient, channel) delivery row's status

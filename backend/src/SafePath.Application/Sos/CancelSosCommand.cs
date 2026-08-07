@@ -51,7 +51,7 @@ public class CancelSosCommandHandler : ICommandHandler<CancelSosCommand, CancelS
         {
             // Idempotent: leaves the first cancellation's timestamp untouched and does not
             // broadcast again.
-            var unchangedDto = await SosSessionProjection.ProjectAsync(_db, session, cancellationToken);
+            var unchangedDto = await SosSessionProjection.ProjectAsync(_db, session, command.CallerUserId, cancellationToken);
             return new CancelSosResult(unchangedDto);
         }
 
@@ -60,7 +60,7 @@ public class CancelSosCommandHandler : ICommandHandler<CancelSosCommand, CancelS
         session.CanceledByUserId = command.CallerUserId;
         await _db.SaveChangesAsync(cancellationToken);
 
-        var dto = await SosSessionProjection.ProjectAsync(_db, session, cancellationToken);
+        var dto = await SosSessionProjection.ProjectAsync(_db, session, command.CallerUserId, cancellationToken);
 
         var callerDisplayName = await _db.Users
             .Where(u => u.Id == command.CallerUserId)
