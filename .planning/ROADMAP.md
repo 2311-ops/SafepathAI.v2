@@ -183,7 +183,7 @@ Plans:
   4. Responders see the user's location streaming live for a fixed window after the SOS trigger (SOS-04)
   5. User can self-cancel a false alarm through a channel that runs in parallel to — and never delays — the guardian alert, and can also trigger SOS via an OS-level backup shortcut (side-button sequence, Accessibility shortcut, or lock-screen widget) (SOS-05, SOS-06)
 
-**Plans**: 7/9 plans executed
+**Plans**: 8/9 plans executed
 
 Plans:
 **Wave 1**
@@ -207,7 +207,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 03-08-PLAN.md — live-location streaming window with a server-authoritative end time, surviving lock/backgrounding (SOS-04)
+- [x] 03-08-PLAN.md — live-location streaming window with a server-authoritative end time, surviving lock/backgrounding (SOS-04)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -289,7 +289,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Backend & Auth Foundation | 14/14 | Complete | 2026-07-10 |
 | 2. Real-Time Location, History & Privacy | 19/19 | Complete    | 2026-07-14 |
-| 3. SOS Fast Path (Core Value) | 7/9 | In Progress|  |
+| 3. SOS Fast Path (Core Value) | 8/9 | In Progress|  |
 | 4. Geofencing | 0/TBD | Not started | - |
 | 5. AI Analytics & Family Dashboard | 0/TBD | Not started | - |
 | 6. Signature Safety Features | 0/TBD | Not started | - |

@@ -6,15 +6,15 @@ current_phase: 03
 current_phase_name: sos-fast-path
 status: executing
 stopped_at: Completed 03-06-PLAN.md (Task 3 manual FCM verification, Android-only)
-last_updated: "2026-08-05T19:10:00.000Z"
-last_activity: 2026-08-05
-last_activity_desc: Closed 03-06's Task 3 human-verify checkpoint (real FCM push + deep-link confirmed on Android)
+last_updated: "2026-08-07T00:13:00.838Z"
+last_activity: 2026-08-06
+last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 44
-  completed_plans: 42
-  percent: 39
+  completed_plans: 43
+  percent: 38
 ---
 
 # Project State
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 03 (sos-fast-path) — EXECUTING
-Plan: 7 of 9 complete — next: 03-08 (live-location streaming window)
-Status: Ready to plan/execute 03-08
-Last activity: 2026-08-06 — Completed quick task 260806-3zb: migrated Live Map + route sheet from flutter_map to maplibre_gl for OpenFreeMap Liberty vector tiles. Found and fixed 2 real on-device rendering bugs (hybrid-composition default, physical-vs-logical pixel units) across 3 verification rounds, plus 1 dispose-race blocker via code review. Status Needs Review — SOS responsiveness (the app's core non-negotiable) explicitly deferred to user confirmation, not yet done.
+Plan: 2 of 9
+Status: Ready to execute
+Last activity: 2026-08-06 — Phase 03 execution started
 
 Progress: [██████████] 100%
 
@@ -89,6 +89,7 @@ Progress: [██████████] 100%
 | Phase 03-sos-fast-path P04 | 72min | 3 tasks | 13 files |
 | Phase 03 P05 | 15min | 3 tasks | 20 files |
 | Phase 03-sos-fast-path P07 | 17min | 3 tasks | 17 files |
+| Phase 03 P08 | 45min | 3 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -174,6 +175,11 @@ Recent decisions affecting current work:
 - [Phase 03-07]: sosHubClientProvider's default construction depends on an initialized Supabase client, absent in the unit-test process -- every test container reading sosControllerProvider now overrides sosHubClientProvider with FakeSosHubClient so SosController.build() actually completes (including its connectivity subscription) instead of silently failing into an unobserved AsyncError.
 - [Phase 03-07]: Corrected the pre-existing generic AsyncError-state copy on the sender screen: since Task 1 routes every network failure through SosOfflineQueued instead, the AsyncError branch is now reached only for a genuine non-network rejection that will not retry automatically, so it surfaces the server's own rejection message instead of a false 'keep trying' claim.
 - [Phase 03-06]: Task 3's manual FCM verification closed 2026-08-05, Android-only: physical device (sender) + Android emulator (Guardian, terminated) confirmed real push delivery, correct deep-link into ResponderAlertScreen, and Queued->Delivered->Acknowledged server-side via a direct GET /sos/{id} read. iOS/APNs and D-32 multi-device explicitly not tested -- see 03-06-SUMMARY.md.
+- [Phase ?]: [Phase 03-08]: LiveWindowEndsAtUtc is stamped from TriggerSosCommandHandler's server-side ReceivedAtUtc via a new optional SosLiveWindowOptions parameter (default 15 min), never the client-supplied TriggeredAtUtc -- a skewed device clock cannot extend how long it is tracked (T-03-28).
+- [Phase ?]: [Phase 03-08]: ReportSosLocationCommandHandler returns a typed outcome (Accepted/WindowClosed/SessionNotFound) instead of throwing for a closed window or missing session, so a client that keeps sending after expiry gets a normal refusal it can act on.
+- [Phase ?]: [Phase 03-08]: SosLiveLocationService/backend ReportSosLocationCommand never touch LocationPings/ReportLocationCommandHandler/ISharingAuthorizationService/ILowBatteryAlertTracker -- the emergency stream stays structurally isolated from routine location tracking in both directions (SOS-01).
+- [Phase ?]: [Phase 03-08]: D-33 force-kill survival needed zero custom Kotlin -- flutter_foreground_task v10.0.0's own onTaskRemoved/RestartReceiver logic already handles it once android:stopWithTask=false and the matching Dart ForegroundTaskOptions.stopWithTask=false are set.
+- [Phase ?]: [Phase 03-08]: responder_alert_screen.dart's live-location card uses maplibre_gl's VectorMap (the project's actual post-260806-3zb map stack), not the plan's stale flutter_map read_first pointer.
 
 ### Pending Todos
 
@@ -222,6 +228,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-05T18:50:00.000Z
+Last session: 2026-08-07T00:11:26.162Z
 Stopped at: Completed quick task 260805-s33
 Resume file: None
