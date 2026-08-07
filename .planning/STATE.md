@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: sos-fast-path
 status: executing
-stopped_at: Completed quick task 260807-qhg
-last_updated: "2026-08-07T16:35:38.610Z"
-last_activity: 2026-08-06
-last_activity_desc: Phase 03 execution started
+stopped_at: Completed quick task 260807-vqc
+last_updated: "2026-08-07T19:50:48.025Z"
+last_activity: 2026-08-07
+last_activity_desc: Completed quick task 260807-vqc - Add a country code picker to the phone-number feature
 progress:
   total_phases: 8
   completed_phases: 3
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 Phase: 03 (sos-fast-path) — EXECUTING
 Plan: 2 of 9
 Status: Ready to execute
-Last activity: 2026-08-06 — Phase 03 execution started
+Last activity: 2026-08-07 — Completed quick task 260807-vqc: Add a country code picker to the phone-number feature
 
 Progress: [██████████] 100%
 
@@ -219,6 +219,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260805-uke | Proactive zero-SOS-recipient warning card in Privacy Center (mirrors backend D-11 recipient resolution) + Guardian-role SOS access audit (no gap found) | 2026-08-05 | ac0d8d2 | | [260805-uke-add-a-proactive-zero-sos-recipient-nudge](./quick/260805-uke-add-a-proactive-zero-sos-recipient-nudge/) |
 | 260806-3zb | Migrate Live Map + route sheet from flutter_map to maplibre_gl for OpenFreeMap Liberty vector tiles (found/fixed 2 on-device rendering bugs + 1 dispose-race blocker via code review) | 2026-08-06 | 4152e22, 5be73c6, 015bc72, b5aa00b, 8c8e68a | Needs Review | [260806-3zb-migrate-map-rendering-from-flutter-map-t](./quick/260806-3zb-migrate-map-rendering-from-flutter-map-t/) |
 | 260807-qhg | Consolidated the splash lockup into a shared AnimatedSafePathMark (ring trace + staggered letter reveal + halo), synced both splash surfaces to 1800ms; fixed StartupSplashOverlay's Stopwatch-based progress to be FakeAsync-testable | 2026-08-07 | d6f667e, 2bb751f, c7be6c5, 1821d39 | | [260807-qhg-apply-splash-screen-enhancement-instruct](./quick/260807-qhg-apply-splash-screen-enhancement-instruct/) |
+| 260807-vqc | Added a country code picker (country_picker 2.0.28) to the profile phone-number field; composes/splits full E.164 numbers client-side, backend already normalized correctly (added regression tests only) | 2026-08-07 | b768b88, 7f7e94b, 15da58f | | [260807-vqc-add-a-country-code-picker-to-the-add-pho](./quick/260807-vqc-add-a-country-code-picker-to-the-add-pho/) |
 
 ## Deferred Items
 
@@ -230,6 +231,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-07T16:35:38.593Z
-Stopped at: Completed quick task 260807-qhg
+Last session: 2026-08-07T19:50:48.025Z
+Stopped at: Completed quick task 260807-vqc
 Resume file: None
