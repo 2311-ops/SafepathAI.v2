@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Application.Sos;
+using SafePath.Infrastructure.Sms;
 
 namespace SafePath.Api.Controllers;
 
@@ -17,10 +18,14 @@ namespace SafePath.Api.Controllers;
 public class SmsWebhookController : ControllerBase
 {
     private readonly ICommandHandler<RecordSmsDeliveryStatusCommand, RecordSmsDeliveryStatusResult> _record;
+    private readonly TwilioOptions _twilioOptions;
 
-    public SmsWebhookController(ICommandHandler<RecordSmsDeliveryStatusCommand, RecordSmsDeliveryStatusResult> record)
+    public SmsWebhookController(
+        ICommandHandler<RecordSmsDeliveryStatusCommand, RecordSmsDeliveryStatusResult> record,
+        TwilioOptions twilioOptions)
     {
         _record = record;
+        _twilioOptions = twilioOptions;
     }
 
     [HttpPost("webhooks/sms/status")]
@@ -29,7 +34,7 @@ public class SmsWebhookController : ControllerBase
         var form = await Request.ReadFormAsync(cancellationToken);
         var parameters = form.Keys.ToDictionary(key => key, key => form[key].ToString());
         var signature = Request.Headers["X-Twilio-Signature"].ToString();
-        var url = $"{Request.Scheme}://{Request.Host}{Request.Path}{Request.QueryString}";
+        var url = BuildValidatedUrl();
 
         var result = await _record.Handle(
             new RecordSmsDeliveryStatusCommand(url, parameters, string.IsNullOrEmpty(signature) ? null : signature),
@@ -41,5 +46,26 @@ public class SmsWebhookController : ControllerBase
         }
 
         return Ok();
+    }
+
+    /// <summary>
+    /// Twilio signs the *public* URL it called (WR-02). Behind a TLS-terminating reverse proxy
+    /// or load balancer without forwarded-header handling configured, <c>Request.Scheme</c>/
+    /// <c>Request.Host</c> commonly report an internal scheme/host rather than what Twilio
+    /// actually signed, which would fail every legitimate callback's signature check. Prefer the
+    /// operator-configured public callback URL (<see cref="TwilioOptions.StatusCallbackUrl"/> --
+    /// already known, since it is the exact URL <c>TwilioSmsGateway</c> tells Twilio to call
+    /// back) plus the live query string, falling back to the request-derived URL only when no
+    /// callback URL is configured (e.g. local dev with <c>LoggingSmsGateway</c>, where no real
+    /// Twilio callback will ever arrive anyway).
+    /// </summary>
+    private string BuildValidatedUrl()
+    {
+        if (!string.IsNullOrWhiteSpace(_twilioOptions.StatusCallbackUrl))
+        {
+            return $"{_twilioOptions.StatusCallbackUrl}{Request.QueryString}";
+        }
+
+        return $"{Request.Scheme}://{Request.Host}{Request.Path}{Request.QueryString}";
     }
 }
