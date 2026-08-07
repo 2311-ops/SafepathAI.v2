@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: sos-fast-path
 status: executing
-stopped_at: Completed quick task 260807-vqc
-last_updated: "2026-08-07T19:50:48.025Z"
-last_activity: 2026-08-07
-last_activity_desc: Completed quick task 260807-vqc - Add a country code picker to the phone-number feature
+stopped_at: Completed 03-09-PLAN.md (SOS-05/06 hold-to-cancel + OS backup trigger; phase 3's closing manual gate approved)
+last_updated: "2026-08-07T22:55:11.248Z"
+last_activity: 2026-08-08
+last_activity_desc: Completed 03-09-PLAN.md (SOS-05/06 hold-to-cancel + OS backup trigger; phase 3's closing manual gate approved)
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 44
-  completed_plans: 43
-  percent: 38
+  completed_plans: 44
+  percent: 50
 ---
 
 # Project State
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 03 (sos-fast-path) — EXECUTING
-Plan: 2 of 9
-Status: Ready to execute
-Last activity: 2026-08-07 — Completed quick task 260807-vqc: Add a country code picker to the phone-number feature
+Plan: 9 of 9
+Status: All plans complete — awaiting phase-level verification/closeout
+Last activity: 2026-08-08 — Completed 03-09-PLAN.md (SOS-05/06 hold-to-cancel + OS backup trigger; phase 3's closing manual gate approved)
 
 Progress: [██████████] 100%
 
@@ -90,6 +90,7 @@ Progress: [██████████] 100%
 | Phase 03 P05 | 15min | 3 tasks | 20 files |
 | Phase 03-sos-fast-path P07 | 17min | 3 tasks | 17 files |
 | Phase 03 P08 | 45min | 3 tasks | 20 files |
+| Phase 03-sos-fast-path P09 | multi-session | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -181,12 +182,13 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 03-08]: D-33 force-kill survival needed zero custom Kotlin -- flutter_foreground_task v10.0.0's own onTaskRemoved/RestartReceiver logic already handles it once android:stopWithTask=false and the matching Dart ForegroundTaskOptions.stopWithTask=false are set.
 - [Phase ?]: [Phase 03-08]: responder_alert_screen.dart's live-location card uses maplibre_gl's VectorMap (the project's actual post-260806-3zb map stack), not the plan's stale flutter_map read_first pointer.
 - [Phase ?]: [Quick 260807-qhg]: Consolidated the splash lockup into a shared AnimatedSafePathMark (ring trace + staggered per-letter wordmark + halo), both SplashScreen and StartupSplashOverlay now synced to 1800ms; fixed StartupSplashOverlay's Stopwatch-based progress (untestable under flutter_test's FakeAsync clock) to tick-count accumulation on the same Timer.periodic.
+- [Phase 03-09]: Cancellation is additive-only (never mutates/deletes SosDeliveryAttempt rows) and the quick_actions shortcut reuses SosController.arm() verbatim, registered only while authenticated.
+- [Phase 03-09]: Fixed a real bug found during Task 3 manual verification: SosLiveLocationService now reports a best-effort one-shot GPS fix on start() so a stationary sender's live location no longer waits on movement (see 03-09-SUMMARY.md).
 
 ### Pending Todos
 
 | Title | Area | File |
 |-------|------|------|
-| Manual airplane-mode offline SOS smoke test (03-07 D4) | verification | [todos/pending/2026-08-02-manual-airplane-mode-offline-sos-smoke-test.md](./todos/pending/2026-08-02-manual-airplane-mode-offline-sos-smoke-test.md) |
 | Investigate sender-screen delivery chip not visually updating on Device A despite correct server-side Queued->Delivered tracking (found during 03-06 Task 3 verification 2026-08-05) | investigation | see 03-06-SUMMARY.md "Issues Encountered" |
 | Investigate FamilyController cold-start bootstrap issue: app relaunch showed "No circle yet" for a real family member until a full emulator reboot (found during 260805-uke Task 3 verification) | investigation | [todos/pending/2026-08-05-family-controller-cold-start-bootstrap-race.md](./todos/pending/2026-08-05-family-controller-cold-start-bootstrap-race.md) |
 | Live Map family/self pin visibly "rolls"/vibrates while panning left-right (post-260806-3zb maplibre_gl migration); suspected unguarded overlapping async reprojection calls resolving out of order | investigation | [todos/pending/2026-08-06-live-map-pin-jitter-during-pan.md](./todos/pending/2026-08-06-live-map-pin-jitter-during-pan.md) |
@@ -232,6 +234,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-07T19:50:48.025Z
-Stopped at: Completed quick task 260807-vqc
+Last session: 2026-08-07T22:54:14.464Z
+Stopped at: Completed 03-09-PLAN.md (SOS-05/06 hold-to-cancel + OS backup trigger; phase 3's closing manual gate approved)
 Resume file: None

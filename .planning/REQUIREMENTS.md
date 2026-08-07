@@ -59,7 +59,7 @@
 - [x] **SOS-03**: If there's no network connectivity at the moment of SOS trigger, the app queues and retries delivery and shows the user a clear "not sent yet" state
 - [x] **SOS-04**: User's location streams live to responders for a fixed window after an SOS trigger
 - [x] **SOS-05**: User can cancel a false SOS alarm via a self-cancel channel that runs in parallel to — and never delays — the guardian alert
-- [ ] **SOS-06**: SOS can also be triggered via an OS-level backup shortcut (side-button sequence, Android Accessibility shortcut, or lock-screen widget)
+- [x] **SOS-06**: SOS can also be triggered via an OS-level backup shortcut (side-button sequence, Android Accessibility shortcut, or lock-screen widget)
 
 ### Smart Notifications (NOTIF)
 
@@ -203,7 +203,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SOS-03 | Phase 3 | Complete |
 | SOS-04 | Phase 3 | Complete |
 | SOS-05 | Phase 3 | Complete |
-| SOS-06 | Phase 3 | Pending |
+| SOS-06 | Phase 3 | Complete |
 | NOTIF-03 | Phase 3 | Complete |
 | DESIGN-02 | Phase 3 | Complete |
 | GEO-01 | Phase 4 | Pending |

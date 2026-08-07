@@ -25,7 +25,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Backend & Auth Foundation** - Auth, roles, and family circles on a Clean Architecture backend + Supabase, with the app's design system wired into Flutter.
 - [x] **Phase 2: Real-Time Location, History & Privacy** - Family members see live and historical location on a shared map, with full privacy controls over what's shared. (19/19 plans complete; CR-01 IsOnline LiveLocation sharing leak closed by 02-19; 1 pending human device confirmation of the 02-18 cold-start avatar fix remains recorded in 02-VERIFICATION.md) (completed 2026-07-14)
-- [ ] **Phase 3: SOS Fast Path (Core Value)** - One tap (or covert trigger) reliably alerts guardians with live location within seconds, bypassing every routine and AI pipeline.
+- [ ] **Phase 3: SOS Fast Path (Core Value)** - One tap (or covert trigger) reliably alerts guardians with live location within seconds, bypassing every routine and AI pipeline. (9/9 plans complete; awaiting phase-level verification/closeout)
 - [ ] **Phase 4: Geofencing** - Safe zones trigger reliable enter/exit alerts without GPS-drift false positives.
 - [ ] **Phase 5: AI Analytics & Family Dashboard** - Explainable anomaly detection, ETA prediction, safety scoring, and family dashboards.
 - [ ] **Phase 6: Signature Safety Features** - Walk-Me-Home, Silent/Duress SOS, Mutual Visibility Ledger, Predictive Geofencing, and Cross-Modal detection.
@@ -183,7 +183,7 @@ Plans:
   4. Responders see the user's location streaming live for a fixed window after the SOS trigger (SOS-04)
   5. User can self-cancel a false alarm through a channel that runs in parallel to — and never delays — the guardian alert, and can also trigger SOS via an OS-level backup shortcut (side-button sequence, Accessibility shortcut, or lock-screen widget) (SOS-05, SOS-06)
 
-**Plans**: 8/9 plans executed
+**Plans**: 9/9 plans complete
 
 Plans:
 **Wave 1**
@@ -211,7 +211,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 03-09-PLAN.md — mobile: 2-second hold-to-cancel with de-escalated canceled states, plus the quick_actions OS backup trigger (SOS-05/06)
+- [x] 03-09-PLAN.md — mobile: 2-second hold-to-cancel with de-escalated canceled states, plus the quick_actions OS backup trigger (SOS-05/06)
 
 **UI hint**: yes
 
@@ -289,7 +289,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Backend & Auth Foundation | 14/14 | Complete | 2026-07-10 |
 | 2. Real-Time Location, History & Privacy | 19/19 | Complete    | 2026-07-14 |
-| 3. SOS Fast Path (Core Value) | 8/9 | In Progress|  |
+| 3. SOS Fast Path (Core Value) | 9/9 | Awaiting phase-level verification |  |
 | 4. Geofencing | 0/TBD | Not started | - |
 | 5. AI Analytics & Family Dashboard | 0/TBD | Not started | - |
 | 6. Signature Safety Features | 0/TBD | Not started | - |

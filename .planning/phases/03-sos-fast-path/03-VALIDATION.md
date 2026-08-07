@@ -74,9 +74,9 @@ Both stacks already have working test infrastructure — no new test framework n
 | T-01 | 03-08 | 5 | SOS-04 (backend, hub) | T-03-09 | `AlertHub` delivers `LiveLocationWindowUpdate` to a connected recipient | integration (hub smoke) | `dotnet test backend/tests/SafePath.Api.IntegrationTests --filter FullyQualifiedName~AlertHubSmokeTests` | ❌ extended by 03-08 T1 | ⬜ pending |
 | T-02 | 03-08 | 5 | SOS-04 (mobile, streaming) | T-03-29 | Stream survives lock/backgrounding and self-terminates on expiry, cancellation and stop (D-31) | unit | `flutter test test/features/sos/sos_live_window_test.dart` | ❌ created by 03-08 T2 | ⬜ pending |
 | T-03 | 03-08 | 5 | SOS-04 (mobile, UI) | T-03-28 | Responder screen shows live-location stream + countdown, stops updating after expiry (D-21); no digit jitter | widget | `flutter test test/features/sos/responder_alert_screen_test.dart` | ❌ extended by 03-08 T3 | ⬜ pending |
-| T-01 | 03-09 | 6 | SOS-05 (mobile) | T-03-31, T-03-11 | 2s hold cancels; tap/short hold does not; canceled state stays visible on both sides (D-05/D-24) | widget | `flutter test test/features/sos/sos_cancel_test.dart` | ❌ created by 03-09 T1 | ⬜ pending |
-| T-02 | 03-09 | 6 | SOS-06 (mobile) | T-03-32, T-03-02 | Shortcut reuses `arm()` with no hold (D-27); no duplicate session; not registered while signed out | unit | `flutter test test/features/sos/quick_actions_service_test.dart` | ❌ created by 03-09 T2 | ⬜ pending |
-| T-03 | 03-09 | 6 | SOS-06 (manual) | T-03-33 | `quick_actions` shortcut fires SOS immediately, skipping 3s hold (D-27) | manual-only | N/A — native OS shortcut invocation; gated by 03-09 Task 3 checkpoint on a real device | ❌ manual-only, justified | ⬜ pending |
+| T-01 | 03-09 | 6 | SOS-05 (mobile) | T-03-31, T-03-11 | 2s hold cancels; tap/short hold does not; canceled state stays visible on both sides (D-05/D-24) | widget | `flutter test test/features/sos/sos_cancel_test.dart` | ✅ created by 03-09 T1 | ✅ green (8/8) |
+| T-02 | 03-09 | 6 | SOS-06 (mobile) | T-03-32, T-03-02 | Shortcut reuses `arm()` with no hold (D-27); no duplicate session; not registered while signed out | unit | `flutter test test/features/sos/quick_actions_service_test.dart` | ✅ created by 03-09 T2 | ✅ green (7/7) |
+| T-03 | 03-09 | 6 | SOS-06 (manual) | T-03-33 | `quick_actions` shortcut fires SOS immediately, skipping 3s hold (D-27) | manual-only | N/A — native OS shortcut invocation; gated by 03-09 Task 3 checkpoint on a real device | ✅ manual-only, justified | ✅ exercised (2026-08-08: all eleven steps — backup-trigger 1-5, self-cancel 6-10, offline-resume sanity 11 — confirmed across two devices; see 03-09-SUMMARY.md) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 *Task ID / Plan / Wave columns populated by the planner on 2026-08-01. Every row from research's Phase Requirements → Test Map is assigned to an owning plan; no mapping was dropped. Both manual-only rows are gated by a blocking `checkpoint:human-verify` task inside their owning plan rather than deferred to `/gsd-verify-work` alone.*
@@ -116,7 +116,7 @@ Both stacks are compiled/typed, so a standalone "Wave 0 test-only plan" would no
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| `quick_actions`-invoked shortcut fires SOS immediately, skipping the 3-second arming hold | SOS-06 | Native OS home-screen/app-shortcut invocation cannot be triggered from a headless `flutter test` harness | Long-press app icon on Android/iOS home screen, invoke the SOS quick action, confirm immediate trigger with no hold gate |
+| `quick_actions`-invoked shortcut fires SOS immediately, skipping the 3-second arming hold | SOS-06 | Native OS home-screen/app-shortcut invocation cannot be triggered from a headless `flutter test` harness | Long-press app icon on Android/iOS home screen, invoke the SOS quick action, confirm immediate trigger with no hold gate — **exercised and confirmed 2026-08-08, see 03-09-SUMMARY.md** |
 | Real FCM push notification, when tapped, deep-links into the dedicated SOS responder screen | NOTIF-03 | Requires actual FCM delivery + OS notification tap; not reproducible inside Flutter test harness or ASP.NET Core integration test | Trigger SOS from a second test device/account acting as sender; on the Guardian device, background the app, wait for the push, tap it, confirm it opens directly on the SOS responder screen |
 
 ---
@@ -128,7 +128,7 @@ Both manual-only rows are enforced by a blocking `checkpoint:human-verify` task 
 | Behavior | Requirement | Gate |
 |----------|-------------|------|
 | Real FCM push tap deep-links into the responder screen | NOTIF-03 | `03-06-PLAN.md` Task 3 — ten-step two-device procedure covering backgrounded and terminated states |
-| `quick_actions` shortcut fires SOS immediately with no arming hold | SOS-06 | `03-09-PLAN.md` Task 3 — eleven-step two-device procedure, also the phase's closing end-to-end gate |
+| `quick_actions` shortcut fires SOS immediately with no arming hold | SOS-06 | `03-09-PLAN.md` Task 3 — eleven-step two-device procedure, also the phase's closing end-to-end gate — **passed 2026-08-08, see 03-09-SUMMARY.md** |
 
 ---
 
