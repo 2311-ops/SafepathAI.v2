@@ -10,6 +10,7 @@ import '../data/sos_api.dart';
 import '../data/sos_hub_client.dart';
 import '../data/sos_local_store.dart';
 import '../data/sos_models.dart';
+import 'sos_live_location_service.dart';
 import 'sos_session_state.dart';
 
 /// Schedules the offline-retry backoff timer for [SosController]. This is
@@ -68,6 +69,8 @@ class SosController extends AsyncNotifier<SosSessionState> {
   String? _sessionId;
   SosTriggerRequest? _pendingRequest;
   SosRetryHandle? _retryHandle;
+  late SosLiveLocationService _liveLocationService;
+  bool _isLiveLocationActive = false;
 
   static const _initialRetryDelay = Duration(seconds: 4);
   static const _maxRetryDelay = Duration(seconds: 60);
@@ -80,6 +83,7 @@ class SosController extends AsyncNotifier<SosSessionState> {
 
   @override
   SosSessionState build() {
+    _liveLocationService = ref.read(sosLiveLocationServiceProvider);
     final hubClient = ref.read(sosHubClientProvider);
     final deliveryStatusSubscription = hubClient.deliveryStatusChanges.listen(
       _applyDeliveryStatusChange,
@@ -87,6 +91,8 @@ class SosController extends AsyncNotifier<SosSessionState> {
     final sosCanceledSubscription = hubClient.sosCanceled.listen(
       _applySosCanceled,
     );
+    final liveLocationUpdateSubscription = hubClient.liveLocationUpdates
+        .listen(_applyLiveLocationUpdate);
     final connectivitySubscription = ref
         .read(connectivityServiceProvider)
         .onConnectivityChanged
@@ -94,9 +100,15 @@ class SosController extends AsyncNotifier<SosSessionState> {
     ref.onDispose(() {
       unawaited(deliveryStatusSubscription.cancel());
       unawaited(sosCanceledSubscription.cancel());
+      unawaited(liveLocationUpdateSubscription.cancel());
       unawaited(connectivitySubscription.cancel());
       _retryHandle?.cancel();
       _retryHandle = null;
+      // Reads a plain field, never `state`/`ref` — Riverpod forbids touching
+      // either from inside an onDispose callback.
+      if (_isLiveLocationActive) {
+        unawaited(_liveLocationService.stop());
+      }
     });
 
     // Rehydrate a persisted session id (if any) so a restart lands on the
@@ -142,19 +154,21 @@ class SosController extends AsyncNotifier<SosSessionState> {
     }
 
     final updatedSession = _foldDeliveryStatusChange(session, change);
-    state = AsyncData(
-      switch (current) {
-        SosSubmitted() || SosDelivering() => SosDelivering(updatedSession),
-        SosLiveActive(:final windowEndsAtUtc) => SosLiveActive(
-          updatedSession,
-          windowEndsAtUtc,
-        ),
-        SosCanceled(:final canceledAtUtc) => SosCanceled(
-          updatedSession,
-          canceledAtUtc,
-        ),
-        SosIdle() || SosOfflineQueued() => current,
-      },
+    _replaceState(
+      AsyncData(
+        switch (current) {
+          SosSubmitted() || SosDelivering() => SosDelivering(updatedSession),
+          SosLiveActive(:final windowEndsAtUtc) => SosLiveActive(
+            updatedSession,
+            windowEndsAtUtc,
+          ),
+          SosCanceled(:final canceledAtUtc) => SosCanceled(
+            updatedSession,
+            canceledAtUtc,
+          ),
+          SosIdle() || SosOfflineQueued() => current,
+        },
+      ),
     );
   }
 
@@ -165,7 +179,32 @@ class SosController extends AsyncNotifier<SosSessionState> {
     if (session == null || session.sosSessionId != cancellation.sosSessionId) {
       return;
     }
-    state = AsyncData(SosCanceled(session, cancellation.canceledAtUtc));
+    // Belt-and-suspenders alongside _replaceState's generic
+    // leaving-live-active handling below: makes the "the session was
+    // canceled" self-termination path explicit at the call site.
+    if (current is SosLiveActive) {
+      unawaited(_liveLocationService.handleSessionCanceled());
+    }
+    _replaceState(AsyncData(SosCanceled(session, cancellation.canceledAtUtc)));
+  }
+
+  /// Refreshes the live window's end time from the server's own broadcast —
+  /// the client always defers to this over its own arithmetic (D-21). A
+  /// session not yet known to be live-active (e.g. still `SosSubmitted`
+  /// while the first update races the trigger response) is promoted to
+  /// `SosLiveActive` here too, so a live update is never silently dropped.
+  void _applyLiveLocationUpdate(SosLocationUpdate update) {
+    final current = state.value;
+    if (current == null) return;
+    final session = _sessionOf(current);
+    if (session == null || session.sosSessionId != update.sosSessionId) {
+      return;
+    }
+    if (current is SosCanceled || current is SosOfflineQueued) return;
+
+    _replaceState(
+      AsyncData(SosLiveActive(session, update.windowEndsAtUtc)),
+    );
   }
 
   SosSession _foldDeliveryStatusChange(
@@ -246,11 +285,13 @@ class SosController extends AsyncNotifier<SosSessionState> {
       // it opens, then attempt a resubmit right away instead of waiting out
       // a fresh backoff.
       _pendingRequest = pendingTrigger;
-      state = AsyncData(
-        SosOfflineQueued(
-          sessionId: persisted,
-          lastRetryAtUtc: DateTime.now().toUtc(),
-          retryCount: 0,
+      _replaceState(
+        AsyncData(
+          SosOfflineQueued(
+            sessionId: persisted,
+            lastRetryAtUtc: DateTime.now().toUtc(),
+            retryCount: 0,
+          ),
         ),
       );
       await _attemptSubmit(pendingTrigger);
@@ -259,7 +300,7 @@ class SosController extends AsyncNotifier<SosSessionState> {
 
     try {
       final session = await ref.read(sosApiProvider).getSession(persisted);
-      state = AsyncData(SosSubmitted(session));
+      _replaceState(AsyncData(_deriveSessionState(session)));
     } catch (_) {
       // Best-effort resume only.
     }
@@ -277,7 +318,7 @@ class SosController extends AsyncNotifier<SosSessionState> {
     await localStore.writeSessionId(id);
     final request = _composeRequest(id);
     await localStore.writePendingTrigger(request);
-    state = const AsyncLoading();
+    _replaceState(const AsyncLoading());
     await _attemptSubmit(request);
   }
 
@@ -295,7 +336,7 @@ class SosController extends AsyncNotifier<SosSessionState> {
 
     final request = _composeRequest(sessionId);
     await ref.read(sosLocalStoreProvider).writePendingTrigger(request);
-    state = const AsyncLoading();
+    _replaceState(const AsyncLoading());
     await _attemptSubmit(request);
   }
 
@@ -354,22 +395,24 @@ class SosController extends AsyncNotifier<SosSessionState> {
         // state — retrying a rejected payload forever helps nobody.
         _retryHandle?.cancel();
         _retryHandle = null;
-        state = AsyncError<SosSessionState>(error, StackTrace.current);
+        _replaceState(AsyncError<SosSessionState>(error, StackTrace.current));
       }
     } catch (error, stackTrace) {
       _retryHandle?.cancel();
       _retryHandle = null;
-      state = AsyncError<SosSessionState>(error, stackTrace);
+      _replaceState(AsyncError<SosSessionState>(error, stackTrace));
     }
   }
 
   void _enterOfflineQueued(SosTriggerRequest request, {required int retryCount}) {
     _pendingRequest = request;
-    state = AsyncData(
-      SosOfflineQueued(
-        sessionId: request.sosSessionId,
-        lastRetryAtUtc: DateTime.now().toUtc(),
-        retryCount: retryCount,
+    _replaceState(
+      AsyncData(
+        SosOfflineQueued(
+          sessionId: request.sosSessionId,
+          lastRetryAtUtc: DateTime.now().toUtc(),
+          retryCount: retryCount,
+        ),
       ),
     );
     _scheduleRetry(request, retryCount);
@@ -399,7 +442,7 @@ class SosController extends AsyncNotifier<SosSessionState> {
     _retryHandle = null;
     _pendingRequest = null;
     await ref.read(sosLocalStoreProvider).clearPendingTrigger();
-    state = AsyncData(SosSubmitted(session));
+    _replaceState(AsyncData(_deriveSessionState(session)));
   }
 
   /// Clears the persisted session id so the next arm starts a fresh
@@ -410,7 +453,53 @@ class SosController extends AsyncNotifier<SosSessionState> {
     _pendingRequest = null;
     _sessionId = null;
     await ref.read(sosLocalStoreProvider).clear();
-    state = const AsyncData(SosIdle());
+    _replaceState(const AsyncData(SosIdle()));
+  }
+
+  /// A session whose server-issued window is still open is `SosLiveActive`
+  /// from the moment this client learns about it — whether that is the
+  /// trigger response itself or a best-effort rehydrate fetch — never just
+  /// `SosSubmitted`/`SosDelivering` first. The client always defers to the
+  /// server's own `liveWindowEndsAtUtc`/`status` rather than deriving a
+  /// window locally (D-21).
+  SosSessionState _deriveSessionState(SosSession session) {
+    final windowEndsAtUtc = session.liveWindowEndsAtUtc;
+    if (session.status != SosSessionStatus.canceled &&
+        windowEndsAtUtc != null &&
+        windowEndsAtUtc.isAfter(DateTime.now().toUtc())) {
+      return SosLiveActive(session, windowEndsAtUtc);
+    }
+    if (session.status == SosSessionStatus.canceled) {
+      return SosCanceled(session, session.canceledAtUtc ?? DateTime.now().toUtc());
+    }
+    return SosSubmitted(session);
+  }
+
+  /// The single place every state mutation funnels through, so entering and
+  /// leaving [SosLiveActive] reliably starts/stops
+  /// [sosLiveLocationServiceProvider] exactly once per transition — never
+  /// re-started on every live-location refresh, and never left running past
+  /// the state that justified it.
+  void _replaceState(AsyncValue<SosSessionState> next) {
+    final previous = state.value;
+    final wasLiveActive = previous is SosLiveActive;
+    state = next;
+    final nextValue = next.value;
+    _isLiveLocationActive = nextValue is SosLiveActive;
+    if (nextValue is SosLiveActive) {
+      // start() is idempotent for an already-active same session id — it
+      // only refreshes the expiry timer from the (possibly updated) window
+      // end, never re-launches the foreground host on every live-location
+      // refresh.
+      unawaited(
+        _liveLocationService.start(
+          nextValue.session.sosSessionId,
+          nextValue.windowEndsAtUtc,
+        ),
+      );
+    } else if (wasLiveActive) {
+      unawaited(_liveLocationService.stop());
+    }
   }
 }
 

@@ -5,6 +5,12 @@
     <!-- Required on Android 13+ to show any notification, including the
          heads-up SOS push from push_service.dart (03-06). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- SOS-scoped live-location foreground service (03-08, D-31). Never
+         used for routine tracking, only while an SOS's live-location
+         window is open (SosLiveLocationService). -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
 
     <application
         android:label="SafePath AI"
@@ -56,6 +62,24 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="safepath_sos" />
+        <!-- flutter_foreground_task v10.0.0 service declaration, scoped
+             exclusively to the active SOS live-location window (D-31),
+             never started for routine tracking. android:stopWithTask="false"
+             (D-33) pairs with the plugin's own onTaskRemoved restart-alarm
+             logic to keep the stream alive if the sender swipes the app
+             away from Android's recents screen mid-emergency; the app's own
+             window-end/cancellation/explicit-stop paths still call
+             FlutterForegroundTask.stopService() cleanly and are unaffected
+             by this flag (see sos_live_location_service.dart). Aggressive
+             OEM battery managers (Xiaomi, Huawei, Samsung, etc.) can still
+             override this and kill the service regardless, an accepted
+             platform limitation (03-08-PLAN.md SUMMARY), not a defect in
+             this configuration. -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="location"
+            android:stopWithTask="false"
+            android:exported="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

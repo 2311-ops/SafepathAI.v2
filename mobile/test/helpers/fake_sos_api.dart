@@ -29,6 +29,11 @@ class FakeSosApi implements SosApi {
   final List<String> cancelCalls = [];
   int get cancelCallCount => cancelCalls.length;
 
+  SosApiException? reportSosLocationError;
+  SosLocationWindow Function(String sosSessionId)? reportSosLocationResponseBuilder;
+  final List<String> reportSosLocationSessionIds = [];
+  int get reportSosLocationCallCount => reportSosLocationSessionIds.length;
+
   @override
   Future<SosSession> trigger(SosTriggerRequest request) async {
     triggerCalls.add(request);
@@ -96,5 +101,22 @@ class FakeSosApi implements SosApi {
       triggeredAtUtc: DateTime.now().toUtc(),
       receivedAtUtc: DateTime.now().toUtc(),
     );
+  }
+
+  @override
+  Future<SosLocationWindow> reportSosLocation(
+    String sosSessionId,
+    double latitude,
+    double longitude,
+    double? accuracyMeters,
+    DateTime recordedAtUtc,
+  ) async {
+    reportSosLocationSessionIds.add(sosSessionId);
+    if (reportSosLocationError != null) {
+      throw reportSosLocationError!;
+    }
+    final builder = reportSosLocationResponseBuilder;
+    if (builder != null) return builder(sosSessionId);
+    return const SosLocationWindow(outcome: SosLocationWindowOutcome.accepted);
   }
 }
