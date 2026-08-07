@@ -69,8 +69,21 @@ class _FakeSosPositionSource implements SosPositionSource {
   final StreamController<Position> _controller =
       StreamController<Position>.broadcast();
 
+  /// When set, [currentPosition] resolves to it; otherwise it throws,
+  /// matching a denied/unavailable one-shot fix in production.
+  Position? immediateFix;
+
   @override
   Stream<Position> positions() => _controller.stream;
+
+  @override
+  Future<Position> currentPosition() async {
+    final fix = immediateFix;
+    if (fix == null) {
+      throw StateError('no immediate fix configured');
+    }
+    return fix;
+  }
 
   void emit(Position position) => _controller.add(position);
 
@@ -209,6 +222,36 @@ void main() {
 
     expect(foregroundTaskHost.startCallCount, 1);
   });
+
+  test(
+    'reports an immediate fix on start without waiting for movement',
+    () async {
+      positionSource.immediateFix = _position(lat: 30.05);
+
+      final controller = await armLiveSession();
+
+      expect(sosApi.reportSosLocationCallCount, 1);
+      expect(sosApi.reportSosLocationSessionIds, [controller.sosSessionId]);
+    },
+  );
+
+  test(
+    'a missing immediate fix does not prevent the ongoing stream from reporting',
+    () async {
+      // positionSource.immediateFix left unset — mirrors a denied or
+      // timed-out one-shot read in production.
+      final controller = await armLiveSession();
+      final sessionId = controller.sosSessionId!;
+
+      expect(sosApi.reportSosLocationCallCount, 0);
+
+      positionSource.emit(_position(lat: 30.01));
+      await pumpEventQueue();
+
+      expect(sosApi.reportSosLocationCallCount, 1);
+      expect(sosApi.reportSosLocationSessionIds, [sessionId]);
+    },
+  );
 
   test('posts each fix to the session location endpoint', () async {
     final controller = await armLiveSession();

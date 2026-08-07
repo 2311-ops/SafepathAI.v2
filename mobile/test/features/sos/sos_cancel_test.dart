@@ -63,6 +63,9 @@ class _NoOpForegroundTaskHost implements SosForegroundTaskHost {
 class _NoOpPositionSource implements SosPositionSource {
   @override
   Stream<Position> positions() => const Stream<Position>.empty();
+
+  @override
+  Future<Position> currentPosition() => Future.error(StateError('no fix'));
 }
 
 class _NoOpExpiryScheduler implements SosRetryScheduler {

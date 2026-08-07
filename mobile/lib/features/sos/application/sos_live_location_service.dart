@@ -125,6 +125,15 @@ class _SosNoOpTaskHandler extends TaskHandler {
 /// never share a subscription with routine tracking (Core Value/SOS-01).
 abstract class SosPositionSource {
   Stream<Position> positions();
+
+  /// A single immediate fix, independent of [positions]'s distance filter.
+  /// [positions] only emits once the device has moved — a sender who is
+  /// stationary (hurt, hiding, or simply not walking) would otherwise never
+  /// produce a first report and the responder's live-location card would
+  /// wait forever. Mirrors `location_controller.dart`'s
+  /// `currentPositionProvider`, which fixes the identical gap for routine
+  /// tracking.
+  Future<Position> currentPosition();
 }
 
 class GeolocatorSosPositionSource implements SosPositionSource {
@@ -136,6 +145,11 @@ class GeolocatorSosPositionSource implements SosPositionSource {
       accuracy: LocationAccuracy.best,
       distanceFilter: 5,
     ),
+  );
+
+  @override
+  Future<Position> currentPosition() => Geolocator.getCurrentPosition(
+    locationSettings: const LocationSettings(accuracy: LocationAccuracy.best),
   );
 }
 
@@ -237,7 +251,25 @@ class SosLiveLocationService {
       onError: (_) {},
     );
 
+    // Fire-and-forget immediate fix so the responder sees a position right
+    // away instead of waiting on `positions()`'s distance filter, which
+    // never emits for a sender who doesn't move (see class doc on
+    // [SosPositionSource.currentPosition]). Best-effort: a denied, timed-out,
+    // or otherwise unavailable one-shot fix is not fatal — the ongoing
+    // stream remains the steady-state source.
+    unawaited(_reportCurrentPositionOnce(sosSessionId));
+
     _scheduleExpiry(windowEndsAtUtc);
+  }
+
+  Future<void> _reportCurrentPositionOnce(String sosSessionId) async {
+    try {
+      final position = await _positionSource.currentPosition();
+      if (_sosSessionId != sosSessionId || !_isStreaming) return;
+      await _handlePosition(position);
+    } catch (_) {
+      // Swallowed — see the fire-and-forget comment at the call site.
+    }
   }
 
   /// Cancels the subscription and stops the foreground service. Idempotent
