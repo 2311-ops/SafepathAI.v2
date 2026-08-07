@@ -96,6 +96,56 @@ public class SosSchemaTests : IDisposable
     }
 
     [Fact]
+    public async Task SosDeliveryAttempts_RejectsDuplicateSmsRowForSameContactAndChannel()
+    {
+        // WR-04 regression: RecipientUserId is always NULL on SMS/EmergencyContact rows, so a
+        // single composite unique index across both RecipientUserId and EmergencyContactId never
+        // actually constrained these rows (NULL is never equal to NULL in a SQL unique index) —
+        // the two filtered indexes on SosDeliveryAttemptConfiguration must each enforce
+        // "one row per (session, recipient, channel)" independently.
+        await using var db = _factory.CreateContext();
+        var (familyId, userId) = await SeedFamilyAndUser(db);
+
+        var sessionId = Guid.NewGuid();
+        db.SosSessions.Add(new SosSession
+        {
+            Id = sessionId,
+            FamilyId = familyId,
+            TriggeredByUserId = userId,
+            TriggeredAtUtc = DateTime.UtcNow,
+            ReceivedAtUtc = DateTime.UtcNow,
+        });
+        var contactId = Guid.NewGuid();
+        db.EmergencyContacts.Add(new EmergencyContact
+        {
+            Id = contactId,
+            OwnerUserId = userId,
+            DisplayName = "Mom",
+            PhoneNumberE164 = "+15551234567",
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow,
+        });
+        db.SosDeliveryAttempts.Add(new SosDeliveryAttempt
+        {
+            Id = Guid.NewGuid(),
+            SosSessionId = sessionId,
+            EmergencyContactId = contactId,
+            Channel = AlertChannel.Sms,
+        });
+        await db.SaveChangesAsync();
+
+        db.SosDeliveryAttempts.Add(new SosDeliveryAttempt
+        {
+            Id = Guid.NewGuid(),
+            SosSessionId = sessionId,
+            EmergencyContactId = contactId,
+            Channel = AlertChannel.Sms,
+        });
+
+        await Assert.ThrowsAnyAsync<DbUpdateException>(() => db.SaveChangesAsync());
+    }
+
+    [Fact]
     public async Task UserDeviceToken_AllowsMultipleTokensPerUser()
     {
         await using var db = _factory.CreateContext();

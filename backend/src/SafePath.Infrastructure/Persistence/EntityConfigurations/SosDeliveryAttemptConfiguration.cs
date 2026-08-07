@@ -22,7 +22,19 @@ public class SosDeliveryAttemptConfiguration : IEntityTypeConfiguration<SosDeliv
             .HasForeignKey(a => a.SosSessionId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(a => new { a.SosSessionId, a.RecipientUserId, a.EmergencyContactId, a.Channel })
-            .IsUnique();
+        // WR-04: a single composite unique index across both RecipientUserId and
+        // EmergencyContactId does not actually constrain SMS rows -- exactly one of the two is
+        // always set (see SosDeliveryAttempt's doc comment), so the other is always NULL, and SQL
+        // treats every NULL as distinct from every other NULL in a unique index. Two partial
+        // (filtered) unique indexes -- one per recipient-identifying column, each only covering
+        // the rows where that column is actually populated -- enforce "one row per
+        // (session, recipient, channel)" for both guardian (RecipientUserId) and emergency-
+        // contact (EmergencyContactId) delivery attempts.
+        builder.HasIndex(a => new { a.SosSessionId, a.RecipientUserId, a.Channel })
+            .IsUnique()
+            .HasFilter("\"RecipientUserId\" IS NOT NULL");
+        builder.HasIndex(a => new { a.SosSessionId, a.EmergencyContactId, a.Channel })
+            .IsUnique()
+            .HasFilter("\"EmergencyContactId\" IS NOT NULL");
     }
 }
