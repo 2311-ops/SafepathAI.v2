@@ -12,6 +12,8 @@ public record UpdateMyRoleRequest(Role Role);
 
 public record UpdateDisplayNameRequest(string DisplayName);
 
+public record UpdatePhoneNumberRequest(string? PhoneNumber);
+
 [ApiController]
 [Route("me")]
 [Authorize]
@@ -21,6 +23,7 @@ public class MeController : ControllerBase
     private readonly ICommandHandler<GetMeQuery, GetMeResult> _getMe;
     private readonly ICommandHandler<UpdateMyRoleCommand, GetMeResult> _updateMyRole;
     private readonly ICommandHandler<UpdateDisplayNameCommand, GetMeResult> _updateDisplayName;
+    private readonly ICommandHandler<UpdatePhoneNumberCommand, GetMeResult> _updatePhoneNumber;
     private readonly ICommandHandler<UploadProfileImageCommand, GetMeResult> _uploadProfileImage;
     private readonly ICommandHandler<DeleteProfileImageCommand, GetMeResult> _deleteProfileImage;
 
@@ -29,6 +32,7 @@ public class MeController : ControllerBase
         ICommandHandler<GetMeQuery, GetMeResult> getMe,
         ICommandHandler<UpdateMyRoleCommand, GetMeResult> updateMyRole,
         ICommandHandler<UpdateDisplayNameCommand, GetMeResult> updateDisplayName,
+        ICommandHandler<UpdatePhoneNumberCommand, GetMeResult> updatePhoneNumber,
         ICommandHandler<UploadProfileImageCommand, GetMeResult> uploadProfileImage,
         ICommandHandler<DeleteProfileImageCommand, GetMeResult> deleteProfileImage)
     {
@@ -36,6 +40,7 @@ public class MeController : ControllerBase
         _getMe = getMe;
         _updateMyRole = updateMyRole;
         _updateDisplayName = updateDisplayName;
+        _updatePhoneNumber = updatePhoneNumber;
         _uploadProfileImage = uploadProfileImage;
         _deleteProfileImage = deleteProfileImage;
     }
@@ -83,6 +88,25 @@ public class MeController : ControllerBase
         try
         {
             var result = await _updateDisplayName.Handle(new UpdateDisplayNameCommand(userId, request.DisplayName), cancellationToken);
+            return Ok(ToResponse(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPatch("phone-number")]
+    public async Task<ActionResult> UpdatePhoneNumber([FromBody] UpdatePhoneNumberRequest request, CancellationToken cancellationToken)
+    {
+        if (_currentUser.UserId is not { } userId)
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var result = await _updatePhoneNumber.Handle(new UpdatePhoneNumberCommand(userId, request.PhoneNumber), cancellationToken);
             return Ok(ToResponse(result));
         }
         catch (ArgumentException ex)
@@ -139,6 +163,7 @@ public class MeController : ControllerBase
             displayName = result.DisplayName,
             profileImageUrl = result.ProfileImageUrl,
             profileUpdatedAt = result.ProfileUpdatedAt,
+            phoneNumberE164 = result.PhoneNumberE164,
             subject = User.FindFirstValue("sub"),
         };
     }

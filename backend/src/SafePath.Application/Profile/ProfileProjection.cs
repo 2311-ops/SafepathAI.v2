@@ -18,7 +18,8 @@ internal static class ProfileProjection
             user.FullName,
             string.IsNullOrWhiteSpace(user.DisplayName) ? user.FullName : user.DisplayName,
             profileImageUrl,
-            user.ProfileUpdatedAt);
+            user.ProfileUpdatedAt,
+            user.PhoneNumberE164);
     }
 
     public static async Task BroadcastUpdatedAsync(

@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<UpdateMyRoleCommand, GetMeResult>, UpdateMyRoleCommandHandler>();
         services.AddScoped<ProfileImageUrlFactory>();
         services.AddScoped<ICommandHandler<UpdateDisplayNameCommand, GetMeResult>, UpdateDisplayNameCommandHandler>();
+        services.AddScoped<ICommandHandler<UpdatePhoneNumberCommand, GetMeResult>, UpdatePhoneNumberCommandHandler>();
         services.AddScoped<ICommandHandler<UploadProfileImageCommand, GetMeResult>, UploadProfileImageCommandHandler>();
         services.AddScoped<ICommandHandler<DeleteProfileImageCommand, GetMeResult>, DeleteProfileImageCommandHandler>();
         services.AddScoped<ICommandHandler<ReportLocationCommand, ReportLocationResult>, ReportLocationCommandHandler>();

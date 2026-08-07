@@ -15,7 +15,8 @@ public record GetMeResult(
     string? FullName,
     string? DisplayName = null,
     string? ProfileImageUrl = null,
-    DateTime? ProfileUpdatedAt = null);
+    DateTime? ProfileUpdatedAt = null,
+    string? PhoneNumberE164 = null);
 
 public class GetMeQueryHandler : ICommandHandler<GetMeQuery, GetMeResult>
 {
