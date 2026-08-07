@@ -54,11 +54,13 @@ class DeliveryStatusChip extends StatelessWidget {
         );
       case SosDeliveryStatus.failed:
         // A failure is an amber attention state, never a second red tone —
-        // red stays reserved for the emergency itself.
+        // red stays reserved for the emergency itself. `Failed` is a
+        // terminal server-side state (no retry loop exists), so the label
+        // must not imply an in-progress retry (D-09/D-10 honesty).
         return const _StatusSpec(
-          icon: Icons.schedule,
+          icon: Icons.error_outline,
           color: AppColors.caution,
-          label: 'Retrying',
+          label: 'Not delivered',
         );
       case SosDeliveryStatus.delivered:
         return const _StatusSpec(
