@@ -22,3 +22,7 @@ Manual smoke test per `03-07-PLAN.md`'s `<verification>` section, step 4:
 4. Re-enable networking — confirm the queued SOS submits automatically with no user action, and confirm only one emergency session exists server-side (no duplicate from the retry loop).
 
 Report the result back; this closes out the last open item on 03-07.
+
+## Resolution (2026-08-08)
+
+Covered by `03-09-PLAN.md` Task 3, step 11 ("Whole-path sanity") — the same four-step airplane-mode/force-kill/resume/auto-send procedure was run as part of 03-09's closing manual verification and approved: "Not sent yet" appeared immediately in airplane mode, force-kill/reopen resumed the same queued session, and re-enabling networking sent it automatically with exactly one alert received on the second device. See `.planning/phases/03-sos-fast-path/03-09-SUMMARY.md`.
