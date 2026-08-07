@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/phone/country_picker_adapter.dart';
+import '../../../core/phone/phone_country.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared_widgets/phone_number_field.dart';
 import '../../../shared_widgets/primary_button.dart';
 import '../../../shared_widgets/profile_avatar.dart';
 import '../../../shared_widgets/safepath_card.dart';
@@ -24,6 +27,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final TextEditingController _phoneController = TextEditingController();
   bool _nameSeeded = false;
   bool _phoneSeeded = false;
+  PhoneCountry? _selectedPhoneCountry;
 
   @override
   void dispose() {
@@ -37,13 +41,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final asyncState = ref.watch(profileControllerProvider);
     final state = asyncState.value ?? const ProfileState();
     final profile = state.profile;
+    final phoneCountries = ref.watch(phoneCountriesProvider);
 
     if (profile != null && !_nameSeeded) {
       _nameController.text = profile.displayNameOrFallback;
       _nameSeeded = true;
     }
     if (profile != null && !_phoneSeeded) {
-      _phoneController.text = profile.phoneNumberE164 ?? '';
+      final storedNumber = profile.phoneNumberE164;
+      final split = storedNumber == null
+          ? null
+          : splitE164(storedNumber, phoneCountries);
+      if (split != null) {
+        _selectedPhoneCountry = split.country;
+        _phoneController.text = split.national;
+      } else {
+        _selectedPhoneCountry = defaultPhoneCountry(
+          phoneCountries,
+          localeCountryCode: Localizations.localeOf(context).countryCode,
+        );
+        _phoneController.text = '';
+      }
       _phoneSeeded = true;
     }
 
@@ -74,8 +92,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     const SizedBox(height: AppSpacing.md),
                     _PhoneNumberCard(
+                      country: _selectedPhoneCountry!,
                       controller: _phoneController,
                       isLoading: state.isLoading,
+                      onCountryChanged: (country) =>
+                          setState(() => _selectedPhoneCountry = country),
                       onSave: () => _savePhoneNumber(context),
                     ),
                     const SizedBox(height: AppSpacing.md),
@@ -110,11 +131,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _savePhoneNumber(BuildContext context) async {
     // Unlike display name, an empty field is a valid submission here: it
     // means "remove my number", not "you forgot to type one" — the field
-    // stays genuinely optional and removable.
-    final phoneNumber = _phoneController.text.trim();
+    // stays genuinely optional and removable, whatever country happens to be
+    // selected.
+    final country = _selectedPhoneCountry;
+    final composed = country == null
+        ? ''
+        : composeE164(country.dialCode, _phoneController.text);
     await ref
         .read(profileControllerProvider.notifier)
-        .updatePhoneNumber(phoneNumber);
+        .updatePhoneNumber(composed);
     if (!context.mounted) return;
     final error = ref.read(profileControllerProvider).value?.error;
     if (error != null) {
@@ -123,7 +148,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
     _showMessage(
       context,
-      phoneNumber.isEmpty ? 'Phone number removed.' : 'Phone number saved.',
+      composed.isEmpty ? 'Phone number removed.' : 'Phone number saved.',
     );
   }
 
@@ -290,13 +315,17 @@ class _DisplayNameCard extends StatelessWidget {
 
 class _PhoneNumberCard extends StatelessWidget {
   const _PhoneNumberCard({
+    required this.country,
     required this.controller,
     required this.isLoading,
+    required this.onCountryChanged,
     required this.onSave,
   });
 
+  final PhoneCountry country;
   final TextEditingController controller;
   final bool isLoading;
+  final ValueChanged<PhoneCountry> onCountryChanged;
   final VoidCallback onSave;
 
   @override
@@ -313,12 +342,10 @@ class _PhoneNumberCard extends StatelessWidget {
             style: AppTypography.bodySecondary,
           ),
           const SizedBox(height: AppSpacing.sm),
-          TextField(
-            key: const ValueKey('phone-number-field'),
+          PhoneNumberField(
+            country: country,
             controller: controller,
-            keyboardType: TextInputType.phone,
-            textInputAction: TextInputAction.done,
-            decoration: const InputDecoration(labelText: 'Phone number'),
+            onCountryChanged: onCountryChanged,
             onSubmitted: (_) => onSave(),
           ),
           const SizedBox(height: AppSpacing.md),
