@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: sos-fast-path
 status: executing
-stopped_at: Completed 03-06-PLAN.md (Task 3 manual FCM verification, Android-only)
-last_updated: "2026-08-07T00:13:00.838Z"
+stopped_at: Completed quick task 260807-qhg
+last_updated: "2026-08-07T16:35:38.610Z"
 last_activity: 2026-08-06
 last_activity_desc: Phase 03 execution started
 progress:
@@ -180,6 +180,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 03-08]: SosLiveLocationService/backend ReportSosLocationCommand never touch LocationPings/ReportLocationCommandHandler/ISharingAuthorizationService/ILowBatteryAlertTracker -- the emergency stream stays structurally isolated from routine location tracking in both directions (SOS-01).
 - [Phase ?]: [Phase 03-08]: D-33 force-kill survival needed zero custom Kotlin -- flutter_foreground_task v10.0.0's own onTaskRemoved/RestartReceiver logic already handles it once android:stopWithTask=false and the matching Dart ForegroundTaskOptions.stopWithTask=false are set.
 - [Phase ?]: [Phase 03-08]: responder_alert_screen.dart's live-location card uses maplibre_gl's VectorMap (the project's actual post-260806-3zb map stack), not the plan's stale flutter_map read_first pointer.
+- [Phase ?]: [Quick 260807-qhg]: Consolidated the splash lockup into a shared AnimatedSafePathMark (ring trace + staggered per-letter wordmark + halo), both SplashScreen and StartupSplashOverlay now synced to 1800ms; fixed StartupSplashOverlay's Stopwatch-based progress (untestable under flutter_test's FakeAsync clock) to tick-count accumulation on the same Timer.periodic.
 
 ### Pending Todos
 
@@ -217,6 +218,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260805-t3h | Raised Live Map family pin staleness opacity floor (0.7/0.45/0.3 -> 0.92/0.85/0.75) so pins stay legible over map tiles | 2026-08-05 | 880aad6 | | [260805-t3h-fix-the-opacity-of-family-member-map-pin](./quick/260805-t3h-fix-the-opacity-of-family-member-map-pin/) |
 | 260805-uke | Proactive zero-SOS-recipient warning card in Privacy Center (mirrors backend D-11 recipient resolution) + Guardian-role SOS access audit (no gap found) | 2026-08-05 | ac0d8d2 | | [260805-uke-add-a-proactive-zero-sos-recipient-nudge](./quick/260805-uke-add-a-proactive-zero-sos-recipient-nudge/) |
 | 260806-3zb | Migrate Live Map + route sheet from flutter_map to maplibre_gl for OpenFreeMap Liberty vector tiles (found/fixed 2 on-device rendering bugs + 1 dispose-race blocker via code review) | 2026-08-06 | 4152e22, 5be73c6, 015bc72, b5aa00b, 8c8e68a | Needs Review | [260806-3zb-migrate-map-rendering-from-flutter-map-t](./quick/260806-3zb-migrate-map-rendering-from-flutter-map-t/) |
+| 260807-qhg | Consolidated the splash lockup into a shared AnimatedSafePathMark (ring trace + staggered letter reveal + halo), synced both splash surfaces to 1800ms; fixed StartupSplashOverlay's Stopwatch-based progress to be FakeAsync-testable | 2026-08-07 | d6f667e, 2bb751f, c7be6c5, 1821d39 | | [260807-qhg-apply-splash-screen-enhancement-instruct](./quick/260807-qhg-apply-splash-screen-enhancement-instruct/) |
 
 ## Deferred Items
 
@@ -228,6 +230,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-07T00:11:26.162Z
-Stopped at: Completed quick task 260805-s33
+Last session: 2026-08-07T16:35:38.593Z
+Stopped at: Completed quick task 260807-qhg
 Resume file: None
