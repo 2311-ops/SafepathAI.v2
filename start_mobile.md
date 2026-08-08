@@ -257,3 +257,7 @@ They need no `adb reverse` and no `-d <device-id>` from this repo's device list 
 ### 6.6 Free-Tier URLs Change Every Session
 
 On the free tier, ngrok assigns a new random subdomain every time the tunnel restarts, so the previously-sent URL goes dead. Each restart means: copy the new https URL from the Forwarding line, re-send it, and have the contributor re-run with the new `--dart-define=API_BASE_URL`. A paid ngrok plan's reserved domain stays stable instead, so the contributor can save the run command once.
+
+### 6.7 Troubleshooting
+
+- If the contributor's first request fails with a JSON parse or decoding error rather than a network error, ngrok's free tier is answering with its "you're about to visit an ngrok site" HTML warning page instead of passing the request through to the API, so the client receives HTML where it expected JSON. The fix is to send the request header `ngrok-skip-browser-warning` with any value (for example `true`), which makes ngrok forward the request without the interstitial. This is a known gotcha, not behavior already wired into the app — `mobile/lib/core/network/dio_client.dart` does not send that header today, so a contributor who hits this adds it locally as a Dio default header for the duration of the tunnelled session. This documentation change deliberately does not modify the client.
