@@ -195,3 +195,65 @@ curl "http://127.0.0.1:5059/sos/<sosSessionId>" -H "Authorization: Bearer <acces
 ```
 
 This variant does not re-test the physical press-and-hold gesture — that is already covered by 03-02's own tests — but it exercises everything this verification actually cares about: server-side fan-out, FCM delivery, deep-link tap, and the delivery-status flip.
+
+## 6. Remote Contributor Testing Over An ngrok Tunnel
+
+Use this section when the contributor is on a **different network entirely** — not plugged into this PC by USB, and not on the same Wi-Fi. Neither `adb reverse` (section 3) nor the PC LAN IP fallback (last bullet of Troubleshooting above) can reach the backend across two unrelated networks. An ngrok tunnel gives the local backend on port `5059` a public HTTPS URL any network can call. If the device is on your desk or your Wi-Fi, keep using sections 1-4 instead — they are faster and involve no third-party service.
+
+### 6.1 Install ngrok (One Time, On Your PC)
+
+ngrok is already installed on this machine. For a fresh setup, install it with:
+
+```powershell
+winget install ngrok.ngrok
+```
+
+Then create a free ngrok account and copy the authtoken from the ngrok dashboard. Register it once with:
+
+```powershell
+ngrok config add-authtoken <your-authtoken>
+```
+
+The authtoken is stored in ngrok's own config and is registered once per machine, not per session.
+
+### 6.2 Start The Local Backend
+
+Do not start a second backend. Follow section 2 above and leave that terminal open — the tunnel forwards to that same already-running process on port `5059`.
+
+### 6.3 Open The Tunnel
+
+In a second terminal, alongside the section 2 backend terminal:
+
+```powershell
+ngrok http 5059
+```
+
+ngrok prints a Forwarding line:
+
+```text
+Forwarding    https://<subdomain>.ngrok-free.app -> http://localhost:5059
+```
+
+Copy the `https://` URL. Keep this terminal open for the whole session — closing it tears down the tunnel.
+
+### 6.4 What To Send The Contributor
+
+All of the items below travel over a private channel (direct message, encrypted file, password-manager share) and never through git — every item is on the do-not-commit list in `docs/CONFIGURATION.md`.
+
+- The current ngrok https URL from 6.3.
+- The values from `mobile/env.json` — `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `GOOGLE_SERVER_CLIENT_ID` — so the contributor can write their own `mobile/env.json`. That file is gitignored and is not present in a fresh clone.
+- `mobile/android/app/google-services.json`, only if the contributor needs to test FCM push (section 5.5). It is also gitignored and absent from a fresh clone, so skip it when push is not being tested.
+
+### 6.5 The Contributor's Run Command
+
+The contributor clones the repo, writes their own `mobile/env.json` from the values in 6.4, then runs from their `mobile` directory:
+
+```powershell
+flutter run --dart-define-from-file=env.json --dart-define=API_BASE_URL=https://<subdomain>.ngrok-free.app
+```
+
+They need no `adb reverse` and no `-d <device-id>` from this repo's device list — their phone or emulator is attached to their own machine, and the API URL is public rather than loopback.
+
+### 6.6 Free-Tier URLs Change Every Session
+
+On the free tier, ngrok assigns a new random subdomain every time the tunnel restarts, so the previously-sent URL goes dead. Each restart means: copy the new https URL from the Forwarding line, re-send it, and have the contributor re-run with the new `--dart-define=API_BASE_URL`. A paid ngrok plan's reserved domain stays stable instead, so the contributor can save the run command once.
