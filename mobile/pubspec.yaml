@@ -56,12 +56,22 @@ dependencies:
   share_plus: ^13.2.0
   google_sign_in: ^7.2.0
   signalr_netcore: ^1.4.4
-  flutter_map: ^8.0.0
   latlong2: ^0.9.0
   geolocator: 14.0.3
   battery_plus: ^7.1.0
   image_picker: ^1.2.3
   cached_network_image: ^3.4.1
+  firebase_core: ^4.12.1
+  firebase_messaging: ^16.4.3
+  quick_actions: ^1.1.0
+  connectivity_plus: ^7.3.1
+  flutter_local_notifications: ^22.2.0
+  flutter_foreground_task: ^10.0.0
+  shared_preferences: ^2.5.5
+  uuid: ^4.6.0
+  url_launcher: ^6.3.2
+  maplibre_gl: 0.26.2
+  country_picker: 2.0.28
 
 dev_dependencies:
   flutter_test:

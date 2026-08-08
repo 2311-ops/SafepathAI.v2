@@ -66,7 +66,7 @@ builder.Services
                 var path = context.HttpContext.Request.Path;
 
                 if (!string.IsNullOrEmpty(accessToken) &&
-                    path.StartsWithSegments("/hubs/location"))
+                    (path.StartsWithSegments("/hubs/location") || path.StartsWithSegments("/hubs/alert")))
                 {
                     context.Token = accessToken;
                 }
@@ -152,6 +152,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHub<LocationHub>("/hubs/location");
+app.MapHub<AlertHub>("/hubs/alert");
 app.MapControllers();
 
 app.Run();

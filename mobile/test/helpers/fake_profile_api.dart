@@ -11,6 +11,7 @@ class FakeProfileApi implements ProfileApi {
     this.displayName,
     this.profileImageUrl,
     this.profileUpdatedAt,
+    this.phoneNumberE164,
   });
 
   Role? role;
@@ -20,14 +21,17 @@ class FakeProfileApi implements ProfileApi {
   String? displayName;
   String? profileImageUrl;
   DateTime? profileUpdatedAt;
+  String? phoneNumberE164;
   bool shouldThrowNetwork = false;
   int getMeCallCount = 0;
   int updateRoleCallCount = 0;
   int updateDisplayNameCallCount = 0;
+  int updatePhoneNumberCallCount = 0;
   int uploadProfileImageCallCount = 0;
   int deleteProfileImageCallCount = 0;
   Role? lastUpdatedRole;
   String? lastDisplayName;
+  String? lastPhoneNumber;
   List<int>? lastUploadBytes;
   String? lastUploadFilename;
 
@@ -49,6 +53,7 @@ class FakeProfileApi implements ProfileApi {
       displayName: displayName,
       profileImageUrl: profileImageUrl,
       profileUpdatedAt: profileUpdatedAt,
+      phoneNumberE164: phoneNumberE164,
     );
   }
 
@@ -72,6 +77,7 @@ class FakeProfileApi implements ProfileApi {
       displayName: displayName,
       profileImageUrl: profileImageUrl,
       profileUpdatedAt: profileUpdatedAt,
+      phoneNumberE164: phoneNumberE164,
     );
   }
 
@@ -88,6 +94,23 @@ class FakeProfileApi implements ProfileApi {
 
     this.displayName = displayName;
     profileUpdatedAt = DateTime.utc(2026, 7, 13);
+    return getMe();
+  }
+
+  @override
+  Future<UserProfile> updatePhoneNumber(String? phoneNumber) async {
+    updatePhoneNumberCallCount++;
+    lastPhoneNumber = phoneNumber;
+    if (shouldThrowNetwork) {
+      throw ProfileApiException(
+        ProfileApiIssue.network,
+        message: "Couldn't connect. Check your connection and try again.",
+      );
+    }
+
+    phoneNumberE164 = (phoneNumber == null || phoneNumber.trim().isEmpty)
+        ? null
+        : phoneNumber;
     return getMe();
   }
 

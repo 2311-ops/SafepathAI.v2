@@ -16,6 +16,17 @@ public class User
     public string FullName { get; set; } = default!;
     public string? DisplayName { get; set; }
     public string? ProfileImagePath { get; set; }
+
+    /// <summary>
+    /// The owning user's own phone number in strict E.164 form, matching the
+    /// <see cref="EmergencyContact.PhoneNumberE164"/> naming convention so the format
+    /// invariant is visible at every read site. Nullable and unset by default — no signup,
+    /// user-sync trigger, or family-join flow ever requires it. Reaches clients through
+    /// exactly two doors: `/me` for the owning user, and a recipient-scoped SOS session
+    /// payload (see SosSessionProjection) for that session's actual delivery recipients.
+    /// </summary>
+    public string? PhoneNumberE164 { get; set; }
+
     public DateTime? ProfileUpdatedAt { get; set; }
     public Role? Role { get; set; }
     public DateTime CreatedAt { get; set; }

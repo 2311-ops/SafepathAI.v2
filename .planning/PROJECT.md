@@ -26,14 +26,14 @@ guarantee; none of it may ever slow it down.
 - ✓ Location history: timeline view, route visualization, travel statistics — Phase 02
 - ✓ Privacy by design (location scope): user-controlled/temporary sharing, granular per-recipient privacy settings, verifiable no-data-resale policy copy, one-tap export/delete of location data — Phase 02
 - ✓ User profile identity: display name + profile photo, editable, propagating live to the map header and family member markers via SignalR `ProfileUpdated` — Phase 02 (emerged mid-phase, not in original requirement list)
+- ✓ Always-visible emergency SOS system: one-tap arm (3s hold) + OS-level home-screen backup shortcut (no arming hold), parallel non-destructive self-cancel (2s hold), multi-channel guardian/emergency-contact delivery (SignalR AlertHub + FCM push + SMS fallback) with honest per-recipient/per-channel delivery status, offline queue/retry surviving app-kill, and a server-authoritative live-location streaming window — structurally isolated from the routine location/AI pipeline throughout — Phase 03
 
 ### Active
 
 - [ ] Secure authentication & role-based family groups (Guardian, Member, Caregiver, org roles e.g. School Admin)
 - [ ] Family group management: create circles, invite/accept/reject members, per-member permissions
 - [ ] Geofencing: safe zones (Home/School/University/Workplace), enter/exit notifications, zone activity log
-- [ ] Always-visible in-app SOS system: one-tap alert with live location to guardians/emergency contacts, bypassing the routine batching pipeline
-- [ ] Smart notifications: low battery (delivered — Phase 02), geofence, SOS, inactivity alerts
+- [ ] Smart notifications: low battery (delivered — Phase 02), SOS alert (delivered — Phase 03), geofence, inactivity alerts
 - [ ] AI analytics: anomaly detection (Isolation Forest), ETA prediction (XGBoost), safety scoring, activity analysis — each paired with a plain-language explanation via the Explainability Layer
 - [ ] Family dashboard & analytics: family overview, activity charts, location heatmaps, safety metrics
 - [ ] Privacy by design (remaining): end-to-end encrypted communication (messaging, not location — not yet addressed)
@@ -105,6 +105,9 @@ guarantee; none of it may ever slow it down.
 | Location sharing enforced by a server-side double gate: active family membership + enabled/unexpired `SharingPreference` | Client-only toggles are trivially bypassable; privacy-first positioning requires the server, not the UI, to be the enforcement boundary | Enforced in `ReportLocationCommand`, `GetLiveLocationsQuery`, and `GetLocationHistoryQuery`; verified in Phase 02 security review (74/74 threats closed) |
 | Profile avatars stored via a private Supabase Storage bucket with backend-issued signed URLs only — mobile never calls `supabase_flutter` Storage directly | Keeps the backend as the sole trust boundary for upload validation (re-encode, size/dimension limits, path derived from server-side user Guid) | Implemented across Phases 02-13–02-16; verified via UAT and security threat register (no direct Storage access from client) |
 | Foreground-only location tracking for Phase 02 (no background/Always permission) | Matches `geolocator`-only foreground scope decided for this milestone; background tracking deferred | Android/iOS manifests carry no background location strings; verified in UAT test 24 |
+| `quick_actions` OS home-screen shortcut fires SOS immediately with no arming hold (D-27) | The user already made a deliberate two-step choice by long-pressing the app icon and selecting the action; re-requiring a 3s hold would defeat the point of a backup trigger | Shortcut reuses the identical `SosController.arm()` entry point the in-app button calls — no second arming implementation |
+| SMS (Twilio) and iOS/APNs push remain unprovisioned at Phase 03 close | Zero-cost-default pattern (`LoggingSmsGateway`/graceful Firebase-init failure) keeps the rest of the phase unblocked; explicitly deferred by the user, not a code gap | SignalR + FCM (Android) delivery is live-device-verified; SMS/iOS provisioning tracked as open ops items in STATE.md, not phase defects |
+| Phase 03 code review found and fixed a Critical IDOR (CR-01): `TriggerSosCommandHandler`'s idempotent-replay branch returned full session data to any authenticated user who knew a session id, skipping the `RequireMembership` check every sibling handler enforces | Discovered via the phase's standard code-review gate before phase completion, not by external report | Fixed to check `existing.FamilyId` before the early return, mirroring the sibling handlers' pattern; regression test added; see `03-REVIEW.md`/`03-REVIEW-FIX.md` |
 
 ## Evolution
 
@@ -124,4 +127,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-16 after Phase 02 (real-time location, history & privacy) completion*
+*Last updated: 2026-08-08 after Phase 03 (SOS fast path) completion*

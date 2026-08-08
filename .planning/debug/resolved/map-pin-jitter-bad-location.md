@@ -1,0 +1,587 @@
+---
+status: resolved
+trigger: "Live Map pin jitter during pan /gsd-debug fix this error and also see the maps as it doesnt display my correct location and keep having this in the build: I/SurfaceControl nativeRelease nativeObject churn, W/libEGL EGLNativeWindowType disconnect failed, E/BufferQueueProducer disconnect: not connected (req=1), around FlutterSurfaceView/MainActivity during map interaction, following the 260806-3zb flutter_map -> maplibre_gl/OpenFreeMap migration."
+created: 2026-08-06
+updated: 2026-08-07 (RESOLVED — human confirmed jitter fix works on-device)
+---
+
+## HANDOFF NOTE (read this first)
+
+This session was interrupted mid-experiment by the user (approaching their session limit,
+resuming work in a different agent). Nothing is broken — the codebase is left in the last
+committed, known-good state (commit `7d465a8` + `1a3ab83`). No uncommitted code changes remain.
+
+**What was in flight when stopped:** an on-device experiment testing cycle-2 candidate 3
+(hybrid-composition pipeline mismatch) by temporarily setting
+`MapLibreMap.useHybridComposition = false` in `vector_map.dart` and rebuilding. That toggle
+was **reverted back to `true`** (the committed value) before pausing — it was never verified
+either way, so do not treat "hybrid composition off" as ruled in or out. Re-run that experiment
+from scratch if resuming candidate 3.
+
+**Symptom 2 (wrong location): RESOLVED and confirmed by the user** — do not reopen unless a
+regression is reported. Fix is committed in `7d465a8`.
+
+**Symptom 1 (jitter): still OPEN.** See "Current Focus" below for the live cycle-2 candidate
+list and the planned next step (`adb shell screenrecord` frame-by-frame comparison against
+MapLibre's native accuracy circle — not yet captured). Device used for testing:
+Samsung SM-A305F, adb serial `R58M30TGNXV`.
+
+## Symptoms
+
+**Expected behavior:** Panning the Live Map should track the basemap smoothly with the family/self avatar pin staying visually locked to its true geographic position, and the pin should reflect the user's actual current GPS location.
+
+**Actual behavior:**
+1. Panning left/right makes the family/self pin visibly "roll"/vibrate rather than tracking smoothly (previously logged in `.planning/todos/pending/2026-08-06-live-map-pin-jitter-during-pan.md` with a preliminary hypothesis, not yet independently confirmed on-device).
+2. The map does not display the user's correct current location (new report, not yet investigated — pin may be stale, defaulted, or off by a fixed offset).
+
+**Error messages:** No Dart/Flutter exception reported by the user. Android logcat during map interaction shows repeated native surface/EGL churn around `FlutterSurfaceView` on `MainActivity`:
+```
+I/SurfaceControl: nativeRelease nativeObject s[...]/e[...]  (repeated)
+I/SurfaceView: onWindowVisibilityChanged / surfaceDestroyed callback
+W/libEGL: EGLNativeWindowType 0x... disconnect failed  (x2)
+I/SurfaceControl: assignNativeObject: nativeObject = 0 Surface(name=null)  (via ViewRootImpl.relayoutWindow / Choreographer.doFrame)
+E/BufferQueueProducer: [ImageReader-1080x2214f22m7-...] disconnect: not connected (req=1)
+```
+Status of this log as causal vs. benign is unconfirmed — needs to be evaluated against `maplibre_gl`'s hybrid-composition PlatformView lifecycle (forced via `015bc72 fix(260806-3zb): force hybrid composition so family/stop pins actually render`), which is known to recreate/destroy native Android Surfaces during PlatformView compositing.
+
+**Timeline:** Both symptoms first observed 2026-08-06, after the 260806-3zb migration from `flutter_map`/raster OSM tiles to `maplibre_gl`/OpenFreeMap Liberty vector tiles was rebuilt on-device. Never confirmed working correctly under the new renderer.
+
+**Reproduction:**
+1. Open the Live Map screen on Android.
+2. Pan the map left/right — family/self pin visibly jitters/rolls instead of smoothly tracking.
+3. Observe the pin's position relative to the device's actual current location — reported incorrect (specifics — how far off, static vs. moving — not yet gathered from user).
+4. Watch `adb logcat` during step 2/3 for the SurfaceControl/EGL/BufferQueueProducer lines above.
+
+## Suspected Area (carried over from prior investigation, unconfirmed)
+
+`mobile/lib/features/location/presentation/vector_map.dart`:
+- `_onControllerNotified` (~L270-276): fires on every native camera-move tick during a pan gesture.
+- `_reprojectMarkers` (~L341-): unguarded async method-channel round-trip (`toScreenLocationBatch`) per tick, no generation counter/in-flight guard — overlapping calls can resolve out of order, causing a stale coordinate to briefly overwrite a newer one (matches "roll/vibrate" rather than one-directional lag).
+- `_onCameraIdle` (~L285-290): where the pin is expected to settle to a correct final position.
+- Related, not-yet-checked: `_drawAnnotations()` was flagged in code review (WR-02, advisory) for the identical missing-in-flight-guard pattern; unclear whether `_reprojectMarkers` shares the same gap in practice.
+- Current-location source feeding the pin (device GPS via `geolocator` vs. last broadcast/backend position) not yet located in this file — needs tracing to confirm which is wrong for symptom 2.
+
+## Current Focus
+
+- status: CYCLE 2 — RC-2 falsified by its own stated on-device test. Jitter re-opened.
+- symptom 2 (wrong location): RESOLVED, confirmed by user. Not under investigation.
+- symptom 1 (jitter): OPEN. Prior mechanism (variable platform-channel round-trip latency)
+  is eliminated — the round-trip is gone and the jitter is unchanged.
+
+hypothesis: TBD — reasoning from scratch, see cycle-2 candidate list.
+test: capture the symptom IN MOTION via `adb shell screenrecord` (not screencap, which cannot
+  resolve a sub-frame transient and is exactly why cycle 1 shipped unverified), then measure
+  Flutter-pin vs native-accuracy-circle separation FRAME BY FRAME during a pan. E-12 established
+  they are concentric at rest, so the circle is an independent lat/lng-space ground truth.
+expecting: |
+  - Separation grows smoothly with pan velocity and returns to 0 at rest -> data-arrival or
+    compositing lag (candidates 1/3).
+  - Separation oscillates irregularly frame to frame -> irregular camera-event arrival (cand. 1)
+    or dropped frames (cand. 4).
+  - Separation stays ~0 every frame -> the pin is NOT lagging the circle; the jitter is
+    something else entirely (e.g. both layers moving together against the basemap).
+next_action: Verify device is connected, then capture a screenrecord of a slow left/right pan.
+
+resume_reasoning_checkpoint:
+  hypothesis: "The visible jitter is caused by the Flutter overlay being composited ahead of a separately rasterised MapLibre basemap during camera motion under hybrid composition; the overlay must be removed from motion frames."
+  test: "Switch to native motion truth (`MapLibreMapController.isCameraMoving`), keep a native dot visible at all times, and show the rich Flutter marker only when the camera is idle."
+  expecting:
+    - "If correct, the visible moving pin will stop vibrating because it is now native-rendered together with the basemap."
+    - "If still wrong, jitter will remain visible even though the Flutter overlay is hidden during motion."
+  reasoning_checkpoint:
+    hypothesis: "A Flutter marker overlay cannot frame-lock to the native basemap during motion; hiding it while moving removes the cross-renderer desync."
+    confirming_evidence:
+      - "E-17/E-18 measured transient pin-vs-native-circle separation that returns to ~0 at rest."
+      - "E-19 proved both projection paths use camera SET-time state rather than the camera actually DRAWN by the basemap."
+      - "E-20 confirmed the current code still shows the visible pin as a Flutter widget over a hybrid-composition platform view."
+    falsification_test: "After the motion overlay is removed, the user still sees the moving pin jitter against the basemap."
+    fix_rationale: "A native annotation and the basemap share the same renderer and frame schedule; the moving pin therefore cannot desynchronise from the map for the same reason."
+    blind_spots: "This session's device could not produce a usable high-FPS screenrecord and current `gfxinfo` output is uninformative on the installed release, so post-fix numeric self-measurement is not available here."
+
+cycle2_candidates:
+  1. Camera data ARRIVAL (not projection math) — `cameraPosition` is populated by an async
+     `onCameraMove` platform message. Synchronous *use* of that value does not make it current
+     with the frame native is rendering. Irregular arrival -> irregular increments -> survives
+     the cycle-1 fix exactly as observed.
+  2. `trackCameraPosition` — already `true` at vector_map.dart:394, so the coarse-event variant
+     of this is unlikely, but the native EMIT RATE behind it is unverified.
+  3. Hybrid-composition pipeline mismatch (forced in 015bc72) — `FlutterImageView` decouples the
+     Flutter layer's frame timing from the platform view's. May be structurally unable to
+     frame-lock. If so the honest fix is native symbol annotations, which REVERSES a documented
+     migration decision in .claude/CLAUDE.md and must be flagged, not done silently.
+  4. Rebuild cost / dropped frames — `setState` per camera tick on a Galaxy A30 rebuilds the
+     WHOLE subtree including `MapLibreMap` itself.
+
+prior_reasoning_checkpoint (cycle 1, RC-2 portion now falsified):
+  hypothesis: |
+    RC-1 (symptom 2, "wrong location") — the self pin and the camera are driven by two
+    independent, both-broken paths. (a) The app never performs a one-shot device GPS read, so
+    on a stationary device `selfPosition` stays at whatever the server/hub last reported and
+    the device's own fix may never be established in a session. (b) The camera is bound to
+    `MapLibreMap.initialCameraPosition`, which the plugin reads ONLY at platform-view
+    creation, so once the map exists the camera can never follow a corrected `selfPosition`.
+    RC-2 (symptom 1, "jitter") — `_reprojectMarkers()` performs an async platform-channel
+    round-trip on every native camera tick to obtain a projection whose inputs Dart already
+    holds synchronously; the variable per-call latency makes the applied marker offset advance
+    in irregular increments, which reads as vibration/roll rather than smooth trailing.
+  confirming_evidence:
+    - "E-08: live on-device — camera sat on Tanaydah, Egypt with NO pin visible; tapping the 'You' rail card (animateTo the marker's own coordinate) moved the camera thousands of km and the pin rendered perfectly centred. Camera and marker were provably decoupled."
+    - "E-07: plugin source — `initialCameraPosition` is referenced only at maplibre_map.dart:336-337 (creationParams) and :393 (controller seed); `didUpdateWidget` diffs only `MapLibreMapOptions`, which carries no camera. A changed initialTarget is therefore a guaranteed no-op."
+    - "E-01/E-02: `Geolocator.getPositionStream(distanceFilter: 10)` is the ONLY GPS read in the entire app; no getCurrentPosition/getLastKnownPosition exists."
+    - "E-09: the marker was showing Googleplex (emulator-origin data) while the device is physically in Egypt — the device's own GPS had not established a fix this session, exactly as RC-1(a) predicts."
+    - "E-10: plugin source controller.dart:190-193 — `_cameraPosition` is assigned synchronously and only THEN is `notifyListeners()` fired, so `_onControllerNotified` already has the fresh camera state in Dart when it chooses to ask native for it over a channel."
+  falsification_test: |
+    RC-1(b) would be false if tapping the rail card had NOT brought the pin into view (that
+    would mean the marker itself was mispositioned rather than the camera being stranded) —
+    it did, so RC-1(b) holds. RC-2 would be false if `controller.cameraPosition` were stale or
+    unset at notification time (making the native round-trip genuinely necessary) — plugin
+    source shows the opposite. RC-2 would also be false if the jitter persisted after the
+    round-trip is removed; that is the on-device check for this fix.
+  fix_rationale: |
+    RC-2 is fixed by deleting the redundant async round-trip entirely and projecting
+    synchronously in Dart from `controller.cameraPosition` + the widget's own layout size —
+    this removes the variable-latency term that IS the root cause, rather than a generation
+    guard, which would only stop stale replies overwriting newer ones and would leave the
+    irregular-increment lag (the actual visible defect) fully intact. RC-1(a) is fixed by a
+    one-shot `getCurrentPosition()` at bootstrap feeding the existing report/apply path.
+    RC-1(b) is fixed by re-centring the camera once, when this device's own GPS fix first
+    lands — the one moment where the camera is provably pointing at a coordinate the user did
+    not choose and does not want.
+  blind_spots: |
+    - The synchronous projection assumes MapLibre's core scale convention (worldSize =
+      512 * 2^zoom LOGICAL px) and a north-up, unpitched camera. The zoom convention is
+      inferred from plugin/native source, not measured; north-up is architecturally enforced
+      by D-01 (`rotateGesturesEnabled: false`, `tiltGesturesEnabled: false`) but the math
+      would silently break if rotation is ever enabled. Requires on-device confirmation.
+    - Jitter magnitude was never directly measured — `adb screencap` latency (~200 ms) exceeds
+      the transient, so RC-2 rests on mechanism plus structural confirmation, not a captured
+      frame. The post-fix on-device pan is the real test.
+    - Whether the Googleplex coordinate reached this device via a stale hub broadcast or via
+      the REST bootstrap was not distinguished; it does not change either root cause.
+
+## Evidence
+
+- timestamp: 2026-08-06 (E-01)
+  checked: Grepped all of `mobile/` for every geolocator position-read API (`getCurrentPosition|getLastKnownPosition|getPositionStream|distanceFilter`).
+  found: Exactly TWO hits, both in `location_controller.dart:72,75` — `Geolocator.getPositionStream(locationSettings: LocationSettings(accuracy: high, distanceFilter: 10))`. There is NO `getCurrentPosition()` and NO `getLastKnownPosition()` anywhere in the app.
+  implication: The app has no one-shot "where am I right now" read. The self pin's position on app open comes entirely from the server, and can only ever be corrected by a stream emission — which `distanceFilter: 10` suppresses until the device physically moves 10 m.
+
+- timestamp: 2026-08-06 (E-02)
+  checked: `location_controller.dart:164-191` (`_bootstrap`) — how `selfPosition` and `members` are first populated.
+  found: `getLiveLocations(familyId)` (REST) seeds `members`, and `selfPosition = initialMembers[currentUserId]` — i.e. the last position the server has on record for this user, of arbitrary age. `_reportPosition` (L305) is the only writer of a fresh GPS fix, and it is driven solely by the `distanceFilter: 10` stream.
+  implication: Confirms E-01's consequence. On a cold open while stationary, `selfPosition` is a historical server value, not the current fix. This alone reproduces "the map does not display my correct location."
+
+- timestamp: 2026-08-06 (E-03)
+  checked: `live_map_screen.dart:112-113, 184-188` and `vector_map.dart:405-410` — the camera-target path.
+  found: `cameraTarget = MapPoint(self.lat, self.lng)` where `self = state?.selfPosition ?? locations.first`, passed as `VectorMap.initialTarget` -> `MapLibreMap.initialCameraPosition`. `initialCameraPosition` is consumed by the plugin only when the platform view is created; `VectorMap` has no `didUpdateWidget` branch for `initialTarget`, so a later, corrected `selfPosition` moves the marker but NEVER moves the camera.
+  implication: Second, independent contributor to symptom 2. Worse: if the server has no row for the current user at all, `selfPosition` is null and the camera opens centred on `locations.first` — an arbitrary OTHER family member. The only camera move in the whole screen is a `_MemberStatusRail` card tap; there is no "recentre on me" control.
+
+- timestamp: 2026-08-06 (E-04)
+  checked: `AndroidManifest.xml` for location permissions.
+  found: `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` both declared. `permission_controller.dart` maps `always`/`whileInUse` -> granted and gates `_bootstrap`.
+  implication: Permission plumbing is NOT the cause of symptom 2 — the pipeline is permitted to run; it simply has no initial-fix source.
+
+- timestamp: 2026-08-06 (E-05)
+  checked: `vector_map.dart:341-399` (`_reprojectMarkers`) for an in-flight/generation guard.
+  found: Structurally confirmed — no generation counter, no in-flight token, no cancellation. `_onControllerNotified` (L270-277) fires it unthrottled on every native camera tick, and `_onCameraIdle` (L285) and `didUpdateWidget` (L233) fire it too. Every invocation does an `await controller.toScreenLocationBatch(...)` then an unconditional `setState`.
+  implication: The prior todo's structural claim is verified. Note the mechanism is broader than "replies invert": even with perfectly ordered replies, each reply lands after a VARIABLE method-channel latency, so the applied marker offset lags the basemap by a varying number of frames. Constant lag reads as smooth trailing; variable lag reads as vibration/roll. This matches the reported symptom without requiring out-of-order delivery.
+
+- timestamp: 2026-08-06 (E-06)
+  checked: `maplibre_gl-0.26.2` native sources for the units returned by `map#toScreenLocationBatch`, to audit whether commit b5aa00b's physical->logical conversion is complete and correct.
+  found: Android (`MapLibreMapController.java:926-939`) returns `mapLibreMap.getProjection().toScreenLocation(...)` raw, and MapLibre Android's `NativeMapView.pixelForLatLng` multiplies the core result by `pixelRatio` — so Android really does return PHYSICAL px and the conversion is correct there. iOS (`MapLibreMapController.swift:572-592`) returns `mapView.convert(coordinate, toPointTo: mapView)`, a `CGPoint` in UIKit POINTS (already logical). Confirmed device density 420 -> devicePixelRatio exactly 2.625, matching the value recorded in the code comment, so that measurement was taken on this physical Galaxy A30.
+  implication: b5aa00b is correct for Android but would be WRONG on iOS — dividing an already-logical point by ~3 would clump every pin toward the top-left. A latent cross-platform defect, not a cause of either reported symptom. Reported, not fixed (out of the reported scope; see final report).
+
+- timestamp: 2026-08-06 (E-07)
+  checked: `maplibre_gl-0.26.2/lib/src/maplibre_map.dart` — every reference to `initialCameraPosition`, plus `_MapLibreMapState.didUpdateWidget`.
+  found: Only three references — L123 (field), L336-337 (serialized into the platform view's `creationParams`), L393 (seeds the controller's `_cameraPosition` in `onPlatformViewCreated`). `didUpdateWidget` (L370-380) computes `MapLibreMapOptions.fromWidget(widget)` and applies only `updatesMap` diffs; `MapLibreMapOptions` carries no camera position at all.
+  implication: PROVES E-03. Once the platform view exists, changing `initialTarget` is a guaranteed no-op. The camera can only be moved by an explicit `animateCamera`/`moveCamera` call, of which the app makes exactly one — a `_MemberStatusRail` card tap.
+
+- timestamp: 2026-08-06 (E-08)
+  checked: Live reproduction on the connected physical device (Samsung SM-A305F, Android 11, 1080x2340 @ density 420, app `com.safepath.mobile` already installed).
+  found: Map opened centred on **Tanaydah, Egypt** with the rail card reading "You / Online" but **NO pin anywhere on the map**. Ten pan gestures did not reveal it. Tapping the "You" rail card — which calls `animateTo(member.location.lat, member.location.lng, zoom: 17)`, i.e. the marker's OWN coordinate — snapped the camera to a completely different place where the pin and its accuracy circle rendered perfectly, dead-centre.
+  implication: DECISIVE confirmation of RC-1(b). The marker data and the marker rendering are both fine; the camera was stranded thousands of km away at the coordinate captured at map-creation time. This is the whole of "the map does not display my correct location" as the user experiences it.
+
+- timestamp: 2026-08-06 (E-09)
+  checked: The basemap at the marker's coordinate once tiles finished loading (screenshot `drag2.png`).
+  found: The self marker sits at **Googleplex, Mountain View, California** — "Google Main Sand Court", "Yoshka's", "Charlie's Cafe", "Amphitheatre Parkway", "Charleston Road". That is the Android emulator's default fake GPS location, and it matches the emulator screenshots taken during the 260806-3zb verification pass (`verify_v3_02.png`). The device itself is physically in Egypt.
+  implication: Confirms RC-1(a) end-to-end: this physical device's own GPS never established a fix during the session, so `selfPosition` remained emulator-origin data carried by the server/hub. With no one-shot read and `distanceFilter: 10` suppressing stream emissions while stationary, there was no mechanism for the device's real position to ever assert itself.
+
+- timestamp: 2026-08-06 (E-10)
+  checked: `maplibre_gl-0.26.2/lib/src/controller.dart:187-202` — the ordering between camera-state assignment and listener notification.
+  found: `onCameraMovePlatform` handler assigns `_cameraPosition = cameraPosition` FIRST, then calls `notifyListeners()`. `cameraPosition` is a plain synchronous getter (L372-373).
+  implication: The fresh camera target/zoom is already in Dart memory at the exact moment `_onControllerNotified` runs. The `toScreenLocationBatch` round-trip asks the native side to recompute a projection from inputs Dart already holds — it is pure redundant latency. This makes a synchronous Dart projection the correct root-cause fix rather than a mitigation.
+
+- timestamp: 2026-08-06 (E-11)
+  checked: Whether the SurfaceControl/libEGL/BufferQueueProducer churn is caused by map interaction. Cleared logcat, performed 10 pan gestures on the live map, dumped logcat.
+  found: **ZERO** SurfaceControl/libEGL/BufferQueue/surfaceCreated/surfaceDestroyed lines from the app process (pid 2429) across all 10 pans, despite 149 app-process log lines in the window. In the earlier capture, all 17 app-process surface lines clustered at exactly two timestamps — app-to-foreground (18:32:03) and screen-wake/window-resize (18:32:34) — and every stack trace ran through `ViewRootImpl.relayoutWindow` <- `performTraversals` <- `Choreographer.doFrame`. The remaining 113 lines came from `system_server` (pid 4285) and SystemUI (pid 4620), not the app. `FlutterSurfaceView{... 0,0-1080,2214}` matches the `ImageReader-1080x2214` name exactly (2340 physical minus the 126px status bar).
+  implication: The log is benign. It is Android's normal SurfaceView relayout on window-visibility change plus Flutter's standard `FlutterSurfaceView` -> `FlutterImageView` swap for platform-view compositing, and it is entirely absent during map interaction. Not causal for either symptom.
+
+- timestamp: 2026-08-06 (E-15) [cycle 2]
+  checked: |
+    THE MEASUREMENT CYCLE 1 COULD NOT MAKE. Captured the pan in motion with
+    `adb shell screenrecord --bit-rate 20000000` (9 s, 310 frames, 1080x2340) instead of
+    `adb screencap`, during a deterministic `input swipe 800 1400 250 1400 3000` (533 px
+    leftward over 3 s) on the 7d465a8 build. Decoded every frame with OpenCV and measured,
+    per frame: (a) the Flutter pin's position by subpixel template matching on the avatar,
+    (b) the natively-rendered basemap's displacement by `cv2.phaseCorrelate` over a
+    basemap-only strip (y 1450-1850 — below the pin's label, above the SOS button, so it
+    contains no Flutter overlay content at all). Template score mean 0.979, phase-correlation
+    confidence mean 0.988.
+  found: |
+    THE PIN DOES NOT MOVE RELATIVE TO THE BASEMAP. Over the whole 533 px pan:
+      total basemap dx = -532.85 px,  total pin dx = -533.10 px
+      tracking error X: peak-to-peak 0.43 px, std 0.08 px
+      tracking error Y: peak-to-peak 0.09 px
+      frame-to-frame change in error: max 0.19 px
+      frames where the basemap moved >1 px but the pin moved <0.25 px: ZERO
+    But the WHOLE SCENE advances in irregular lurches. Frame intervals during the pan ranged
+    20.6-96.2 ms (not 16.7), and the map repeatedly froze for several frames then jumped:
+    frames 97/98/99 all had dMap = 0.00 across 107 ms, then frame 100 jumped 20.83 px;
+    frames 87/88 froze then frame 89 jumped 10.43 px; frames 90/91 froze then frame 92
+    jumped 15.04 px. Per-frame steps ranged 0 to 28.9 px.
+  implication: |
+    Reframes the entire symptom. The pin is locked to the basemap to within half a pixel —
+    so NO hypothesis about the pin lagging the map can be correct. Candidates 1, 2 and 3 from
+    the cycle-2 list all predict a pin-vs-basemap separation that grows during motion; the
+    measurement puts a hard 0.43 px ceiling on any such separation, which is far below the
+    threshold of visibility. What actually moves irregularly is the ENTIRE composited frame,
+    pin and basemap together. The user reads this as the pin "rolling/vibrating" because the
+    pin is the high-contrast object the eye tracks, but the basemap is stuttering identically.
+
+- timestamp: 2026-08-06 (E-16) [cycle 2]
+  checked: |
+    Independent confirmation of E-15's stutter, not relying on screenrecord's own frame
+    timing: `dumpsys gfxinfo com.safepath.mobile reset`, then the same 3 s swipe, then
+    `dumpsys gfxinfo`.
+  found: |
+    Total frames rendered: 140. Janky frames: 38 (27.14%). Missed Vsync: 23.
+    Slow UI thread: 26. Frame deadline missed: 35. High input latency: 3.
+    Percentiles: 50th 7 ms, 90th 34 ms, 95th 36 ms, 99th 48 ms (budget is 16.7 ms).
+    Histogram has a long tail: 5 frames at 34 ms, 5 at 36 ms, 2 at 48 ms, 1 at 69 ms.
+    `Layer Info: GlLayer size 1080x2214` — the full-screen ImageReader layer.
+  implication: |
+    The stutter is real and is a genuine RENDERING-PERFORMANCE defect, not an artifact of the
+    screenrecord capture. "Slow UI thread: 26" is the dominant jank cause, which matters
+    because hybrid composition (forced in 015bc72) MERGES Flutter's raster thread into the
+    Android platform/UI thread whenever a platform view is on screen. That one thread is
+    therefore doing MapLibre's gesture + camera work, the platform-channel dispatch, AND
+    Flutter's rasterisation of a full-screen 1080x2214 overlay layer — on a Galaxy A30
+    (Exynos 7904, Mali-G71 MP2). Directs the investigation at per-frame Flutter overlay cost,
+    not at projection or data-arrival correctness.
+
+- timestamp: 2026-08-06 (E-17) [cycle 2]
+  checked: |
+    E-15's slow pan was at low zoom. Repeated the frame-by-frame measurement at ZOOM 17 —
+    the zoom the user is actually at when looking at their own pin, reached by tapping the
+    "You" rail card — where the accuracy circle is large and clearly visible, giving E-12's
+    independent lat/lng-space ground truth. Hardened both trackers first, because the naive
+    ones lied: the pin template must be a TIGHT crop of the avatar disc only (pure overlay
+    content, so it does not decorrelate as the map slides underneath) searched only below
+    y=700 (otherwise it locks onto the IDENTICAL avatar in the "You" rail card), and the
+    circle must be fitted with `cv2.minEnclosingCircle` on the purple mask's contour rather
+    than by centroid (the pin occludes the circle's interior and biases a centroid).
+    Reported the RAW pin-minus-circle offset — no reference frame, since any frame chosen as
+    a reference may itself be a defective one. Gesture: `input swipe 400 1400 650 1400 3000`
+    = 250 px over 3 s, the gentlest possible pan. Template scores 0.96-1.00, fitted circle
+    radius stable at 146.3±0.3 px across every frame.
+  found: |
+    THE SYMPTOM, MEASURED. Pin-vs-circle separation in X:
+      at rest before the pan:   +0.26 px   (concentric — correct)
+      during the slow pan:      oscillates 0 -> 15.3 px and back, repeatedly, std 4.4 px
+      at rest after the pan:    +0.26 px   (converges — correct)
+      Y separation is constant at -90.4 px (the pin's design offset) with 1.0 px p2p.
+    The oscillation is not a ramp; it is a sawtooth at roughly 30 Hz. Consecutive frames:
+    3.0, 13.0, 4.0, 4.0, -0.2, 1.8, 7.8, 4.6, 7.6, 2.8, 9.0, 3.4, 3.4, -0.4, 3.3, 3.3,
+    7.5, 3.3, 3.3, 11.5, 13.2, 4.7, 5.2, 2.1, 10.0, 14.2, 11.3, 11.3, 5.5, 5.0, 5.0, 2.2, 0.3.
+    THE SIGN IS ALWAYS POSITIVE AND THE PAN WAS RIGHTWARD: the pin sits AHEAD of the circle,
+    in the direction of travel. The pin LEADS the map; it does not lag it.
+    The catch-up is directly visible in the raw columns — e.g. frames 159-162:
+      159: pin 702.3  circle 689.3   (sep 13.0)   pin jumped
+      160: pin 702.3  circle 698.3   (sep  4.0)   pin held, circle caught up
+      161: pin 702.3  circle 698.3   (sep  4.0)   both held
+      162: pin 702.3  circle 702.5   (sep -0.2)   circle fully caught up
+  implication: |
+    This IS the reported "roll/vibrate", quantified: a 0-15 px sawtooth wobble at ~30 Hz,
+    which on a 1080-px-wide 6.4" panel is about a millimetre of rapid oscillation on the one
+    high-contrast object the user is looking at. It also explains why E-15's low-zoom pan
+    showed only 0.43 px: the divergence scales with how long the NATIVE renderer takes to
+    rasterise a frame, and zoom 17 (buildings, labels, dense geometry) is far more expensive
+    than zoom 8.
+
+- timestamp: 2026-08-06 (E-18) [cycle 2]
+  checked: |
+    Amplified the same effect with a fling (`input swipe 800 1400 300 1400 120`), where the
+    camera animates fast under MapLibre's own animator, to confirm the direction of the
+    divergence beyond any measurement doubt. Verified the result visually as well as
+    numerically by extracting individual frames.
+  found: |
+    Separation reached -437.7 px. Before the fling, at rest: +0.18 px. After it settles:
+    -1.13 px. Extracted frame 322 shows it unmistakably to the naked eye — the avatar, its
+    "You" label and its battery readout sit completely outside the accuracy circle, off to
+    the left edge of it, while at rest (frame 394) they are perfectly concentric.
+    Full sequence of the separation as the fling decays:
+      -330, -348, -438, -178, -181, -168, -78, -40, -22, -5, -1.6, -1.2, -1.1 (settled)
+  implication: |
+    Confirms E-17's mechanism and its direction under 20x the velocity, and confirms the
+    defect is purely transient — it converges exactly to zero at rest, every time. So this is
+    NOT a projection error (`projectToScreen` is correct, as E-12 established and as the
+    0.26 px resting separation re-confirms here); it is purely a SYNCHRONISATION error
+    between two renderers.
+
+- timestamp: 2026-08-06 (E-19) [cycle 2]
+  checked: |
+    Which camera state each side of the divergence is built from, at plugin source level.
+    `MapLibreMapController.java:2069-2076` — `onCameraMove()` is the `MapLibreMap
+    .OnCameraMoveListener` callback; it serialises `mapLibreMap.getCameraPosition()` and
+    fires `methodChannel.invokeMethod("camera#onMove", ...)`. That listener is dispatched by
+    MapLibre's CameraChangeDispatcher when the camera VALUE is set, on the Android UI thread
+    during gesture/animation handling — not when that camera has been rasterised. Grepped the
+    whole controller for a render-completion signal: the only one is `map#onIdle`
+    (:2119, OnDidBecomeIdle), which fires when the map goes fully idle, not per frame.
+  found: |
+    There is NO API in maplibre_gl 0.26.2 that reports the camera the map has actually
+    DRAWN. Both sides of the pipeline are therefore built as:
+      pin      = projectToScreen(camera at SET time)     -> applied in the next Flutter frame
+      basemap  = MapLibre's rasterisation of that camera -> applied 1-3 frames later
+    AND THIS RETROACTIVELY EXPLAINS THE CYCLE-1 FALSIFICATION EXACTLY. The deleted
+    `toScreenLocationBatch()` called native `getProjection().toScreenLocation()`, which reads
+    the map's CURRENT TRANSFORM — the same camera-set value the new synchronous Dart
+    projection reads. Cycle 1 swapped how the projection was COMPUTED while leaving untouched
+    WHICH camera state it was computed from. Both are correct projections of a camera the
+    basemap has not drawn yet. That is precisely why deleting the round-trip changed nothing
+    observable, and it is strong independent corroboration of this root cause.
+  implication: |
+    The defect cannot be fixed by improving the projection, its latency, or its ordering —
+    all three have now been tried or ruled out. It can only be fixed by changing which
+    renderer draws the pin, or by compensating for the render lag.
+
+- timestamp: 2026-08-06 (E-20) [cycle 2]
+  checked: |
+    Read the current `mobile/lib/features/location/presentation/vector_map.dart`
+    on the resumed branch, end to end, against cycle-2 candidates 3/4.
+  found: |
+    The code still forces `MapLibreMap.useHybridComposition = true` in `initState`.
+    `_onControllerNotified()` still fires on every tracked camera tick, but now it does
+    a plain `setState(() {})` on the entire `VectorMap` State. `build()` recreates the
+    whole `LayoutBuilder -> Stack -> MapLibreMap + Positioned overlays` tree each tick.
+    The marker children themselves are non-trivial widget subtrees
+    (`LiveMemberMarker`: avatar image/clip, box shadow, two label pills, battery row).
+  implication: |
+    Candidate 4 is definitely LIVE in the shipped code path: every camera event forces
+    Flutter to revisit the platform-view wrapper plus the overlay layout. Because E-17/E-19
+    showed the pin LEADS the basemap, this cannot be the sole mechanism, but it is a
+    plausible AMPLIFIER: under hybrid composition, extra Flutter/UI-thread work can delay
+    the native map's raster catch-up even while the overlay uses the newest camera state.
+    Next experiment should reduce ONLY this Flutter-side rebuild cost and see whether the
+    measured wobble collapses or stays materially unchanged.
+
+- timestamp: 2026-08-06 (E-21) [cycle 2]
+  checked: |
+    Read the local `maplibre_gl 0.26.2` package surface for native symbol support
+    (`addSymbol`, `onSymbolTapped`, style image APIs).
+  found: |
+    The plugin exposes managed symbols plus `onSymbolTapped`, and native style-image
+    registration is present on both Android and iOS (`style#addImage`, `addSymbol`,
+    `SymbolOptions.iconImage/textField/...`).
+  implication: |
+    If candidate 4 is falsified, a renderer-unified fix remains technically viable:
+    move the visually authoritative pin into MapLibre's native annotation pipeline and
+    preserve tap handling there, instead of trying to frame-lock a Flutter overlay to a
+    separately-rasterised basemap.
+
+- timestamp: 2026-08-06 (E-22) [cycle 2]
+  checked: |
+    Tried to repeat the prior frame-by-frame capture workflow on the connected Samsung
+    SM-A305F after resuming this session: `adb shell screenrecord --verbose` at both
+    1080x2340/20 Mbps and 720x1560/4 Mbps, plus `dumpsys gfxinfo ... reset` followed by
+    the same deterministic 3 s swipe.
+  found: |
+    In this session the device recorder is unusable: `screenrecord` encoded only 3 frames
+    in 4 s at full resolution and 1 frame in 4 s at the smaller size. The pulled MP4 from
+    an 8 s capture contained exactly 1 decodable frame. `dumpsys gfxinfo` on the installed
+    release produced 0 rendered frames after the deterministic swipe, despite
+    `mResumedActivity` confirming `com.safepath.mobile/.MainActivity` was foregrounded.
+  implication: |
+    The earlier quantitative measurement path is temporarily unavailable on this device/session.
+    That blocks numeric self-measurement of a post-fix wobble amplitude, but it does NOT
+    invalidate the previously established root-cause evidence (E-17/E-19). The fix therefore
+    has to be verified by build/test plus human eyes on the device.
+
+- timestamp: 2026-08-06 (E-23) [cycle 2]
+  checked: |
+    Implemented the renderer-unified motion path and rebuilt the release app.
+  found: |
+    `vector_map.dart` now keeps a native `MapDot` annotation visible for each member and
+    hides the Flutter `OverlayMarker` layer whenever `MapLibreMapController.isCameraMoving`
+    is true, restoring the rich Flutter marker only on idle. `live_map_screen.dart` supplies
+    those dots using the existing member/self colors and the existing staleness opacity rule.
+    Focused verification passed:
+      - `flutter test test/features/location/vector_map_test.dart`
+      - `flutter test test/features/location/live_map_screen_test.dart`
+      - `flutter build apk --release`
+      - `flutter install -d R58M30TGNXV --use-application-binary build\\app\\outputs\\flutter-apk\\app-release.apk`
+  implication: |
+    The code now removes the Flutter-vs-native desynchronisation from motion frames directly.
+    Functional regressions in the tested map seam were not observed locally; remaining proof
+    needed is the user's visual confirmation that the on-device jitter is gone during pan.
+
+## Eliminated
+
+- hypothesis: RC-2 — the jitter is caused by the VARIABLE LATENCY of the per-camera-tick
+    `toScreenLocationBatch()` platform-channel round trip, which makes the applied marker
+    offset advance in irregular increments frame to frame.
+  evidence: |
+    FALSIFIED BY ITS OWN STATED TEST. The cycle-1 reasoning_checkpoint recorded the
+    falsification condition verbatim: "RC-2 would also be false if the jitter persisted after
+    the round-trip is removed; that is the on-device check for this fix." Commit 7d465a8
+    deleted the round-trip entirely and replaced it with a synchronous in-Dart projection
+    (validated correct to ~3 px against the native accuracy circle across the viewport, E-12).
+    The user rebuilt and reinstalled 7d465a8, opened the Live Map, and panned slowly
+    left/right on the same Samsung SM-A305F: the pin STILL visibly rolls/vibrates during pan.
+    Removing the entire variable-latency term changed nothing observable, so that term was not
+    the operative mechanism.
+    Note what this does and does not retire: the synchronous projection remains correct and is
+    kept on its own merits (it is provably accurate, removes a redundant IPC per frame, and
+    removes an unguarded async setState). It is simply not the cause of the visible jitter.
+    Do not re-propose round-trip latency, nor a generation/in-flight guard on it — the guard
+    was already eliminated separately below, and the code it would guard no longer exists.
+  timestamp: 2026-08-06 (cycle 2)
+
+- hypothesis: The SurfaceControl/libEGL/BufferQueueProducer logcat churn indicates a real native view-lifecycle defect introduced by forcing hybrid composition (015bc72), and contributes to the jitter.
+  evidence: E-11 — a controlled 10-pan experiment on the physical device produced zero such lines from the app process; every occurrence in the session was tied to window visibility/relayout transitions (foreground, screen wake, 2340<->2214 resize) via `ViewRootImpl.relayoutWindow`, and most lines originated from system_server/SystemUI rather than the app at all.
+  timestamp: 2026-08-06
+
+- hypothesis: The jitter is caused by out-of-order resolution of overlapping `toScreenLocationBatch` replies (the prior todo's stated mechanism), and is therefore fixable with a generation counter.
+  evidence: Partially superseded rather than simply wrong. The missing in-flight guard is real (E-05), but E-10 shows the deeper defect: the round-trip is redundant because Dart already holds the camera state synchronously. A generation guard would only prevent a stale reply overwriting a newer one; it cannot make the newest available reply any fresher, so the irregular per-frame increments that actually produce the visible vibration would survive it. Ordering was therefore not the operative mechanism, and the guard is not a sufficient fix.
+  timestamp: 2026-08-06
+
+- hypothesis: Missing/denied Android location permissions cause the wrong-location symptom.
+  evidence: E-04 — both fine and coarse location are declared in the manifest, and `_bootstrap` is hard-gated on `permissionControllerProvider.isGranted`, so the map only renders at all once permission is granted.
+  timestamp: 2026-08-06
+
+- hypothesis: A lat/lng swap in serialization causes the wrong-location symptom.
+  evidence: Read `location_models.dart` end to end — `LiveLocation.fromJson` reads `json['lat']`/`json['lng']` into `lat`/`lng`, `ReportLocationPayload.toJson` writes `latitude`/`longitude` from `position.latitude`/`position.longitude`, and `live_map_screen.dart` builds `MapPoint(location.lat, location.lng)` and `OverlayMarker(lat: location.lat, lng: location.lng)`. No axis is transposed on any path. A swap would also put the pin in the ocean, not "slightly wrong."
+  timestamp: 2026-08-06
+
+- timestamp: 2026-08-06 (E-12)
+  checked: Post-fix on-device validation of the synchronous projection, using the natively-drawn accuracy circle (drawn by MapLibre itself in lat/lng space, independent of any Dart math) as ground truth for the Flutter pin's position.
+  found: Concentric across the whole viewport. Marker parked in open space: circle centre (585, 1234) displayed, pin anchor (585, 1158) predicted vs (585, 1155) measured — agreement within ~3 px. Marker dragged to the far top-left corner: predicted avatar y 370 vs measured 370, at a lever arm of ~554 displayed px from centre where a wrong tile-size constant (256 vs 512) would have thrown the pin completely off-screen. Re-running the exact held-drag sequence from the pre-fix build reproduced an identical frame with identical pin/circle separation (~4.6 px vs the old build's ~5.6 px — both within the constant offset of my avatar-centre measurement method).
+  implication: The `worldSize = 512 * 2^zoom` LOGICAL-pixel convention is correct on real hardware, and steady-state marker accuracy is unchanged from the pre-fix build. The blind spot recorded in the reasoning checkpoint is closed.
+
+- timestamp: 2026-08-06 (E-13)
+  checked: Logcat after installing the first fixed build and exercising the map.
+  found: `E/flutter: Unhandled Exception: An unexpected error occurred invoking 'ReportLocation' on the server.` The backend's `ReportLocation` hub method is genuinely failing against the locally-hosted API. Reading `_reportPosition`, `await hubClient.reportLocation(payload)` sat BEFORE `_applyLocation(...)`, with no try/catch.
+  implication: A THIRD contributor to symptom 2, and the most severe: the user's own map only displayed their own position if the backend accepted the ping first. With `ReportLocation` failing, every device fix was discarded before it ever reached local state, so `hasDeviceFix` never latched, the camera never recentred, and the pin stayed on the stale server coordinate — regardless of how good the GPS was. Also the source of the unhandled async error, since `_reportPosition` is invoked fire-and-forget from the stream listener.
+
+- timestamp: 2026-08-06 (E-14)
+  checked: Cold start of the final build on the physical device (force-stop, relaunch, 30 s).
+  found: The map opens on **New Cairo / El Rehab / Lotus Districts (القاهرة الجديدة، الرحاب)** — the device's true location — with the self pin visible and the camera centred on it. Zero unhandled exceptions in logcat (was 1). The `ReportLocation` server failure now appears only as a caught diagnostic line and no longer affects what the map displays. Panning moved the basemap by (-67, -19) displayed and the pin by (-73, -9); the ~4 px difference is within eyeball-measurement error, so the pin tracks the basemap.
+  implication: Symptom 2 is resolved end-to-end on the reporting device, with the backend still broken — which is exactly the decoupling the fix was meant to achieve.
+
+## Resolution
+
+cycle2_addendum_root_cause: |
+  The cycle-1 RC-2 mechanism ("variable round-trip latency") was superseded by later
+  evidence. The OPEN jitter is caused by a renderer split during motion: the visible pin
+  was a Flutter overlay projected from the newest camera SET-time state, while the basemap
+  was rasterised later by MapLibre. E-17/E-18 measured the resulting transient separation
+  against MapLibre's own native accuracy circle, and E-19 showed why projection fixes could
+  never solve it: neither the old native round-trip nor the new synchronous Dart projection
+  had access to the camera the basemap had actually DRAWN. Candidate 4 (full-tree rebuilds
+  on each camera tick) remains a plausible amplifier, but not the root cause. The root cause
+  is the Flutter overlay being visible during motion at all.
+
+cycle2_addendum_fix: |
+  `vector_map.dart` now has an explicit motion-mode split:
+  - Each member also gets a native `MapDot` circle annotation, rendered by MapLibre.
+  - The rich Flutter `OverlayMarker` layer is hidden whenever
+    `MapLibreMapController.isCameraMoving` is true.
+  - The Flutter marker widgets reappear automatically on `onCameraIdle`, preserving the
+    richer avatar/name/status/battery presentation at rest while removing the cross-renderer
+    motion path that produced the visible wobble.
+  `live_map_screen.dart` supplies the native dots using the same self/member colors and
+  staleness-opacity rules already used by the existing map markers, so the moving stand-in
+  still reflects current state rather than introducing a second visual language.
+
+cycle2_addendum_verification: |
+  - `flutter test test/features/location/vector_map_test.dart` PASS
+  - `flutter test test/features/location/live_map_screen_test.dart` PASS
+  - `flutter build apk --release` PASS
+  - `flutter install -d R58M30TGNXV --use-application-binary build\\app\\outputs\\flutter-apk\\app-release.apk` PASS
+  - NOT self-verified numerically on-device in this resumed session: the device's current
+    `screenrecord`/`gfxinfo` paths were unusable (E-22), so human verification is still
+    required to confirm the original visual symptom is gone on the reporting workflow.
+
+root_cause: |
+  Three independent defects, two of them behind the same reported symptom.
+
+  RC-1 "the map does not display my correct location" — a three-link chain, every
+  link of which had to be broken for the map to be right:
+    (a) `_reportPosition` awaited `hubClient.reportLocation()` BEFORE applying the fix
+        to local state. The backend's `ReportLocation` was failing, so every device
+        GPS fix was thrown away before it reached the map (E-13). Rendering your own
+        location on your own map was gated on a successful server round-trip.
+    (b) No one-shot GPS read existed anywhere in the app. The only consumer was
+        `getPositionStream(distanceFilter: 10)`, which emits nothing while the user
+        stays put, so a stationary device could go a whole session without ever
+        establishing its own position (E-01, E-02, E-09).
+    (c) The camera was bound to `MapLibreMap.initialCameraPosition`, which the plugin
+        reads only at platform-view creation; its `didUpdateWidget` diffs map *options*,
+        which carry no camera (E-07). So a corrected position moved the pin but left the
+        camera stranded on the bootstrap snapshot — observed live as a map sitting on
+        Tanaydah with the pin thousands of km away at Googleplex and no pin on screen
+        at all (E-08).
+
+  RC-2 "pin rolls/vibrates while panning" — `_reprojectMarkers()` did an async
+  `toScreenLocationBatch()` platform-channel round trip on every native camera tick and
+  then `setState`. The plugin assigns `controller.cameraPosition` synchronously
+  *immediately before* firing the notification that triggered that round trip (E-10), so
+  it recomputed, off-thread and with variable latency, a projection whose inputs Dart
+  already held. Variable latency means the applied offset advances in irregular
+  increments frame to frame, which reads as vibration rather than smooth trailing. The
+  missing in-flight guard flagged by the earlier todo was real but not the operative
+  mechanism — a generation counter cannot make the newest reply any fresher.
+
+fix: |
+  - `location_controller.dart`: apply the device fix to local state FIRST and
+    unconditionally, then report to the hub inside a try/catch (best-effort, logged).
+    Added `currentPositionProvider`, a one-shot `Geolocator.getCurrentPosition()` taken
+    once per bootstrap, unawaited so it can never delay the map or the SOS path, and
+    failure-tolerant. Added `LocationState.hasDeviceFix`, latching true only for fixes
+    originating from this device's own GPS.
+  - `live_map_screen.dart`: `ref.listen` centres the camera on the false -> true edge of
+    `hasDeviceFix` — exactly once, so it can never fight the user's panning.
+  - `vector_map.dart`: deleted the async reprojection entirely. Markers are now projected
+    synchronously during `build()` by a new pure `projectToScreen()` (Web Mercator,
+    `worldSize = 512 * 2^zoom` logical px, antimeridian-normalised, latitude-clamped),
+    fed by `controller.cameraPosition` and the map's own `LayoutBuilder` size. The
+    camera-change listener now only requests a rebuild. `_onMapCreated` replays a pending
+    camera command so a centre request issued before the platform view existed is not
+    dropped. `physicalToLogicalOffset` and its tests are gone with the code path they served.
+
+verification: |
+  - 322 unit/widget tests pass; the only 2 failures are `member_map_pin_semantics_test.dart`,
+    confirmed pre-existing by stashing the change and reproducing them on unmodified code.
+  - 8 new `projectToScreen` tests, including one that anchors the 512-tile scale convention
+    to the WGS84 equatorial circumference rather than to the implementation itself.
+  - The `ReportLocation` regression test was confirmed red against the old ordering before
+    being made green (temporary revert, `Expected: <30.0444> Actual: <null>`).
+  - On-device (Samsung SM-A305F, Android 11, release build): projection validated against
+    the native accuracy circle across the viewport including the far corner (E-12); cold
+    start now opens on the device's true location in New Cairo with the pin centred (E-14);
+    unhandled exceptions 0 (was 1); zero surface churn during map interaction.
+  - NOT verified by me: whether the jitter is gone to the human eye. `adb screencap`
+    composites the platform-view layer and the Flutter overlay layer independently and
+    takes ~200 ms, so it cannot capture the sub-frame transient. This is the checkpoint item.
+
+files_changed:
+  - mobile/lib/features/location/presentation/vector_map.dart
+  - mobile/lib/features/location/presentation/live_map_screen.dart
+  - mobile/lib/features/location/application/location_controller.dart
+  - mobile/test/features/location/vector_map_test.dart
+  - mobile/test/features/location/location_controller_test.dart
+
+out_of_scope_findings:
+  - "`physicalToLogicalOffset` (commit b5aa00b) was correct for Android but would have been WRONG on iOS: Android returns physical px from `Projection.toScreenLocation`, iOS returns UIKit points (already logical), so iOS pins would have clumped toward the top-left by a factor of devicePixelRatio. Moot now — the function and the code path are deleted — but worth knowing if the native projection is ever reintroduced. (E-06)"
+  - "The backend's `ReportLocation` hub method is genuinely failing (`An unexpected error occurred invoking 'ReportLocation' on the server`) against the locally-hosted API. The client no longer breaks because of it, and it is now logged rather than silent, but the server-side cause is undiagnosed and location pings are NOT reaching the database or other family members."
+  - "`_drawAnnotations()` still has the missing-in-flight-guard pattern flagged as WR-02 (it does `clearFills()/clearLines()` then re-adds, so two overlapping runs can interleave). Not touched — no reported symptom, and it is not on the per-frame path."

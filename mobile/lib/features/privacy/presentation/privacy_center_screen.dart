@@ -13,6 +13,7 @@ import '../../../shared_widgets/toggle_row.dart';
 import '../../auth/data/auth_api.dart';
 import '../../family/application/family_controller.dart';
 import '../../family/data/family_models.dart';
+import '../../sos/presentation/sos_reach_warning_card.dart';
 import '../application/privacy_controller.dart';
 import '../data/privacy_models.dart';
 
@@ -176,11 +177,12 @@ class PrivacyCenterScreen extends ConsumerWidget {
     }
 
     if (familyId == null) {
-      return const _PrivacyMessage(
+      return _PrivacyMessage(
         icon: Icons.group_off,
         title: 'No circle yet',
         body: 'Create or join a family circle to manage privacy controls.',
-        action: NoCircleCta(),
+        action: const NoCircleCta(),
+        banner: const SosReachWarningCard(),
       );
     }
 
@@ -209,6 +211,7 @@ class PrivacyCenterScreen extends ConsumerWidget {
                 style: AppTypography.bodySecondary,
               ),
               const SizedBox(height: AppSpacing.lg),
+              const SosReachWarningCard(),
               if (privacyState.error != null) ...[
                 _ErrorCard(message: privacyState.error!),
                 const SizedBox(height: AppSpacing.md),
@@ -259,7 +262,9 @@ class PrivacyCenterScreen extends ConsumerWidget {
                 isDeleting: privacyState.isDeleting,
                 onExport: () => _exportMyData(context, ref),
                 onDelete: () => _confirmDelete(context, ref),
-                onPolicy: () => context.go('/privacy/policy'),
+                onPolicy: () => context.push('/privacy/policy'),
+                onEmergencyContacts: () =>
+                    context.push('/settings/emergency-contacts'),
               ),
             ],
           ),
@@ -289,6 +294,7 @@ class _PrivacyActionsSection extends StatelessWidget {
     required this.onExport,
     required this.onDelete,
     required this.onPolicy,
+    required this.onEmergencyContacts,
   });
 
   final bool isExporting;
@@ -296,6 +302,7 @@ class _PrivacyActionsSection extends StatelessWidget {
   final VoidCallback onExport;
   final VoidCallback onDelete;
   final VoidCallback onPolicy;
+  final VoidCallback onEmergencyContacts;
 
   @override
   Widget build(BuildContext context) {
@@ -315,6 +322,11 @@ class _PrivacyActionsSection extends StatelessWidget {
                   )
                 : const Icon(Icons.file_download_outlined),
             label: const Text('Export my data'),
+          ),
+          TextButton.icon(
+            onPressed: onEmergencyContacts,
+            icon: const Icon(Icons.contact_phone_outlined),
+            label: const Text('Emergency contacts'),
           ),
           TextButton.icon(
             onPressed: onPolicy,
@@ -543,12 +555,14 @@ class _PrivacyMessage extends StatelessWidget {
     required this.title,
     required this.body,
     this.action,
+    this.banner,
   });
 
   final IconData icon;
   final String title;
   final String body;
   final Widget? action;
+  final Widget? banner;
 
   @override
   Widget build(BuildContext context) {
@@ -565,6 +579,10 @@ class _PrivacyMessage extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (banner != null) ...[
+                  banner!,
+                  const SizedBox(height: AppSpacing.lg),
+                ],
                 Icon(icon, size: 44, color: AppColors.bodySecondary),
                 const SizedBox(height: AppSpacing.md),
                 Text(title, style: AppTypography.heading),
@@ -586,4 +604,3 @@ class _PrivacyMessage extends StatelessWidget {
     );
   }
 }
-

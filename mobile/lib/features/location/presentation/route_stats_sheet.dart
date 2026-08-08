@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared_widgets/stat_tile.dart';
+import '../application/map_geometry.dart';
 import '../data/location_models.dart';
+import 'vector_map.dart';
 
 Future<void> showRouteStatsSheet({
   required BuildContext context,
@@ -29,25 +29,34 @@ class RouteStatsSheet extends StatelessWidget {
     required this.history,
     required this.stats,
     required this.memberName,
+    @visibleForTesting this.mapPlatformViewBuilder,
   });
 
   final LocationHistory history;
   final TravelStats stats;
   final String memberName;
 
+  /// Test seam: when supplied, replaces the native map view entirely so a
+  /// widget test never mounts a real platform view. Production callers
+  /// leave this null.
+  @visibleForTesting
+  final WidgetBuilder? mapPlatformViewBuilder;
+
   @override
   Widget build(BuildContext context) {
     final points = history.polylinePoints;
     final initial = points.isNotEmpty
-        ? LatLng(points.first.lat, points.first.lng)
-        : const LatLng(0, 0);
+        ? MapPoint(points.first.lat, points.first.lng)
+        : const MapPoint(0, 0);
     final routePoints = [
-      for (final point in points) LatLng(point.lat, point.lng),
+      for (final point in points) MapPoint(point.lat, point.lng),
     ];
     final markers = [
       for (var i = 0; i < history.stops.length; i++)
-        Marker(
-          point: LatLng(history.stops[i].lat, history.stops[i].lng),
+        OverlayMarker(
+          id: 'stop-${i + 1}',
+          lat: history.stops[i].lat,
+          lng: history.stops[i].lng,
           width: 28,
           height: 28,
           child: _StopMarker(number: i + 1),
@@ -82,34 +91,26 @@ class RouteStatsSheet extends StatelessWidget {
                   children: [
                     SizedBox(
                       height: 360,
-                      child: FlutterMap(
-                        options: MapOptions(
-                          initialCenter: initial,
-                          initialZoom: routePoints.length >= 2 ? 13 : 15,
-                        ),
-                        children: [
-                          TileLayer(
-                            urlTemplate:
-                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                            userAgentPackageName: 'com.safepath.mobile',
-                          ),
+                      child: VectorMap(
+                        initialTarget: initial,
+                        initialZoom: routePoints.length >= 2 ? 13 : 15,
+                        markers: markers,
+                        lines: [
                           if (routePoints.length >= 2)
-                            PolylineLayer(
-                              polylines: [
-                                Polyline(
-                                  points: routePoints,
-                                  color: AppColors.primaryTeal,
-                                  strokeWidth: 5,
-                                  strokeCap: StrokeCap.round,
-                                  strokeJoin: StrokeJoin.round,
-                                ),
-                              ],
+                            MapLine(
+                              points: routePoints,
+                              colorHex: hexColor(AppColors.primaryTeal),
+                              width: 5,
                             ),
-                          MarkerLayer(markers: markers),
-                          const SimpleAttributionWidget(
-                            source: Text('OpenStreetMap contributors'),
-                          ),
                         ],
+                        // Round stroke *caps* are not available on the line
+                        // annotation (no cap property exposed), so the
+                        // route's two end points render squared off instead
+                        // of rounded. Accepted cosmetic parity gap (D-03) -
+                        // round *joins* between segments are still applied
+                        // by VectorMap's annotation drawing.
+                        // ignore: invalid_use_of_visible_for_testing_member
+                        platformViewBuilder: mapPlatformViewBuilder,
                       ),
                     ),
                     Padding(

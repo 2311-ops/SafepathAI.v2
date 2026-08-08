@@ -18,8 +18,10 @@ import 'package:mobile/features/location/data/location_api.dart';
 import 'package:mobile/features/location/data/location_hub_client.dart';
 import 'package:mobile/features/privacy/data/privacy_api.dart';
 import 'package:mobile/features/profile/data/profile_api.dart';
+import 'package:mobile/features/sos/data/emergency_contact_api.dart';
 
 import '../../helpers/fake_auth_api.dart';
+import '../../helpers/fake_emergency_contact_api.dart';
 import '../../helpers/fake_family_api.dart';
 import '../../helpers/fake_location_api.dart';
 import '../../helpers/fake_location_hub_client.dart';
@@ -171,6 +173,10 @@ class _RouterHarness {
   final FakeLocationApi locationApi = FakeLocationApi();
   final FakeLocationHubClient hubClient = FakeLocationHubClient();
   final FakePrivacyApi privacyApi = FakePrivacyApi();
+  // MainShell's IndexedStack eagerly builds PrivacyCenterScreen (index 3),
+  // which now watches sosReachProvider -> emergencyContactsControllerProvider
+  // -> a real Dio client unless overridden here.
+  final FakeEmergencyContactApi emergencyContactApi = FakeEmergencyContactApi();
   final StreamController<Position> positions =
       StreamController<Position>.broadcast();
 
@@ -185,6 +191,7 @@ class _RouterHarness {
       positionStreamProvider.overrideWithValue(positions.stream),
       batteryLevelProvider.overrideWith((ref) async => 72),
       privacyApiProvider.overrideWithValue(privacyApi),
+      emergencyContactApiProvider.overrideWithValue(emergencyContactApi),
     ],
   );
 

@@ -62,6 +62,7 @@ class _FakeProfileApi implements ProfileApi {
   ProfileApiException? exceptionToThrow;
 
   String? lastDisplayName;
+  String? lastPhoneNumber;
   List<int>? lastUploadBytes;
   String? lastUploadFilename;
   int deleteCallCount = 0;
@@ -75,6 +76,15 @@ class _FakeProfileApi implements ProfileApi {
   @override
   Future<UserProfile> updateDisplayName(String displayName) async {
     lastDisplayName = displayName;
+    if (exceptionToThrow case final error?) {
+      throw error;
+    }
+    return profileToReturn;
+  }
+
+  @override
+  Future<UserProfile> updatePhoneNumber(String? phoneNumber) async {
+    lastPhoneNumber = phoneNumber;
     if (exceptionToThrow case final error?) {
       throw error;
     }

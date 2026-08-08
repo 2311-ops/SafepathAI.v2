@@ -9,6 +9,7 @@ class UserProfile {
     this.displayName,
     this.profileImageUrl,
     this.profileUpdatedAt,
+    this.phoneNumberE164,
   });
 
   final String userId;
@@ -18,6 +19,7 @@ class UserProfile {
   final String? displayName;
   final String? profileImageUrl;
   final DateTime? profileUpdatedAt;
+  final String? phoneNumberE164;
 
   String get displayNameOrFallback {
     final trimmedDisplayName = displayName?.trim();
@@ -42,6 +44,7 @@ class UserProfile {
       profileUpdatedAt: profileUpdatedAtValue == null
           ? null
           : DateTime.tryParse(profileUpdatedAtValue),
+      phoneNumberE164: json['phoneNumberE164'] as String?,
     );
   }
 }

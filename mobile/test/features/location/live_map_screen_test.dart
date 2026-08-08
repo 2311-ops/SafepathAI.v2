@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -14,9 +13,16 @@ import 'package:mobile/features/location/application/location_controller.dart';
 import 'package:mobile/features/location/data/location_models.dart';
 import 'package:mobile/features/location/presentation/live_map_screen.dart';
 import 'package:mobile/features/location/presentation/member_detail_sheet.dart';
+import 'package:mobile/features/location/presentation/vector_map.dart';
 import 'package:mobile/features/profile/application/profile_controller.dart';
 import 'package:mobile/features/profile/data/user_profile.dart';
 import 'package:mobile/shared_widgets/member_map_pin.dart';
+
+/// Stands in for the native map view so no widget test mounts a real
+/// platform view, which has no test implementation and throws on the
+/// platform-views channel.
+Widget _fakePlatformViewBuilder(BuildContext context) =>
+    const SizedBox.expand();
 
 /// No circle yet: family == null and not loading — the state a family-less
 /// user's Map tab lands in.
@@ -40,7 +46,7 @@ class _PopulatedFamilyController extends FamilyController {
 }
 
 /// A self position plus one other family member, so `LiveMapScreen` builds
-/// its `FlutterMap` with a marker/accuracy-circle per location.
+/// its `VectorMap` with a marker/accuracy-circle per location.
 class _PopulatedLocationController extends LocationController {
   @override
   LocationState build() {
@@ -227,7 +233,8 @@ void main() {
   });
 
   testWidgets(
-    'populated live locations render on a FlutterMap with OSM attribution',
+    'populated live locations render on a VectorMap with online/offline '
+    'status',
     (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -242,16 +249,20 @@ void main() {
               () => _SeededProfileController(Role.guardian),
             ),
           ],
-          child: const MaterialApp(home: LiveMapScreen()),
+          child: const MaterialApp(
+            home: LiveMapScreen(
+              mapPlatformViewBuilder: _fakePlatformViewBuilder,
+            ),
+          ),
         ),
       );
-      // flutter_map issues real network tile requests that never resolve in the
-      // test harness; pumpAndSettle would hang waiting on them, so build the
-      // tree with a fixed-duration pump instead.
+      // No native platform view is mounted (a stand-in is injected above),
+      // but the overlay card runs a 260ms entrance tween and the avatar
+      // tests involve cached network images, either of which can keep a
+      // pumpAndSettle spinning; use a fixed-duration pump instead.
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.byType(FlutterMap), findsOneWidget);
-      expect(find.textContaining('OpenStreetMap'), findsWidgets);
+      expect(find.byType(VectorMap), findsOneWidget);
       expect(find.text('ONLINE'), findsOneWidget);
       expect(find.text('OFFLINE'), findsOneWidget);
     },
@@ -273,13 +284,18 @@ void main() {
               () => _SeededProfileController(Role.guardian),
             ),
           ],
-          child: const MaterialApp(home: LiveMapScreen()),
+          child: const MaterialApp(
+            home: LiveMapScreen(
+              mapPlatformViewBuilder: _fakePlatformViewBuilder,
+            ),
+          ),
         ),
       );
-      // flutter_map issues real network tile requests that never resolve in
-      // the test harness; pumpAndSettle would hang waiting on them, so build
-      // the tree with a fixed-duration pump instead (mirrors the populated
-      // map test above).
+      // No native platform view is mounted (a stand-in is injected above),
+      // but the overlay card runs a 260ms entrance tween and the avatar
+      // tests involve cached network images, either of which can keep a
+      // pumpAndSettle spinning; use a fixed-duration pump instead (mirrors
+      // the populated map test above).
       await tester.pump(const Duration(milliseconds: 100));
 
       // Map markers use LiveMemberMarker, not MemberMapPin — so the single
@@ -304,7 +320,7 @@ void main() {
     'tapping a rail card recenters the map on that member and does not open '
     'the detail sheet',
     (tester) async {
-      final controller = MapController();
+      final controller = VectorMapController();
       addTearDown(controller.dispose);
 
       await tester.pumpWidget(
@@ -321,22 +337,27 @@ void main() {
             ),
           ],
           child: MaterialApp(
-            home: LiveMapScreen(mapController: controller),
+            home: LiveMapScreen(
+              mapController: controller,
+              mapPlatformViewBuilder: _fakePlatformViewBuilder,
+            ),
           ),
         ),
       );
-      // flutter_map issues real network tile requests that never resolve in
-      // the test harness; pumpAndSettle would hang waiting on them, so build
-      // the tree with a fixed-duration pump instead (mirrors the populated
-      // map test above).
+      // No native platform view is mounted (a stand-in is injected above),
+      // but the overlay card runs a 260ms entrance tween and the avatar
+      // tests involve cached network images, either of which can keep a
+      // pumpAndSettle spinning; use a fixed-duration pump instead (mirrors
+      // the populated map test above).
       await tester.pump(const Duration(milliseconds: 100));
 
       await tester.tap(find.byKey(const ValueKey('member-card-other-user')));
       await tester.pump();
 
-      expect(controller.camera.center.latitude, closeTo(30.0500, 1e-9));
-      expect(controller.camera.center.longitude, closeTo(31.2400, 1e-9));
-      expect(controller.camera.zoom, closeTo(17, 1e-9));
+      expect(controller.lastCommand, isNotNull);
+      expect(controller.lastCommand!.lat, closeTo(30.0500, 1e-9));
+      expect(controller.lastCommand!.lng, closeTo(31.2400, 1e-9));
+      expect(controller.lastCommand!.zoom, closeTo(17, 1e-9));
       expect(find.byType(MemberDetailSheet), findsNothing);
     },
   );

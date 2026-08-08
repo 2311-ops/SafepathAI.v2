@@ -26,6 +26,9 @@ import '../../features/location/presentation/permission_priming_screen.dart';
 import '../../features/privacy/presentation/privacy_policy_screen.dart';
 import '../../features/profile/application/profile_controller.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/sos/presentation/emergency_contacts_screen.dart';
+import '../../features/sos/presentation/responder_alert_screen.dart';
+import '../../features/sos/presentation/sender_emergency_session_screen.dart';
 import '../../features/splash/application/splash_providers.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 
@@ -56,6 +59,9 @@ const _authenticatedOnlyRoutes = {
   '/battery-info',
   '/privacy/policy',
   '/profile',
+  '/sos/session',
+  '/sos/responder/:sessionId',
+  '/settings/emergency-contacts',
 };
 
 /// Bridges [authControllerProvider] changes to go_router's
@@ -114,8 +120,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           profile != null &&
           (profile.role == null || legacyGoogleDefaultedToMember) &&
           !profileIsLoading;
+      // `matchedLocation` is the *resolved* path (e.g. `/sos/responder/abc`)
+      // — for parameterized routes like `/sos/responder/:sessionId` the set
+      // must be checked against `fullPath` (the route's pattern, e.g.
+      // `/sos/responder/:sessionId`) instead, or the guard would never fire
+      // for any real deep link. Static routes' `fullPath` equals their own
+      // literal path, so this generalizes without changing existing
+      // behaviour for the rest of the set.
       final goingToAuthenticatedRoute = _authenticatedOnlyRoutes.contains(
-        state.matchedLocation,
+        state.fullPath ?? state.matchedLocation,
       );
       final onSplash = state.matchedLocation == '/splash';
       final splashComplete = ref.read(splashAnimationCompleteProvider);
@@ -241,6 +254,23 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/profile',
         name: 'profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/sos/session',
+        name: 'sos-session',
+        builder: (context, state) => const SenderEmergencySessionScreen(),
+      ),
+      GoRoute(
+        path: '/sos/responder/:sessionId',
+        name: 'sos-responder',
+        builder: (context, state) => ResponderAlertScreen(
+          sessionId: state.pathParameters['sessionId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/settings/emergency-contacts',
+        name: 'emergency-contacts',
+        builder: (context, state) => const EmergencyContactsScreen(),
       ),
       GoRoute(
         path: '/circle/create',

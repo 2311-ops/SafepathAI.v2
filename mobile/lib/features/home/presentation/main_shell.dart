@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -6,17 +8,21 @@ import '../../../core/theme/app_typography.dart';
 import '../../location/presentation/history_timeline_screen.dart';
 import '../../location/presentation/live_map_screen.dart';
 import '../../privacy/presentation/privacy_center_screen.dart';
+import '../../sos/application/sos_controller.dart';
+import '../../sos/presentation/sos_arm_button.dart';
 
-class MainShell extends StatefulWidget {
+class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends ConsumerState<MainShell> {
   int _index = 0;
 
+  // The SOS slot (index 2) is an action, never a navigation destination, so
+  // it is excluded from this list — only the four navigable tabs remain.
   static const _tabs = [
     _ShellTab(icon: Icons.map_outlined, activeIcon: Icons.map, label: 'Map'),
     _ShellTab(
@@ -24,7 +30,6 @@ class _MainShellState extends State<MainShell> {
       activeIcon: Icons.history,
       label: 'Activity',
     ),
-    _ShellTab(icon: Icons.sos_outlined, activeIcon: Icons.sos, label: 'SOS'),
     _ShellTab(
       icon: Icons.insights_outlined,
       activeIcon: Icons.insights,
@@ -37,82 +42,91 @@ class _MainShellState extends State<MainShell> {
     ),
   ];
 
+  void _onArmComplete() {
+    // No confirmation dialog, countdown, or cancel-before-send gate between
+    // the hold completing and this navigation (D-02). Push (not go) so the
+    // emergency session sits on top of the shell and dismissing it returns
+    // to where the user was.
+    ref.read(sosControllerProvider.notifier).arm();
+    context.pushNamed('sos-session');
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      body: IndexedStack(
-        index: _index,
-        children: const [
-          LiveMapScreen(),
-          HistoryTimelineScreen(),
-          _PlainTabPlaceholder(
-            icon: Icons.sos,
-            title: 'SOS',
-            body: 'Emergency tools are coming soon.',
-          ),
-          _PlainTabPlaceholder(
-            icon: Icons.insights,
-            title: 'Insights',
-            body: 'Insights are coming soon',
-          ),
-          PrivacyCenterScreen(),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 104,
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.bottomCenter,
-            children: [
-              Container(
-                height: 76,
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(22),
-                  ),
-                  border: const Border(
-                    top: BorderSide(color: AppColors.hairline),
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x160C3A3F),
-                      blurRadius: 22,
-                      offset: Offset(0, -8),
+    return PopScope(
+      canPop: _index == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop || _index == 0) return;
+        setState(() => _index = 0);
+      },
+      child: Scaffold(
+        extendBody: true,
+        body: IndexedStack(
+          index: _index,
+          children: const [
+            LiveMapScreen(),
+            HistoryTimelineScreen(),
+            _PlainTabPlaceholder(
+              icon: Icons.insights,
+              title: 'Insights',
+              body: 'Insights are coming soon',
+            ),
+            PrivacyCenterScreen(),
+          ],
+        ),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 124,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.bottomCenter,
+              children: [
+                Container(
+                  height: 76,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(22),
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    for (var i = 0; i < _tabs.length; i++)
-                      Expanded(
-                        child: i == 2
-                            ? const SizedBox(width: 76)
-                            : _NavItem(
-                                tab: _tabs[i],
-                                selected: _index == i,
-                                onTap: () => setState(() => _index = i),
-                              ),
+                    border: const Border(
+                      top: BorderSide(color: AppColors.hairline),
+                    ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x160C3A3F),
+                        blurRadius: 22,
+                        offset: Offset(0, -8),
                       ),
-                  ],
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < 5; i++)
+                        Expanded(
+                          // The centre slot (index 2) stays a plain spacer with
+                          // no tap forwarding — SOS is an action, not a nav
+                          // destination. Tabs beyond it shift down by one to
+                          // fill the four navigable slots.
+                          child: i == 2
+                              ? const SizedBox(width: 76)
+                              : _NavItem(
+                                  tab: _tabs[i < 2 ? i : i - 1],
+                                  selected: _index == (i < 2 ? i : i - 1),
+                                  onTap: () => setState(
+                                    () => _index = i < 2 ? i : i - 1,
+                                  ),
+                                ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              Positioned(
-                top: -10,
-                child: _SosTabButton(
-                  selected: _index == 2,
-                  onPressed: () {
-                    setState(() => _index = 2);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Coming soon')),
-                    );
-                  },
+                Positioned(
+                  top: 0,
+                  child: SosArmButton(onArmComplete: _onArmComplete),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -187,68 +201,6 @@ class _NavItem extends StatelessWidget {
                       color: color,
                       letterSpacing: 0,
                       fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SosTabButton extends StatelessWidget {
-  const _SosTabButton({required this.selected, required this.onPressed});
-
-  final bool selected;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: 'SOS emergency tools',
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        scale: selected ? 1.04 : 1.0,
-        child: Material(
-          color: Colors.transparent,
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onPressed,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              width: 76,
-              height: 76,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: AppColors.sosRed,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 5),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x50DE3B40),
-                    blurRadius: 26,
-                    offset: Offset(0, 12),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.sos, color: Colors.white, size: 24),
-                  Text(
-                    'SOS',
-                    style: AppTypography.caption.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0,
                     ),
                   ),
                 ],

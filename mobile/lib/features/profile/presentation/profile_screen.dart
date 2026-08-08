@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/phone/country_picker_adapter.dart';
+import '../../../core/phone/phone_country.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared_widgets/phone_number_field.dart';
 import '../../../shared_widgets/primary_button.dart';
 import '../../../shared_widgets/profile_avatar.dart';
 import '../../../shared_widgets/safepath_card.dart';
@@ -21,11 +24,15 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   bool _nameSeeded = false;
+  bool _phoneSeeded = false;
+  PhoneCountry? _selectedPhoneCountry;
 
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -34,10 +41,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final asyncState = ref.watch(profileControllerProvider);
     final state = asyncState.value ?? const ProfileState();
     final profile = state.profile;
+    final phoneCountries = ref.watch(phoneCountriesProvider);
 
     if (profile != null && !_nameSeeded) {
       _nameController.text = profile.displayNameOrFallback;
       _nameSeeded = true;
+    }
+    if (profile != null && !_phoneSeeded) {
+      final storedNumber = profile.phoneNumberE164;
+      final split = storedNumber == null
+          ? null
+          : splitE164(storedNumber, phoneCountries);
+      if (split != null) {
+        _selectedPhoneCountry = split.country;
+        _phoneController.text = split.national;
+      } else {
+        _selectedPhoneCountry = defaultPhoneCountry(
+          phoneCountries,
+          localeCountryCode: Localizations.localeOf(context).countryCode,
+        );
+        _phoneController.text = '';
+      }
+      _phoneSeeded = true;
     }
 
     return Scaffold(
@@ -66,6 +91,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       onSave: () => _saveDisplayName(context),
                     ),
                     const SizedBox(height: AppSpacing.md),
+                    _PhoneNumberCard(
+                      country: _selectedPhoneCountry!,
+                      controller: _phoneController,
+                      isLoading: state.isLoading,
+                      onCountryChanged: (country) =>
+                          setState(() => _selectedPhoneCountry = country),
+                      onSave: () => _savePhoneNumber(context),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
                     _PhotoCard(
                       profile: profile,
                       isLoading: state.isLoading,
@@ -92,6 +126,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (!context.mounted) return;
     final error = ref.read(profileControllerProvider).value?.error;
     _showMessage(context, error ?? 'Display name saved.');
+  }
+
+  Future<void> _savePhoneNumber(BuildContext context) async {
+    // Unlike display name, an empty field is a valid submission here: it
+    // means "remove my number", not "you forgot to type one" — the field
+    // stays genuinely optional and removable, whatever country happens to be
+    // selected.
+    final country = _selectedPhoneCountry;
+    final composed = country == null
+        ? ''
+        : composeE164(country.dialCode, _phoneController.text);
+    await ref
+        .read(profileControllerProvider.notifier)
+        .updatePhoneNumber(composed);
+    if (!context.mounted) return;
+    final error = ref.read(profileControllerProvider).value?.error;
+    if (error != null) {
+      _showMessage(context, error);
+      return;
+    }
+    _showMessage(
+      context,
+      composed.isEmpty ? 'Phone number removed.' : 'Phone number saved.',
+    );
   }
 
   Future<void> _pickAndUploadPhoto(BuildContext context) async {
@@ -247,6 +305,52 @@ class _DisplayNameCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           PrimaryButton(
             label: 'Save name',
+            onPressed: isLoading ? null : onSave,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PhoneNumberCard extends StatelessWidget {
+  const _PhoneNumberCard({
+    required this.country,
+    required this.controller,
+    required this.isLoading,
+    required this.onCountryChanged,
+    required this.onSave,
+  });
+
+  final PhoneCountry country;
+  final TextEditingController controller;
+  final bool isLoading;
+  final ValueChanged<PhoneCountry> onCountryChanged;
+  final VoidCallback onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafePathCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Phone number', style: AppTypography.title),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Guardians who receive your SOS alert can call this number.',
+            style: AppTypography.bodySecondary,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          PhoneNumberField(
+            country: country,
+            controller: controller,
+            onCountryChanged: onCountryChanged,
+            onSubmitted: (_) => onSave(),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          PrimaryButton(
+            label: 'Save phone number',
             onPressed: isLoading ? null : onSave,
           ),
         ],

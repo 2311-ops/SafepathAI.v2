@@ -36,6 +36,14 @@ migrate_working_dir/
 # Local secrets (Supabase credentials, etc.)
 env.json
 
+# Firebase project config (03-06) -- per-developer/per-environment, never
+# committed. See 03-06-SUMMARY.md's "User Setup Required" for where each of
+# these two files must be placed to enable real FCM delivery; the app falls
+# back to a no-op push channel with neither present (D-07 parity with the
+# backend's LoggingPushSender default).
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
 # Symbolication related
 app.*.symbols
 

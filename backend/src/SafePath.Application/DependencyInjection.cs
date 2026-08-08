@@ -1,10 +1,12 @@
 using SafePath.Application.Common;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Application.Families;
 using SafePath.Application.Location;
 using SafePath.Application.Profile;
 using SafePath.Application.Privacy;
+using SafePath.Application.Sos;
 
 namespace SafePath.Application;
 
@@ -26,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<UpdateMyRoleCommand, GetMeResult>, UpdateMyRoleCommandHandler>();
         services.AddScoped<ProfileImageUrlFactory>();
         services.AddScoped<ICommandHandler<UpdateDisplayNameCommand, GetMeResult>, UpdateDisplayNameCommandHandler>();
+        services.AddScoped<ICommandHandler<UpdatePhoneNumberCommand, GetMeResult>, UpdatePhoneNumberCommandHandler>();
         services.AddScoped<ICommandHandler<UploadProfileImageCommand, GetMeResult>, UploadProfileImageCommandHandler>();
         services.AddScoped<ICommandHandler<DeleteProfileImageCommand, GetMeResult>, DeleteProfileImageCommandHandler>();
         services.AddScoped<ICommandHandler<ReportLocationCommand, ReportLocationResult>, ReportLocationCommandHandler>();
@@ -36,6 +39,31 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<GetSharingMatrixQuery, SharingMatrixDto>, GetSharingMatrixQueryHandler>();
         services.AddScoped<ICommandHandler<ExportMyDataQuery, MyDataExportDto>, ExportMyDataQueryHandler>();
         services.AddScoped<ICommandHandler<DeleteMyDataCommand, DeleteMyDataResult>, DeleteMyDataCommandHandler>();
+        services.AddSingleton(sp =>
+        {
+            // Sos:LiveWindowMinutes, default 15 (same "no config = safe default" shape as
+            // FirebaseOptions/TwilioOptions) — lets a demo shorten the live-location window
+            // without a rebuild. IConfiguration is registered by the host automatically, so this
+            // does not require widening AddApplication's own signature.
+            var configuration = sp.GetService<IConfiguration>();
+            var configuredMinutes = configuration?["Sos:LiveWindowMinutes"];
+            var liveWindowMinutes = int.TryParse(configuredMinutes, out var parsed) ? parsed : 15;
+            return new SosLiveWindowOptions { LiveWindowMinutes = liveWindowMinutes };
+        });
+        services.AddScoped<ISosAlertDispatcher, SosAlertDispatcher>();
+        services.AddScoped<ICommandHandler<TriggerSosCommand, TriggerSosResult>, TriggerSosCommandHandler>();
+        services.AddScoped<ICommandHandler<GetSosSessionQuery, GetSosSessionResult>, GetSosSessionQueryHandler>();
+        services.AddScoped<ICommandHandler<AcknowledgeSosCommand, AcknowledgeSosResult>, AcknowledgeSosCommandHandler>();
+        services.AddScoped<ICommandHandler<CancelSosCommand, CancelSosResult>, CancelSosCommandHandler>();
+        services.AddScoped<ICommandHandler<ReportSosLocationCommand, ReportSosLocationResult>, ReportSosLocationCommandHandler>();
+        services.AddScoped<ICommandHandler<AddEmergencyContactCommand, EmergencyContactDto>, AddEmergencyContactCommandHandler>();
+        services.AddScoped<ICommandHandler<UpdateEmergencyContactCommand, EmergencyContactDto>, UpdateEmergencyContactCommandHandler>();
+        services.AddScoped<ICommandHandler<DeleteEmergencyContactCommand, EmergencyContactDto>, DeleteEmergencyContactCommandHandler>();
+        services.AddScoped<ICommandHandler<ListEmergencyContactsQuery, IReadOnlyList<EmergencyContactDto>>, ListEmergencyContactsQueryHandler>();
+        services.AddScoped<ICommandHandler<RecordSmsDeliveryStatusCommand, RecordSmsDeliveryStatusResult>, RecordSmsDeliveryStatusCommandHandler>();
+        services.AddScoped<ICommandHandler<RegisterDeviceTokenCommand, RegisterDeviceTokenResult>, RegisterDeviceTokenCommandHandler>();
+        services.AddScoped<ICommandHandler<RemoveDeviceTokenCommand, bool>, RemoveDeviceTokenCommandHandler>();
+        services.AddScoped<ICommandHandler<ConfirmPushReceiptCommand, ConfirmPushReceiptResult>, ConfirmPushReceiptCommandHandler>();
 
         return services;
     }

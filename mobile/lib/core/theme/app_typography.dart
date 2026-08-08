@@ -88,6 +88,22 @@ abstract final class AppTypography {
     color: AppColors.ink,
   );
 
+  /// 44px/800 JetBrains Mono, tabular figures — the SOS live-location
+  /// streaming window countdown (`mm:ss`) on both the sender's Live-active
+  /// state and the responder screen (03-08-PLAN.md, D-21). Tabular figures
+  /// are a correctness requirement, not a refinement: without them a
+  /// ticking countdown's rendered width can shift as digits change, which
+  /// reads as a broken screen during an emergency. Weight matches the
+  /// [heading] role's 800 so this phase introduces no third weight, just a
+  /// new size/font pairing.
+  static TextStyle get countdownLarge => GoogleFonts.jetBrainsMono(
+    fontSize: 44,
+    fontWeight: FontWeight.w800,
+    height: 1.0,
+    fontFeatures: const [FontFeature.tabularFigures()],
+    color: AppColors.ink,
+  );
+
   /// Full [TextTheme] assembled from the roles above, for [ThemeData].
   static TextTheme get textTheme => TextTheme(
     displayLarge: display,

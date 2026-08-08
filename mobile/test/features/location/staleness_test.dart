@@ -14,7 +14,7 @@ void main() {
     test('uses the recent stale band at the 2 minute edge', () {
       final band = stalenessFor(const Duration(minutes: 2));
 
-      expect(band.opacity, 0.7);
+      expect(band.opacity, 0.92);
       expect(band.badgeText, 'Last seen 2 min ago');
       expect(band.badgeIsAmber, isFalse);
     });
@@ -22,7 +22,7 @@ void main() {
     test('uses the amber stale band at the 15 minute edge', () {
       final band = stalenessFor(const Duration(minutes: 15));
 
-      expect(band.opacity, 0.45);
+      expect(band.opacity, 0.85);
       expect(band.badgeText, 'Last seen 15 min ago');
       expect(band.badgeIsAmber, isTrue);
     });
@@ -30,15 +30,15 @@ void main() {
     test('uses the oldest floor band at the 1 hour edge', () {
       final band = stalenessFor(const Duration(hours: 1));
 
-      expect(band.opacity, 0.3);
+      expect(band.opacity, 0.75);
       expect(band.badgeText, 'Last seen 1 hr ago');
       expect(band.badgeIsAmber, isTrue);
     });
 
-    test('never fades below the 0.3 floor for very old pings', () {
+    test('never fades below the 0.75 floor for very old pings', () {
       final band = stalenessFor(const Duration(days: 3));
 
-      expect(band.opacity, 0.3);
+      expect(band.opacity, 0.75);
       expect(band.badgeText, 'Last seen 3 days ago');
       expect(band.badgeIsAmber, isTrue);
     });

@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mobile/features/location/data/location_models.dart';
 import 'package:mobile/features/location/presentation/route_stats_sheet.dart';
+import 'package:mobile/features/location/presentation/vector_map.dart';
+
+/// Stands in for the native map view so no widget test mounts a real
+/// platform view, which has no test implementation and throws on the
+/// platform-views channel.
+Widget _fakePlatformViewBuilder(BuildContext context) =>
+    const SizedBox.expand();
 
 void main() {
   setUpAll(() {
@@ -12,7 +18,7 @@ void main() {
   });
 
   testWidgets(
-    'route history renders on a FlutterMap with OSM attribution and stat tiles',
+    'route history renders on a VectorMap with stat tiles',
     (tester) async {
       final now = DateTime.now().toUtc();
       final history = LocationHistory(
@@ -51,17 +57,17 @@ void main() {
               history: history,
               stats: stats,
               memberName: 'Sam',
+              mapPlatformViewBuilder: _fakePlatformViewBuilder,
             ),
           ),
         ),
       );
-      // flutter_map issues real network tile requests that never resolve in
-      // the test harness; pumpAndSettle would hang waiting on them, so build
-      // the tree with a fixed-duration pump instead.
+      // No native platform view is mounted (a stand-in is injected above),
+      // but pumpAndSettle can still hang on the sheet's own entrance
+      // animation, so build the tree with a fixed-duration pump instead.
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.byType(FlutterMap), findsOneWidget);
-      expect(find.textContaining('OpenStreetMap'), findsWidgets);
+      expect(find.byType(VectorMap), findsOneWidget);
       expect(find.text('DISTANCE'), findsOneWidget);
       expect(find.text('TIME AWAY'), findsOneWidget);
       expect(find.text('STOPS'), findsOneWidget);

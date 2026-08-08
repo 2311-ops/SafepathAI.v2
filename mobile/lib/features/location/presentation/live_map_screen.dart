@@ -1,9 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:latlong2/latlong.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -14,30 +12,48 @@ import '../../../shared_widgets/no_circle_cta.dart';
 import '../../../shared_widgets/primary_button.dart';
 import '../../family/application/family_controller.dart';
 import '../application/location_controller.dart';
+import '../application/map_geometry.dart';
 import '../application/staleness.dart';
 import '../data/location_models.dart';
 import 'battery_indicator.dart';
 import 'low_battery_banner.dart';
 import 'member_detail_sheet.dart';
+import 'vector_map.dart';
 
 class LiveMapScreen extends ConsumerStatefulWidget {
-  const LiveMapScreen({super.key, @visibleForTesting this.mapController});
+  const LiveMapScreen({
+    super.key,
+    @visibleForTesting this.mapController,
+    @visibleForTesting this.mapPlatformViewBuilder,
+  });
 
-  /// Test seam: a test-owned [MapController] so a widget test can read the
-  /// resulting camera position after a rail-card tap. Production callers
-  /// keep constructing `const LiveMapScreen()` and get a State-owned
-  /// controller instead.
+  /// Test seam: a test-owned camera-command sink so a widget test can read
+  /// the camera *intent* recorded after a rail-card tap. A real native map
+  /// controller is only handed out by `onMapCreated` and cannot be
+  /// constructed in a widget test, so this replaces reading back a resulting
+  /// camera position. Production callers keep constructing
+  /// `const LiveMapScreen()` and get a State-owned controller instead.
   @visibleForTesting
-  final MapController? mapController;
+  final VectorMapController? mapController;
+
+  /// Test seam: when supplied, replaces the native map view entirely so a
+  /// widget test never mounts a real platform view. Production callers
+  /// leave this null.
+  @visibleForTesting
+  final WidgetBuilder? mapPlatformViewBuilder;
 
   @override
   ConsumerState<LiveMapScreen> createState() => _LiveMapScreenState();
 }
 
+/// Zoom the live map opens at, and the zoom it returns to when it first
+/// centres on this device's own GPS fix.
+const double _initialZoom = 15;
+
 class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
   late final bool _ownsController = widget.mapController == null;
-  late final MapController _mapController =
-      widget.mapController ?? MapController();
+  late final VectorMapController _mapController =
+      widget.mapController ?? VectorMapController();
 
   @override
   void dispose() {
@@ -49,6 +65,38 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Centre the camera on the user the first time this device's own GPS
+    // reports, and only then.
+    //
+    // `VectorMap.initialTarget` cannot do this job: the plugin reads
+    // `initialCameraPosition` only when the native platform view is created and
+    // its `didUpdateWidget` diffs map *options*, which carry no camera — so a
+    // corrected position arriving later moves the pin but leaves the camera
+    // stranded wherever the bootstrap snapshot pointed. That snapshot is just
+    // the last position the server ever recorded for this user, so the observed
+    // failure was a map sitting on a coordinate from a previous session with
+    // the user's pin thousands of kilometres off-screen and no way to reach it
+    // except tapping their own status-rail card.
+    //
+    // Fires on the false -> true edge only, so it can never fight the user's
+    // panning afterwards, and re-uses `initialZoom` so the result is exactly
+    // "as if the map had opened here".
+    ref.listen<AsyncValue<LocationState>>(locationControllerProvider, (
+      previous,
+      next,
+    ) {
+      if (previous?.value?.hasDeviceFix ?? false) return;
+      final fixed = next.value;
+      if (fixed == null || !fixed.hasDeviceFix) return;
+      final self = fixed.selfPosition;
+      if (self == null) return;
+      _mapController.animateTo(
+        lat: self.lat,
+        lng: self.lng,
+        zoom: _initialZoom,
+      );
+    });
+
     final asyncState = ref.watch(locationControllerProvider);
     final state = asyncState.value;
     final familyState = ref.watch(familyControllerProvider).value;
@@ -98,7 +146,7 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
     }
 
     final self = state?.selfPosition ?? locations.first;
-    final cameraTarget = LatLng(self.lat, self.lng);
+    final cameraTarget = MapPoint(self.lat, self.lng);
     final memberDetails = [
       for (final location in locations)
         _VisibleMember(
@@ -122,28 +170,47 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
     final offlineCount = locations.length - onlineCount;
     final circleMarkers = [
       for (final location in locations)
-        CircleMarker(
-          point: LatLng(location.lat, location.lng),
-          radius: accuracyCircleRadius(location.accuracyMeters),
-          useRadiusInMeter: true,
-          color: _memberColor(location.userId).withValues(alpha: 0.15),
-          borderColor: _memberColor(location.userId).withValues(alpha: 0.40),
-          borderStrokeWidth: 2,
+        MapCircle(
+          id: location.userId,
+          center: MapPoint(location.lat, location.lng),
+          radiusMeters: accuracyCircleRadius(location.accuracyMeters),
+          colorHex: hexColor(_memberColor(location.userId)),
+        ),
+    ];
+    final motionDots = [
+      for (final location in locations)
+        MapDot(
+          id: location.userId,
+          center: MapPoint(location.lat, location.lng),
+          radius: location.userId == state?.selfPosition?.userId ? 12 : 10,
+          colorHex: hexColor(
+            location.userId == state?.selfPosition?.userId
+                ? AppColors.primaryTeal
+                : _memberColor(location.userId),
+          ),
+          opacity: location.userId == state?.selfPosition?.userId
+              ? 1.0
+              : stalenessFor(
+                  DateTime.now().toUtc().difference(location.recordedAtUtc),
+                ).opacity,
+          strokeColorHex: hexColor(AppColors.surface),
+          strokeWidth: 3.0,
+          strokeOpacity: 1.0,
         ),
     ];
     final markers = [
       for (final location in locations)
-        Marker(
-          point: LatLng(location.lat, location.lng),
+        OverlayMarker(
+          id: location.userId,
+          lat: location.lat,
+          lng: location.lng,
           // Widened from the 44x44 tap-target-only box so the always-visible
-          // name and online/offline labels have room beneath the avatar;
-          // flutter_map has no overflow anchor, so the declared box must
-          // contain the whole Column[avatar, labels] (research §5). Height
-          // raised 88->108 to also fit the battery readout row (LOC-04)
-          // without a RenderFlex overflow.
+          // name and online/offline labels have room beneath the avatar; the
+          // declared box must contain the whole Column[avatar, labels]
+          // (research §5). Height raised 88->108 to also fit the battery
+          // readout row (LOC-04) without a RenderFlex overflow.
           width: 104,
           height: 108,
-          alignment: Alignment.center,
           child: LiveMemberMarker(
             location: location,
             name: _memberName(location, state),
@@ -171,20 +238,20 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(initialCenter: cameraTarget, initialZoom: 15),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.safepath.mobile',
-              ),
-              CircleLayer(circles: circleMarkers),
-              MarkerLayer(markers: markers),
-              const SimpleAttributionWidget(
-                source: Text('OpenStreetMap contributors'),
-              ),
-            ],
+          VectorMap(
+            controller: _mapController,
+            initialTarget: cameraTarget,
+            initialZoom: _initialZoom,
+            markers: markers,
+            circles: circleMarkers,
+            dots: motionDots,
+            // Both fields are test-only seams: LiveMapScreen's own
+            // @visibleForTesting field is simply threaded through to
+            // VectorMap's identically-scoped seam so a widget test can
+            // inject a platform-view stand-in without either seam being
+            // reachable from production call sites.
+            // ignore: invalid_use_of_visible_for_testing_member
+            platformViewBuilder: widget.mapPlatformViewBuilder,
           ),
           SafeArea(
             child: Padding(
@@ -201,9 +268,10 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
                   const SizedBox(height: AppSpacing.sm),
                   _MemberStatusRail(
                     members: memberDetails,
-                    onMemberTap: (member) => _mapController.move(
-                      LatLng(member.location.lat, member.location.lng),
-                      17,
+                    onMemberTap: (member) => _mapController.animateTo(
+                      lat: member.location.lat,
+                      lng: member.location.lng,
+                      zoom: 17,
                     ),
                   ),
                   if (state?.lowBatteryAlert != null) ...[
@@ -238,17 +306,19 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
   }
 }
 
-/// A single family member's OSM map marker: an avatar (or colored-initial
+/// A single family member's vector-map marker: an avatar (or colored-initial
 /// fallback, D-18) plus an always-visible name label (PROFILE-06), faded by
-/// [stalenessFor] the way the pre-migration `google_maps_flutter` marker
-/// alpha did, with a tap target opening the member detail sheet. flutter_map
-/// `Marker`s carry no `alpha`/`onTap` of their own, so both live here.
+/// [stalenessFor] the way the pre-migration marker alpha did, with a tap
+/// target opening the member detail sheet. This is a screen-space Flutter
+/// widget overlay above the native renderer (see `vector_map.dart`), which
+/// carries no built-in `alpha`/`onTap` of its own, so both live here.
 ///
-/// Kept a self-contained `StatelessWidget` over a plain `List<Marker>` (no
-/// per-marker global state) so a future `flutter_map_marker_cluster` layer
-/// could wrap these without a rewrite (D-19 — compatibility only, the
-/// clustering dependency itself is not added this phase). Public (not
-/// underscore-private) so it can be exercised directly by widget tests.
+/// Kept a self-contained `StatelessWidget` over a plain `List<OverlayMarker>`
+/// (no per-marker global state) so a future marker-clustering layer could
+/// wrap these without a rewrite (D-19 — compatibility only, no clustering
+/// dependency is added this phase; at MVP scale, screen-space widget pins
+/// reprojected via the native projection need no clustering package). Public
+/// (not underscore-private) so it can be exercised directly by widget tests.
 class LiveMemberMarker extends StatelessWidget {
   const LiveMemberMarker({
     super.key,
@@ -555,10 +625,7 @@ class _MemberStatusCard extends StatelessWidget {
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
             width: 136,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 8,
-              vertical: 6,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(999),
               border: Border.all(

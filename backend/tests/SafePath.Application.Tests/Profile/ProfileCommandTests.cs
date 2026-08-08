@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Application.Common;
 using SafePath.Application.Families;
@@ -123,6 +124,157 @@ public class ProfileCommandTests : IDisposable
         Assert.Null(user.ProfileImagePath);
         Assert.NotNull(user.ProfileUpdatedAt);
         Assert.Null(result.ProfileImageUrl);
+    }
+
+    [Fact]
+    public async Task UpdatePhoneNumber_NormalisesNationalFormatWithRegionHintToE164()
+    {
+        await using var db = _factory.CreateContext();
+        var userId = Guid.NewGuid();
+        db.Users.Add(CreateUser(userId));
+        await db.SaveChangesAsync();
+
+        var handler = new UpdatePhoneNumberCommandHandler(db);
+
+        var result = await handler.Handle(new UpdatePhoneNumberCommand(userId, "(202) 555-0173", "US"));
+
+        var user = db.Users.Single(u => u.Id == userId);
+        Assert.NotNull(user.PhoneNumberE164);
+        Assert.StartsWith("+", user.PhoneNumberE164);
+        Assert.True(user.PhoneNumberE164![1..].All(char.IsDigit));
+        Assert.Equal(user.PhoneNumberE164, result.PhoneNumberE164);
+    }
+
+    [Fact]
+    public async Task UpdatePhoneNumber_RejectsUnparseableValueAndLeavesStoredValueUntouched()
+    {
+        await using var db = _factory.CreateContext();
+        var userId = Guid.NewGuid();
+        db.Users.Add(CreateUser(userId));
+        await db.SaveChangesAsync();
+
+        var handler = new UpdatePhoneNumberCommandHandler(db);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => handler.Handle(new UpdatePhoneNumberCommand(userId, "not-a-phone-number", "US")));
+
+        var user = db.Users.Single(u => u.Id == userId);
+        Assert.Null(user.PhoneNumberE164);
+    }
+
+    [Theory]
+    [InlineData("+20234567890")] // Egypt
+    [InlineData("+441212345678")] // United Kingdom
+    [InlineData("+81312345678")] // Japan
+    [InlineData("+551123456789")] // Brazil
+    public async Task UpdatePhoneNumber_AcceptsE164FromAnyCountryWithNoRegionHint(string submitted)
+    {
+        await using var db = _factory.CreateContext();
+        var userId = Guid.NewGuid();
+        db.Users.Add(CreateUser(userId));
+        await db.SaveChangesAsync();
+
+        var handler = new UpdatePhoneNumberCommandHandler(db);
+
+        var result = await handler.Handle(new UpdatePhoneNumberCommand(userId, submitted, Region: null));
+
+        var user = db.Users.Single(u => u.Id == userId);
+        Assert.Equal(submitted, user.PhoneNumberE164);
+        Assert.Equal(submitted, result.PhoneNumberE164);
+    }
+
+    [Fact]
+    public async Task UpdatePhoneNumber_AcceptsE164WhenTheConfiguredDefaultRegionDisagrees()
+    {
+        await using var db = _factory.CreateContext();
+        var userId = Guid.NewGuid();
+        db.Users.Add(CreateUser(userId));
+        await db.SaveChangesAsync();
+        const string submitted = "+20234567890"; // Egyptian E.164 number
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sms:DefaultRegion"] = "JP",
+            })
+            .Build();
+        var handler = new UpdatePhoneNumberCommandHandler(db, configuration);
+
+        var result = await handler.Handle(new UpdatePhoneNumberCommand(userId, submitted, Region: null));
+
+        var user = db.Users.Single(u => u.Id == userId);
+        Assert.Equal(submitted, user.PhoneNumberE164);
+        Assert.Equal(submitted, result.PhoneNumberE164);
+    }
+
+    [Fact]
+    public async Task UpdatePhoneNumber_RejectsAnE164NumberThatIsInvalidForItsOwnCountryCode()
+    {
+        await using var db = _factory.CreateContext();
+        var userId = Guid.NewGuid();
+        db.Users.Add(CreateUser(userId));
+        await db.SaveChangesAsync();
+        var handler = new UpdatePhoneNumberCommandHandler(db);
+
+        // Valid Egyptian country code (+20) but a nonsense all-zero subscriber part.
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => handler.Handle(new UpdatePhoneNumberCommand(userId, "+20000000000", Region: null)));
+
+        var user = db.Users.Single(u => u.Id == userId);
+        Assert.Null(user.PhoneNumberE164);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public async Task UpdatePhoneNumber_ClearsStoredValueOnBlankInput(string? phoneNumber)
+    {
+        await using var db = _factory.CreateContext();
+        var userId = Guid.NewGuid();
+        db.Users.Add(CreateUser(userId));
+        await db.SaveChangesAsync();
+        var seedHandler = new UpdatePhoneNumberCommandHandler(db);
+        await seedHandler.Handle(new UpdatePhoneNumberCommand(userId, "(202) 555-0173", "US"));
+
+        var result = await seedHandler.Handle(new UpdatePhoneNumberCommand(userId, phoneNumber, "US"));
+
+        var user = db.Users.Single(u => u.Id == userId);
+        Assert.Null(user.PhoneNumberE164);
+        Assert.Null(result.PhoneNumberE164);
+    }
+
+    [Fact]
+    public async Task UpdatePhoneNumber_DoesNotStampProfileUpdatedOrBroadcast()
+    {
+        await using var db = _factory.CreateContext();
+        var userId = Guid.NewGuid();
+        var familyId = await SeedFamily(db, userId);
+        var broadcast = new FakeLocationBroadcastService();
+        var handler = new UpdatePhoneNumberCommandHandler(db);
+
+        await handler.Handle(new UpdatePhoneNumberCommand(userId, "(202) 555-0173", "US"));
+
+        var user = db.Users.Single(u => u.Id == userId);
+        Assert.Null(user.ProfileUpdatedAt);
+        Assert.Empty(broadcast.ProfileUpdates);
+        _ = familyId;
+    }
+
+    [Fact]
+    public async Task GetMe_ReturnsStoredPhoneNumberForOwningUser()
+    {
+        await using var db = _factory.CreateContext();
+        var userId = Guid.NewGuid();
+        db.Users.Add(CreateUser(userId));
+        await db.SaveChangesAsync();
+        var phoneHandler = new UpdatePhoneNumberCommandHandler(db);
+        await phoneHandler.Handle(new UpdatePhoneNumberCommand(userId, "(202) 555-0173", "US"));
+        var handler = new GetMeQueryHandler(db);
+
+        var result = await handler.Handle(new GetMeQuery(userId));
+
+        Assert.NotNull(result.PhoneNumberE164);
+        Assert.StartsWith("+", result.PhoneNumberE164);
     }
 
     [Fact]

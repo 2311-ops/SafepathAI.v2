@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
@@ -13,7 +14,9 @@ import 'package:mobile/features/privacy/data/privacy_models.dart';
 import 'package:mobile/features/privacy/presentation/privacy_center_screen.dart';
 import 'package:mobile/features/profile/application/profile_controller.dart';
 import 'package:mobile/features/profile/data/user_profile.dart';
+import 'package:mobile/features/sos/data/emergency_contact_api.dart';
 import '../../helpers/fake_auth_api.dart';
+import '../../helpers/fake_emergency_contact_api.dart';
 
 /// A family controller stuck in the "no circle yet" state (family == null,
 /// not loading) — the exact state a freshly-signed-in user lands in.
@@ -159,13 +162,32 @@ class _SpyPrivacyController extends PrivacyController {
   }
 }
 
-Widget _app(_SpyPrivacyController controller) {
+/// Default emergency-contact fixture: one active contact, so the seeded
+/// family (whose only Guardian is the current user) does not itself become
+/// a zero-recipient scenario for tests that aren't exercising the nudge.
+EmergencyContactApi _hasContactApi() =>
+    FakeEmergencyContactApi()..contactsToList = [_activeContact()];
+
+EmergencyContactApi _noContactApi() =>
+    FakeEmergencyContactApi()..contactsToList = const [];
+
+EmergencyContact _activeContact() => const EmergencyContact(
+  id: 'contact-1',
+  displayName: 'Alex',
+  phoneNumberE164: '+15555550100',
+  isActive: true,
+);
+
+Widget _app(_SpyPrivacyController controller, {EmergencyContactApi? contactApi}) {
   return ProviderScope(
     overrides: [
       authApiProvider.overrideWithValue(
         FakeAuthApi(initialSession: _session(userId: 'self-user')),
       ),
       familyControllerProvider.overrideWith(_SeededFamilyController.new),
+      emergencyContactApiProvider.overrideWithValue(
+        contactApi ?? _hasContactApi(),
+      ),
       privacyControllerProvider.overrideWith(() => controller),
       privacyNowProvider.overrideWithValue(
         () => DateTime.utc(2026, 7, 12, 10, 30),
@@ -175,13 +197,16 @@ Widget _app(_SpyPrivacyController controller) {
   );
 }
 
-Widget _noCircleApp(Role? role) {
+Widget _noCircleApp(Role? role, {EmergencyContactApi? contactApi}) {
   return ProviderScope(
     overrides: [
       authApiProvider.overrideWithValue(
         FakeAuthApi(initialSession: _session(userId: 'self-user')),
       ),
       familyControllerProvider.overrideWith(_NoFamilyController.new),
+      emergencyContactApiProvider.overrideWithValue(
+        contactApi ?? _hasContactApi(),
+      ),
       profileControllerProvider.overrideWith(() => _SeededProfileController(role)),
       privacyControllerProvider.overrideWith(_SpyPrivacyController.new),
       privacyNowProvider.overrideWithValue(
@@ -189,6 +214,39 @@ Widget _noCircleApp(Role? role) {
       ),
     ],
     child: const MaterialApp(home: PrivacyCenterScreen()),
+  );
+}
+
+/// Router-backed variant so the warning card's CTA (`context.push`) can
+/// actually resolve — mirrors `live_map_screen_test.dart`'s `_routerApp`
+/// convention.
+Widget _routerApp(_SpyPrivacyController controller, {EmergencyContactApi? contactApi}) {
+  final router = GoRouter(
+    initialLocation: '/',
+    routes: [
+      GoRoute(path: '/', builder: (context, state) => const PrivacyCenterScreen()),
+      GoRoute(
+        path: '/settings/emergency-contacts',
+        builder: (context, state) =>
+            const Scaffold(body: Text('Emergency Contacts Screen')),
+      ),
+    ],
+  );
+  return ProviderScope(
+    overrides: [
+      authApiProvider.overrideWithValue(
+        FakeAuthApi(initialSession: _session(userId: 'self-user')),
+      ),
+      familyControllerProvider.overrideWith(_SeededFamilyController.new),
+      emergencyContactApiProvider.overrideWithValue(
+        contactApi ?? _noContactApi(),
+      ),
+      privacyControllerProvider.overrideWith(() => controller),
+      privacyNowProvider.overrideWithValue(
+        () => DateTime.utc(2026, 7, 12, 10, 30),
+      ),
+    ],
+    child: MaterialApp.router(routerConfig: router),
   );
 }
 
@@ -317,7 +375,10 @@ void main() {
     final controller = _SpyPrivacyController();
 
     await tester.pumpWidget(_app(controller));
-    await tester.drag(find.byType(ListView), const Offset(0, -520));
+    // Drag distance intentionally overshoots the scroll extent (Scrollable
+    // clamps it) -- widened after 03-07 added an "Emergency contacts" entry
+    // point above "Delete my data", pushing it further down.
+    await tester.drag(find.byType(ListView), const Offset(0, -700));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete my data'));
     await tester.pumpAndSettle();
@@ -336,6 +397,90 @@ void main() {
 
     expect(controller.deleteMyDataCallCount, 1);
   });
+
+  testWidgets(
+    'main path: warning card is absent when an active emergency contact exists',
+    (tester) async {
+      // _SeededFamilyController seeds the current user as the only Guardian,
+      // so with an active contact present this is a has-recipients scenario.
+      await tester.pumpWidget(_app(_SpyPrivacyController()));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('sos-reach-warning')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    'main path: warning card appears when there are no other guardians and no active contacts',
+    (tester) async {
+      await tester.pumpWidget(
+        _app(_SpyPrivacyController(), contactApi: _noContactApi()),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('sos-reach-warning')),
+        findsOneWidget,
+      );
+      expect(find.text('SOS would reach no one'), findsOneWidget);
+      expect(
+        find.text(
+          "Your circle has no other guardian, and you haven't added any "
+          'emergency contacts. If you trigger SOS right now, nobody would '
+          'be notified.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Add an emergency contact'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'no-circle path: warning card is absent when an active emergency contact exists',
+    (tester) async {
+      await tester.pumpWidget(_noCircleApp(Role.guardian));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('sos-reach-warning')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    'no-circle path: warning card appears when there are zero active contacts',
+    (tester) async {
+      await tester.pumpWidget(
+        _noCircleApp(Role.guardian, contactApi: _noContactApi()),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('sos-reach-warning')),
+        findsOneWidget,
+      );
+      expect(find.text('No circle yet'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    "tapping the warning card's CTA navigates to the emergency contacts route",
+    (tester) async {
+      await tester.pumpWidget(_routerApp(_SpyPrivacyController()));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('sos-reach-warning')), findsOneWidget);
+
+      await tester.tap(find.text('Add an emergency contact'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Emergency Contacts Screen'), findsOneWidget);
+    },
+  );
 }
 
 sb.Session _session({required String userId}) {

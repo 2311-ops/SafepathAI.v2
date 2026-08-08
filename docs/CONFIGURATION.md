@@ -1,6 +1,7 @@
 # Configuration
 
 SafePath uses local environment files for development and host-provided environment variables outside local development.
+For one-time provisioning of third-party services outside this repository (Firebase, APNs, App Store Connect, Codemagic), see [`EXTERNAL-SETUP.md`](./EXTERNAL-SETUP.md).
 
 ## Backend Configuration
 

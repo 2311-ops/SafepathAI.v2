@@ -130,6 +130,17 @@ class _FailingOnceLocationApi extends FakeLocationApi {
   }
 }
 
+class _FailingReportHubClient extends FakeLocationHubClient {
+  @override
+  Future<void> reportLocation(ReportLocationPayload location) async {
+    reportLocationCallCount++;
+    lastReportedLocation = location;
+    throw StateError(
+      "An unexpected error occurred invoking 'ReportLocation' on the server.",
+    );
+  }
+}
+
 class _DelayedConnectHubClient extends FakeLocationHubClient {
   _DelayedConnectHubClient(this.connectCompleter);
 
@@ -185,6 +196,7 @@ ProviderContainer _container({
   required Stream<Position> positionStream,
   required _FakeLocationPermissionService permissionService,
   Future<int?>? batteryLevelFuture,
+  Future<Position> Function()? currentPosition,
 }) {
   return ProviderContainer(
     overrides: [
@@ -193,6 +205,13 @@ ProviderContainer _container({
       locationApiProvider.overrideWithValue(locationApi),
       locationHubClientProvider.overrideWithValue(hubClient),
       positionStreamProvider.overrideWithValue(positionStream),
+      // Bootstrap now takes a one-shot fix as well as subscribing to the
+      // stream. Defaulted to a never-completing future so existing tests keep
+      // exercising only the stream path they were written for, and so no test
+      // ever reaches the real Geolocator plugin.
+      currentPositionProvider.overrideWithValue(
+        currentPosition ?? () => Completer<Position>().future,
+      ),
       locationPermissionServiceProvider.overrideWithValue(permissionService),
       batteryLevelProvider.overrideWith(
         (ref) => batteryLevelFuture ?? Future.value(72),
@@ -356,6 +375,137 @@ void main() {
     expect(state.members['self-user']?.lat, 30.0444);
   });
 
+  test('takes a one-shot device fix at bootstrap so a stationary device is not '
+      'left showing the server position', () async {
+    // Regression: map-pin-jitter-bad-location. getPositionStream carries a
+    // 10 m distanceFilter, so a user who never walks 10 m emits nothing and
+    // the map used to keep rendering whatever the server last recorded —
+    // observed live as an Egyptian device displaying a Mountain View
+    // coordinate left over from emulator testing.
+    locationApi.liveLocationsToReturn = [
+      LiveLocation(
+        userId: 'self-user',
+        lat: 37.4220, // Googleplex: the stale server snapshot.
+        lng: -122.0840,
+        accuracyMeters: 10,
+        recordedAtUtc: DateTime.utc(2026, 7, 12, 10),
+      ),
+    ];
+    final stationary = StreamController<Position>.broadcast();
+    addTearDown(stationary.close);
+    final oneShotContainer = _container(
+      authApi: authApi,
+      familyApi: familyApi,
+      locationApi: locationApi,
+      hubClient: hubClient,
+      positionStream: stationary.stream,
+      permissionService: permissionService,
+      currentPosition: () async => _position(
+        lat: 30.0444,
+        lng: 31.2357,
+        timestamp: DateTime.utc(2026, 7, 12, 11),
+      ),
+    );
+    addTearDown(oneShotContainer.dispose);
+
+    oneShotContainer.read(locationControllerProvider);
+    await pumpEventQueue();
+
+    // No stream emission at all — the stationary controller never fired.
+    final state = oneShotContainer.read(locationControllerProvider).value!;
+    expect(state.selfPosition?.lat, 30.0444);
+    expect(state.selfPosition?.lng, 31.2357);
+    expect(state.hasDeviceFix, isTrue);
+    // The fix is reported onward to the family, not just shown locally.
+    expect(hubClient.lastReportedLocation?.latitude, 30.0444);
+  });
+
+  test('a failed one-shot fix leaves bootstrap healthy', () async {
+    // Indoors the one-shot read can time out or be rejected outright; that must
+    // degrade to "stream only", never break the map or the hub connection.
+    final stationary = StreamController<Position>.broadcast();
+    addTearDown(stationary.close);
+    final failingContainer = _container(
+      authApi: authApi,
+      familyApi: familyApi,
+      locationApi: locationApi,
+      hubClient: hubClient,
+      positionStream: stationary.stream,
+      permissionService: permissionService,
+      currentPosition: () async =>
+          throw const LocationServiceDisabledException(),
+    );
+    addTearDown(failingContainer.dispose);
+
+    failingContainer.read(locationControllerProvider);
+    await pumpEventQueue();
+
+    final state = failingContainer.read(locationControllerProvider).value!;
+    expect(state.error, isNull);
+    expect(state.hasDeviceFix, isFalse);
+    expect(hubClient.connectCallCount, greaterThan(0));
+  });
+
+  test('shows the device fix even when the server rejects the report', () async {
+    // Regression: map-pin-jitter-bad-location. Observed live as
+    // "Unhandled Exception: An unexpected error occurred invoking
+    // 'ReportLocation' on the server" — the report was awaited *before* the pin
+    // was updated, so a backend failure left the user's own map showing the
+    // stale server coordinate. Rendering your own location must never depend on
+    // the backend accepting the ping.
+    final failingHub = _FailingReportHubClient();
+    addTearDown(failingHub.dispose);
+    final stationary = StreamController<Position>.broadcast();
+    addTearDown(stationary.close);
+    final failingContainer = _container(
+      authApi: authApi,
+      familyApi: familyApi,
+      locationApi: locationApi,
+      hubClient: failingHub,
+      positionStream: stationary.stream,
+      permissionService: permissionService,
+      currentPosition: () async => _position(
+        lat: 30.0444,
+        lng: 31.2357,
+        timestamp: DateTime.utc(2026, 7, 12, 11),
+      ),
+    );
+    addTearDown(failingContainer.dispose);
+
+    failingContainer.read(locationControllerProvider);
+    await pumpEventQueue();
+
+    expect(failingHub.reportLocationCallCount, 1);
+    final state = failingContainer.read(locationControllerProvider).value!;
+    expect(state.selfPosition?.lat, 30.0444);
+    expect(state.selfPosition?.lng, 31.2357);
+    expect(state.hasDeviceFix, isTrue);
+    expect(state.error, isNull);
+  });
+
+  test('hub-sourced self positions do not count as a device fix', () async {
+    // hasDeviceFix gates the map's one-time recentre, so a broadcast echoed
+    // back from the server (or from another device on the same account) must
+    // not be mistaken for this device's own GPS.
+    container.read(locationControllerProvider);
+    await pumpEventQueue();
+
+    hubClient.emitLocation(
+      LiveLocation(
+        userId: 'self-user',
+        lat: 37.4220,
+        lng: -122.0840,
+        accuracyMeters: 10,
+        recordedAtUtc: DateTime.utc(2026, 7, 12, 10, 45),
+      ),
+    );
+    await pumpEventQueue();
+
+    final state = container.read(locationControllerProvider).value!;
+    expect(state.selfPosition?.lat, 37.4220);
+    expect(state.hasDeviceFix, isFalse);
+  });
+
   test('updates family member pins from hub LocationUpdated events', () async {
     container.read(locationControllerProvider);
     await pumpEventQueue();
@@ -479,7 +629,10 @@ void main() {
         state.selfPosition?.profileImageUrl,
         'https://example.com/self.jpg',
       );
-      expect(state.selfPosition?.profileUpdatedAt, DateTime.utc(2026, 7, 12, 9));
+      expect(
+        state.selfPosition?.profileUpdatedAt,
+        DateTime.utc(2026, 7, 12, 9),
+      );
       expect(
         state.members['self-user']?.profileImageUrl,
         'https://example.com/self.jpg',
@@ -535,47 +688,50 @@ void main() {
     expect(member.profileUpdatedAt, DateTime.utc(2026, 7, 12, 8));
   });
 
-  test('multiple members retain their own avatars across location ticks', () async {
-    locationApi.liveLocationsToReturn = [
-      LiveLocation(
-        userId: 'member-a',
-        lat: 29.9,
-        lng: 31.1,
-        accuracyMeters: 12,
-        recordedAtUtc: DateTime.utc(2026, 7, 12, 11),
-        profileImageUrl: 'https://example.com/a.jpg',
-        profileUpdatedAt: DateTime.utc(2026, 7, 12, 8),
-      ),
-      LiveLocation(
-        userId: 'member-b',
-        lat: 29.8,
-        lng: 31.0,
-        accuracyMeters: 12,
-        recordedAtUtc: DateTime.utc(2026, 7, 12, 11),
-        profileImageUrl: 'https://example.com/b.jpg',
-        profileUpdatedAt: DateTime.utc(2026, 7, 12, 7),
-      ),
-    ];
+  test(
+    'multiple members retain their own avatars across location ticks',
+    () async {
+      locationApi.liveLocationsToReturn = [
+        LiveLocation(
+          userId: 'member-a',
+          lat: 29.9,
+          lng: 31.1,
+          accuracyMeters: 12,
+          recordedAtUtc: DateTime.utc(2026, 7, 12, 11),
+          profileImageUrl: 'https://example.com/a.jpg',
+          profileUpdatedAt: DateTime.utc(2026, 7, 12, 8),
+        ),
+        LiveLocation(
+          userId: 'member-b',
+          lat: 29.8,
+          lng: 31.0,
+          accuracyMeters: 12,
+          recordedAtUtc: DateTime.utc(2026, 7, 12, 11),
+          profileImageUrl: 'https://example.com/b.jpg',
+          profileUpdatedAt: DateTime.utc(2026, 7, 12, 7),
+        ),
+      ];
 
-    container.read(locationControllerProvider);
-    await pumpEventQueue();
+      container.read(locationControllerProvider);
+      await pumpEventQueue();
 
-    // Only member-a pings — member-b must keep its own distinct avatar.
-    hubClient.emitLocation(
-      LiveLocation(
-        userId: 'member-a',
-        lat: 29.95,
-        lng: 31.15,
-        accuracyMeters: 10,
-        recordedAtUtc: DateTime.utc(2026, 7, 12, 11, 5),
-      ),
-    );
-    await pumpEventQueue();
+      // Only member-a pings — member-b must keep its own distinct avatar.
+      hubClient.emitLocation(
+        LiveLocation(
+          userId: 'member-a',
+          lat: 29.95,
+          lng: 31.15,
+          accuracyMeters: 10,
+          recordedAtUtc: DateTime.utc(2026, 7, 12, 11, 5),
+        ),
+      );
+      await pumpEventQueue();
 
-    final members = container.read(locationControllerProvider).value!.members;
-    expect(members['member-a']?.profileImageUrl, 'https://example.com/a.jpg');
-    expect(members['member-b']?.profileImageUrl, 'https://example.com/b.jpg');
-  });
+      final members = container.read(locationControllerProvider).value!.members;
+      expect(members['member-a']?.profileImageUrl, 'https://example.com/a.jpg');
+      expect(members['member-b']?.profileImageUrl, 'https://example.com/b.jpg');
+    },
+  );
 
   test('a removed photo stays cleared across a later location tick', () async {
     locationApi.liveLocationsToReturn = [
@@ -711,25 +867,22 @@ void main() {
     },
   );
 
-  test(
-    'ProfileUpdated for a not-yet-seen member is safely ignored',
-    () async {
-      container.read(locationControllerProvider);
-      await pumpEventQueue();
+  test('ProfileUpdated for a not-yet-seen member is safely ignored', () async {
+    container.read(locationControllerProvider);
+    await pumpEventQueue();
 
-      hubClient.emitProfileUpdate(
-        const ProfileUpdate(
-          userId: 'unknown-member',
-          displayName: 'Ghost',
-          profileImageUrl: 'https://example.com/ghost.jpg',
-        ),
-      );
-      await pumpEventQueue();
+    hubClient.emitProfileUpdate(
+      const ProfileUpdate(
+        userId: 'unknown-member',
+        displayName: 'Ghost',
+        profileImageUrl: 'https://example.com/ghost.jpg',
+      ),
+    );
+    await pumpEventQueue();
 
-      final state = container.read(locationControllerProvider).value!;
-      expect(state.members.containsKey('unknown-member'), isFalse);
-    },
-  );
+    final state = container.read(locationControllerProvider).value!;
+    expect(state.members.containsKey('unknown-member'), isFalse);
+  });
 
   test(
     'connects only for auth plus family and disconnects on sign-out',

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/deep_link/deep_link_service.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/sos/application/sos_responder_controller.dart';
 import 'features/splash/presentation/splash_screen.dart';
 
 /// Root SafePath AI app widget — wires the shared [buildSafePathTheme] and
@@ -30,8 +31,17 @@ class _SafePathAppState extends ConsumerState<SafePathApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final service = ref.read(deepLinkServiceProvider);
+      final router = ref.read(routerProvider);
       _deepLinkService = service;
-      unawaited(service.start(ref.read(routerProvider)));
+      ref
+          .read(sosResponderControllerProvider.notifier)
+          .attachNavigator(
+            (sessionId) => router.goNamed(
+              'sos-responder',
+              pathParameters: {'sessionId': sessionId},
+            ),
+          );
+      unawaited(service.start(router));
     });
   }
 

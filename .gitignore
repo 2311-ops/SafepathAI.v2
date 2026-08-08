@@ -8,6 +8,8 @@ mobile/.dart_tool/
 mobile/.flutter-plugins
 mobile/.flutter-plugins-dependencies
 mobile/build/
+mobile/android/build/
+mobile/android/**/build/
 mobile/**/generated_plugin_registrant.dart
 mobile/.packages
 
@@ -25,6 +27,8 @@ backend-api.*.log
 debug_screens/
 .claude/*.lock
 .planning/research/.cache/
+.planning/tmp/
+backend/logs/
 
 # Secrets — never commit
 .env

@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 3
-current_phase_name: Core Value
-status: planning
-stopped_at: Completed 02-19-PLAN.md
-last_updated: "2026-07-17T15:54:41.000Z"
-last_activity: 2026-07-17
-last_activity_desc: "Completed quick task 260717-pwh: Rail-card tap on the Live Map now recenters the map instead of opening the member detail sheet"
+current_phase: 4
+current_phase_name: Geofencing
+status: verifying
+stopped_at: Completed 03-09-PLAN.md (SOS-05/06 hold-to-cancel + OS backup trigger; phase 3's closing manual gate approved)
+last_updated: "2026-08-07T23:44:20.403Z"
+last_activity: 2026-08-08
+last_activity_desc: Completed quick task 260808-51d - Add ngrok remote-contributor testing section to start_mobile.md
 progress:
   total_phases: 8
-  completed_phases: 3
-  total_plans: 35
-  completed_plans: 35
-  percent: 38
+  completed_phases: 4
+  total_plans: 44
+  completed_plans: 44
+  percent: 50
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-16)
 
 **Core value:** The SOS system must always work — a single tap or covert Silent/Duress trigger reliably delivers an immediate alert with live location to a user's designated guardians within seconds, bypassing every routine and AI pipeline.
-**Current focus:** Phase 3 — SOS Fast Path (Core Value)
+**Current focus:** Phase 03 — sos-fast-path
 
 ## Current Position
 
-Phase: 3 — SOS Fast Path (Core Value)
+Phase: 4 — Geofencing
 Plan: Not started
-Status: Phase 02 plans complete; ready for verification/Phase 3 planning
-Last activity: 2026-07-17 - Completed quick task 260717-pwh: Rail-card tap on the Live Map now recenters the map instead of opening the member detail sheet
+Status: All plans complete — awaiting phase-level verification/closeout
+Last activity: 2026-08-08 — Completed quick task 260808-51d: Add ngrok remote-contributor testing section to start_mobile.md
 
 Progress: [██████████] 100%
 
@@ -39,7 +39,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 19
+- Total plans completed: 28
 - Average duration: - min
 - Total execution time: 0 hours
 
@@ -48,6 +48,7 @@ Progress: [██████████] 100%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 02 | 19 | - | - |
+| 03 | 9 | - | - |
 
 **Recent Trend:**
 
@@ -83,6 +84,14 @@ Progress: [██████████] 100%
 | Phase 02 P17 | 7min | 1 tasks | 2 files |
 | Phase 02-real-time-location-history-privacy P18 | 25min | 2 tasks | 4 files |
 | Phase 02 P19 | 20min | 2 tasks | 3 files |
+| Phase 03-sos-fast-path P01 | 10min | 3 tasks | 28 files |
+| Phase 03 P02 | 25min | 3 tasks | 18 files |
+| Phase 03-sos-fast-path P03 | 35min | 3 tasks | 18 files |
+| Phase 03-sos-fast-path P04 | 72min | 3 tasks | 13 files |
+| Phase 03 P05 | 15min | 3 tasks | 20 files |
+| Phase 03-sos-fast-path P07 | 17min | 3 tasks | 17 files |
+| Phase 03 P08 | 45min | 3 tasks | 20 files |
+| Phase 03-sos-fast-path P09 | multi-session | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -147,27 +156,75 @@ Recent decisions affecting current work:
 - [Phase 02]: [Phase 02-19]: Ping-derived IsOnline recency is treated as LiveLocation data and is false when canViewLocation is false. — Closes CR-01 / PRIV-02 by preventing recent location pings from contributing to IsOnline for viewers denied LiveLocation sharing.
 - [Phase 02]: [Phase 02-19]: Independent IPresenceQuery.IsOnline connection presence remains visible under denied LiveLocation sharing, preserving D-03. — The plan explicitly preserves the accepted non-location connection-presence signal while gating only ping-derived recency.
 - [Quick 260717-pwh]: LiveMapScreen converted from ConsumerWidget to ConsumerStatefulWidget owning a MapController; rail-card tap now recenters the map camera (zoom 17) instead of opening the member detail sheet, while marker-pin tap keeps opening it — two complementary interactions (locate-on-map vs. details).
+- [Quick 260720-3u4]: MemberMapPin now exposes one clean Semantics label combining the member label with current-location or staleness status, so screen readers do not announce the initials and badge as separate fragments.
+- [Quick 260802-w1e]: Added codemagic.yaml (manual-start ios-testflight + android-apk workflows, Codemagic automatic ios_signing + App Store Connect integration, no local Mac/Xcode needed) and docs/EXTERNAL-SETUP.md (Firebase/APNs/App Store Connect/Codemagic provisioning runbook, correcting 03-06's superseded FIREBASE_PROJECT_ID/GOOGLE_APPLICATION_CREDENTIALS names to the shipped Firebase:ProjectId/Firebase:CredentialsPath binding). Unblocks the pending 03-06 Task 3 FCM verification todo for provisioning purposes only; the actual two-device manual verification and all external account/key creation remain human-only follow-up.
+- [Phase 03-01]: Recipient resolution (ResolveRecipients) queries active Guardians only, bypassing ISharingAuthorizationService so a privacy preference can never suppress an SOS emergency.
+- [Phase 03-01]: GetSosSessionQuery/Handler added (not in original file list) plus a shared SosSessionProjection helper, so SosController.Get matches the controller-only-calls-handlers convention and both handlers never diverge on DTO shaping.
+- [Phase 03-02]: SosController.arm() generates and persists a v4 session id before any network call; sosSessionId is a plain controller getter outside the sealed SosSessionState so D-13/D-14 are observable without a placeholder session
+- [Phase 03-02]: Promoted uuid and url_launcher from transitive to direct dependencies (already resolved in pubspec.lock via signalr_netcore/qr_flutter and share_plus) rather than gating as new package installs, matching the plan's own shared_preferences precedent
+- [Phase 03-02]: Fixed a pre-existing stray-comma syntax bug in member_map_pin.dart that had been silently breaking compilation of the whole mobile test suite; also fixed a rehydrate/arm race and a deactivated-context crash discovered in SosController/SosArmButton
+- [Phase ?]: [Phase 03-03]: TriggerSosCommandHandler's fire-and-forget dispatch now resolves its own IServiceScopeFactory-created DI scope instead of reusing the request-scoped DbContext, matching SharingPreferenceSweepService's background-scope convention -- avoids a DbContext concurrency race/crash against the disposed request scope.
+- [Phase ?]: [Phase 03-03]: AcknowledgeSosCommand and AlertHub.ConfirmReceipt both explicitly add the triggering user into the DeliveryStatusChanged broadcast recipient set so the sender's own session reflects live delivery/acknowledgement changes.
+- [Phase ?]: [Phase 03-03]: CancelSosCommand is self-cancel-only (TriggeredByUserId), idempotent, and never mutates/deletes SosDeliveryAttempt rows -- cancellation is a parallel notice, never a retraction.
+- [Phase 03-04]: SosResponderController owns sosHubClientProvider's connect/disconnect lifecycle exclusively; SosController only listens to its streams -- one HubConnection per app session.
+- [Phase 03-04]: Fixed app_router.dart's authenticated-only-route guard: matchedLocation can never equal a parameterized route pattern like /sos/responder/:sessionId, so the check now uses fullPath instead.
+- [Phase 03-04]: Call sender opens a blank OS dialler (no phone-number field exists yet for family members on the wire) -- documented as a Known Stub pending a future phone-field addition.
+- [Phase 03-05]: PhoneNumberNormalizer lives in SafePath.Application.Sos; libphonenumber-csharp added as a direct package reference on SafePath.Application.csproj (same already-approved 9.0.35) rather than an IPhoneNumberNormalizer indirection.
+- [Phase 03-05]: TriggerSosCommandHandler.ResolveRecipients widened to also resolve the caller's active EmergencyContacts as Sms-channel recipients, still bypassing ISharingAuthorizationService so a privacy preference can never suppress an emergency contact either.
+- [Phase 03-05]: SosAlertDispatcher's Sms arm isolates failures per-contact (not just per-channel) so one bad phone number cannot flip a sibling contact's already-successful Queued row to Failed.
+- [Phase 03-05]: Kept Twilio signature validation behind an ISmsWebhookSignatureValidator seam (Application interface, TwilioWebhookSignatureValidator implementation) instead of inline in SmsWebhookController, so RecordSmsDeliveryStatusCommandHandler is unit-testable from SafePath.Application.Tests without an HTTP host; the validator refuses every request when no Twilio auth token is configured, not just on a signature mismatch.
+- [Phase 03-07]: SosController's retry loop is a single injectable SosRetryScheduler seam (schedule(Duration, callback) -> SosRetryHandle), not a bespoke backoff package -- idempotency stays server-side (03-01) as the only part that must not be improvised.
+- [Phase 03-07]: sosHubClientProvider's default construction depends on an initialized Supabase client, absent in the unit-test process -- every test container reading sosControllerProvider now overrides sosHubClientProvider with FakeSosHubClient so SosController.build() actually completes (including its connectivity subscription) instead of silently failing into an unobserved AsyncError.
+- [Phase 03-07]: Corrected the pre-existing generic AsyncError-state copy on the sender screen: since Task 1 routes every network failure through SosOfflineQueued instead, the AsyncError branch is now reached only for a genuine non-network rejection that will not retry automatically, so it surfaces the server's own rejection message instead of a false 'keep trying' claim.
+- [Phase 03-06]: Task 3's manual FCM verification closed 2026-08-05, Android-only: physical device (sender) + Android emulator (Guardian, terminated) confirmed real push delivery, correct deep-link into ResponderAlertScreen, and Queued->Delivered->Acknowledged server-side via a direct GET /sos/{id} read. iOS/APNs and D-32 multi-device explicitly not tested -- see 03-06-SUMMARY.md.
+- [Phase ?]: [Phase 03-08]: LiveWindowEndsAtUtc is stamped from TriggerSosCommandHandler's server-side ReceivedAtUtc via a new optional SosLiveWindowOptions parameter (default 15 min), never the client-supplied TriggeredAtUtc -- a skewed device clock cannot extend how long it is tracked (T-03-28).
+- [Phase ?]: [Phase 03-08]: ReportSosLocationCommandHandler returns a typed outcome (Accepted/WindowClosed/SessionNotFound) instead of throwing for a closed window or missing session, so a client that keeps sending after expiry gets a normal refusal it can act on.
+- [Phase ?]: [Phase 03-08]: SosLiveLocationService/backend ReportSosLocationCommand never touch LocationPings/ReportLocationCommandHandler/ISharingAuthorizationService/ILowBatteryAlertTracker -- the emergency stream stays structurally isolated from routine location tracking in both directions (SOS-01).
+- [Phase ?]: [Phase 03-08]: D-33 force-kill survival needed zero custom Kotlin -- flutter_foreground_task v10.0.0's own onTaskRemoved/RestartReceiver logic already handles it once android:stopWithTask=false and the matching Dart ForegroundTaskOptions.stopWithTask=false are set.
+- [Phase ?]: [Phase 03-08]: responder_alert_screen.dart's live-location card uses maplibre_gl's VectorMap (the project's actual post-260806-3zb map stack), not the plan's stale flutter_map read_first pointer.
+- [Phase ?]: [Quick 260807-qhg]: Consolidated the splash lockup into a shared AnimatedSafePathMark (ring trace + staggered per-letter wordmark + halo), both SplashScreen and StartupSplashOverlay now synced to 1800ms; fixed StartupSplashOverlay's Stopwatch-based progress (untestable under flutter_test's FakeAsync clock) to tick-count accumulation on the same Timer.periodic.
+- [Phase 03-09]: Cancellation is additive-only (never mutates/deletes SosDeliveryAttempt rows) and the quick_actions shortcut reuses SosController.arm() verbatim, registered only while authenticated.
+- [Phase 03-09]: Fixed a real bug found during Task 3 manual verification: SosLiveLocationService now reports a best-effort one-shot GPS fix on start() so a stationary sender's live location no longer waits on movement (see 03-09-SUMMARY.md).
 
 ### Pending Todos
 
-None for Phase 01 closeout.
+| Title | Area | File |
+|-------|------|------|
+| Investigate sender-screen delivery chip not visually updating on Device A despite correct server-side Queued->Delivered tracking (found during 03-06 Task 3 verification 2026-08-05) | investigation | see 03-06-SUMMARY.md "Issues Encountered" |
+| Investigate FamilyController cold-start bootstrap issue: app relaunch showed "No circle yet" for a real family member until a full emulator reboot (found during 260805-uke Task 3 verification) | investigation | [todos/pending/2026-08-05-family-controller-cold-start-bootstrap-race.md](./todos/pending/2026-08-05-family-controller-cold-start-bootstrap-race.md) |
+| Live Map family/self pin visibly "rolls"/vibrates while panning left-right (post-260806-3zb maplibre_gl migration); suspected unguarded overlapping async reprojection calls resolving out of order | investigation | [todos/pending/2026-08-06-live-map-pin-jitter-during-pan.md](./todos/pending/2026-08-06-live-map-pin-jitter-during-pan.md) |
 
 ### Blockers/Concerns
 
+- [2026-08-05] 03-06 Task 3 (FCM push verification) is now **closed for Android**: Firebase project `safepath-ai-c11bd` provisioned, backend confirmed using `FirebasePushSender`, real push delivery + deep-link confirmed on a terminated Guardian device, delivery status confirmed Queued->Delivered->Acknowledged server-side. Apple Developer Program enrollment / APNs auth key / iOS TestFlight path has **not** been started — do not pick this up until the user explicitly decides to pursue it. The 03-07 airplane-mode offline SOS smoke test (03-07 D4) remains outstanding and can run in the same kind of session since it doesn't depend on Apple/iOS either.
+- [2026-08-05] 03-08-PLAN.md (live-location streaming window, SOS-04) is missing an explicit requirement: today's `LocationController` uses a plain `Geolocator.getPositionStream()` with no foreground-service wrapper, so it does not survive backgrounding or app-kill; 03-08's own plan only commits to surviving the phone being locked/backgrounded via `flutter_foreground_task`, not the sender fully force-killing the app (Android `stopWithTask` isn't addressed). Flagged directly in the plan file — resolve (or explicitly accept as a limitation) before/during 03-08's execution.
+- [2026-08-05] Twilio SMS provisioning (03-05's emergency-contact channel) is **not started**. The code side is fully built — `ISmsGateway`/`TwilioSmsGateway`/`LoggingSmsGateway` seam, E.164 normalization, the SMS arm of `SosAlertDispatcher`, and the signature-validated status webhook — but no `Twilio:AccountSid`/`AuthToken`/`FromNumber` are configured anywhere (checked `appsettings.json`, `appsettings.Development.json`, and the shell env), so the backend runs on `LoggingSmsGateway` and emergency-contact SMS is never actually sent, only logged. Explicitly deferred by the user — do not pick this up until they decide to pursue it. When it does happen: create a Twilio account, get a trial number, verify each demo emergency-contact's phone as a Verified Caller ID (trial accounts can only text verified numbers), set the three config values, and expose a public HTTPS URL (e.g. an ngrok tunnel) for `Twilio:StatusCallbackUrl` so the SMS channel can report real Delivered status instead of staying at Queued forever.
+
 Carried forward from research (see .planning/research/SUMMARY.md "Research Flags" and "Gaps to Address"):
 
-- Phase 3 (SOS): SMS-fallback provider choice (e.g. Twilio) needs a concrete decision during planning.
+- ~~Phase 3 (SOS): SMS-fallback provider choice (e.g. Twilio) needs a concrete decision during planning.~~ Resolved by 03-05: Twilio behind `ISmsGateway`, `LoggingSmsGateway` as the zero-cost default. Account provisioning itself is the open item above.
 - Phase 4 (Geofencing): exact dwell-time/hysteresis parameters and Android's April 2026 background-location policy wording need re-verification at build time.
 - Phase 5 (AI): cold-start fallback design (two-tier prediction, synthetic history seeding) needs concrete design during planning.
 - Phase 6 (Duress): security-under-coercion threat modeling for the Silent/Duress secret storage is domain-specific and underspecified beyond the general pattern.
 
 ### Quick Tasks Completed
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260716-ue7 | Fix transparent person marker icon on live map | 2026-07-16 | 5cc9cd8 | [260716-ue7-fix-transparent-person-marker-icon-on-li](./quick/260716-ue7-fix-transparent-person-marker-icon-on-li/) |
-| 260717-oq0 | Display each family member's live battery on the Live Map | 2026-07-17 | 4701da1 | [260717-oq0-display-each-family-member-s-live-batter](./quick/260717-oq0-display-each-family-member-s-live-batter/) |
-| 260717-pwh | Rail-card tap on the Live Map recenters the map instead of opening the member sheet | 2026-07-17 | 4ddb746 | [260717-pwh-on-the-live-map-screen-tapping-a-family-](./quick/260717-pwh-on-the-live-map-screen-tapping-a-family-/) |
+| # | Description | Date | Commit | Status | Directory |
+|---|-------------|------|--------|--------|-----------|
+| 260716-ue7 | Fix transparent person marker icon on live map | 2026-07-16 | 5cc9cd8 | | [260716-ue7-fix-transparent-person-marker-icon-on-li](./quick/260716-ue7-fix-transparent-person-marker-icon-on-li/) |
+| 260717-oq0 | Display each family member's live battery on the Live Map | 2026-07-17 | 4701da1 | | [260717-oq0-display-each-family-member-s-live-batter](./quick/260717-oq0-display-each-family-member-s-live-batter/) |
+| 260717-pwh | Rail-card tap on the Live Map recenters the map instead of opening the member sheet | 2026-07-17 | 4ddb746 | | [260717-pwh-on-the-live-map-screen-tapping-a-family-](./quick/260717-pwh-on-the-live-map-screen-tapping-a-family-/) |
+| 260720-3u4 | Add Semantics labels to MemberMapPin for screen-reader support | 2026-07-24 | 7246356 | | [260720-3u4-add-semantics-labels-to-membermappin-so-](./quick/260720-3u4-add-semantics-labels-to-membermappin-so-/) |
+| 260802-w1e | Codemagic CI config for iOS TestFlight/Android APK + Firebase/APNs/ASC external-setup runbook | 2026-08-02 | 92abded, 20fd982 | | [260802-w1e-codemagic-ci-config-and-firebase-apns-se](./quick/260802-w1e-codemagic-ci-config-and-firebase-apns-se/) |
+| 6 | Enable core library desugaring required by flutter_local_notifications (real Android build failure found during device testing) | 2026-08-05 | 2aee4de | | — |
+| 260805-s33 | Fixed SOS arm ring paint-order (was fully hidden), added press-scale animation and a live 3-2-1 countdown label | 2026-08-05 | 10cb95f | | [260805-s33-add-a-cool-smooth-press-animation-to-the](./quick/260805-s33-add-a-cool-smooth-press-animation-to-the/) |
+| 260805-t3h | Raised Live Map family pin staleness opacity floor (0.7/0.45/0.3 -> 0.92/0.85/0.75) so pins stay legible over map tiles | 2026-08-05 | 880aad6 | | [260805-t3h-fix-the-opacity-of-family-member-map-pin](./quick/260805-t3h-fix-the-opacity-of-family-member-map-pin/) |
+| 260805-uke | Proactive zero-SOS-recipient warning card in Privacy Center (mirrors backend D-11 recipient resolution) + Guardian-role SOS access audit (no gap found) | 2026-08-05 | ac0d8d2 | | [260805-uke-add-a-proactive-zero-sos-recipient-nudge](./quick/260805-uke-add-a-proactive-zero-sos-recipient-nudge/) |
+| 260806-3zb | Migrate Live Map + route sheet from flutter_map to maplibre_gl for OpenFreeMap Liberty vector tiles (found/fixed 2 on-device rendering bugs + 1 dispose-race blocker via code review) | 2026-08-06 | 4152e22, 5be73c6, 015bc72, b5aa00b, 8c8e68a | Needs Review | [260806-3zb-migrate-map-rendering-from-flutter-map-t](./quick/260806-3zb-migrate-map-rendering-from-flutter-map-t/) |
+| 260807-rk2 | Wired the SOS responder "Call sender" button to dial the sender's real number: nullable User.PhoneNumberE164 + PATCH /me/phone-number, recipient-scoped SosSessionDto exposure, profile phone-number card | 2026-08-07 | 6cc54b6, 175ca5a, d570434 | | [260807-rk2-wire-the-sos-responder-screen-s-call-sen](./quick/260807-rk2-wire-the-sos-responder-screen-s-call-sen/) |
+| 260807-qhg | Consolidated the splash lockup into a shared AnimatedSafePathMark (ring trace + staggered letter reveal + halo), synced both splash surfaces to 1800ms; fixed StartupSplashOverlay's Stopwatch-based progress to be FakeAsync-testable | 2026-08-07 | d6f667e, 2bb751f, c7be6c5, 1821d39 | | [260807-qhg-apply-splash-screen-enhancement-instruct](./quick/260807-qhg-apply-splash-screen-enhancement-instruct/) |
+| 260807-vqc | Added a country code picker (country_picker 2.0.28) to the profile phone-number field; composes/splits full E.164 numbers client-side, backend already normalized correctly (added regression tests only) | 2026-08-07 | b768b88, 7f7e94b, 15da58f | | [260807-vqc-add-a-country-code-picker-to-the-add-pho](./quick/260807-vqc-add-a-country-code-picker-to-the-add-pho/) |
+| 260808-51d | Added a start_mobile.md section for testing over an ngrok tunnel (remote contributor, different network) | 2026-08-08 | 8b430d8, 611292e | | [260808-51d-add-a-section-to-start-mobile-md-documen](./quick/260808-51d-add-a-section-to-start-mobile-md-documen/) |
 
 ## Deferred Items
 
@@ -179,6 +236,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-16
-Stopped at: Phase 02 complete (UAT 74/74 passed, security threat register 74/74 closed), ready to plan Phase 3
+Last session: 2026-08-07T22:54:14.464Z
+Stopped at: Completed 03-09-PLAN.md (SOS-05/06 hold-to-cancel + OS backup trigger; phase 3's closing manual gate approved)
 Resume file: None
