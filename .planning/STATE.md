@@ -7,8 +7,8 @@ current_phase_name: Geofencing
 status: verifying
 stopped_at: Completed 03-09-PLAN.md (SOS-05/06 hold-to-cancel + OS backup trigger; phase 3's closing manual gate approved)
 last_updated: "2026-08-07T23:44:20.403Z"
-last_activity: 2026-08-07
-last_activity_desc: Phase 03 complete, transitioned to Phase 4
+last_activity: 2026-08-08
+last_activity_desc: Completed quick task 260808-51d - Add ngrok remote-contributor testing section to start_mobile.md
 progress:
   total_phases: 8
   completed_phases: 4
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 Phase: 4 — Geofencing
 Plan: Not started
 Status: All plans complete — awaiting phase-level verification/closeout
-Last activity: 2026-08-07 — Phase 03 complete, transitioned to Phase 4
+Last activity: 2026-08-08 — Completed quick task 260808-51d: Add ngrok remote-contributor testing section to start_mobile.md
 
 Progress: [██████████] 100%
 
@@ -224,6 +224,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260807-rk2 | Wired the SOS responder "Call sender" button to dial the sender's real number: nullable User.PhoneNumberE164 + PATCH /me/phone-number, recipient-scoped SosSessionDto exposure, profile phone-number card | 2026-08-07 | 6cc54b6, 175ca5a, d570434 | | [260807-rk2-wire-the-sos-responder-screen-s-call-sen](./quick/260807-rk2-wire-the-sos-responder-screen-s-call-sen/) |
 | 260807-qhg | Consolidated the splash lockup into a shared AnimatedSafePathMark (ring trace + staggered letter reveal + halo), synced both splash surfaces to 1800ms; fixed StartupSplashOverlay's Stopwatch-based progress to be FakeAsync-testable | 2026-08-07 | d6f667e, 2bb751f, c7be6c5, 1821d39 | | [260807-qhg-apply-splash-screen-enhancement-instruct](./quick/260807-qhg-apply-splash-screen-enhancement-instruct/) |
 | 260807-vqc | Added a country code picker (country_picker 2.0.28) to the profile phone-number field; composes/splits full E.164 numbers client-side, backend already normalized correctly (added regression tests only) | 2026-08-07 | b768b88, 7f7e94b, 15da58f | | [260807-vqc-add-a-country-code-picker-to-the-add-pho](./quick/260807-vqc-add-a-country-code-picker-to-the-add-pho/) |
+| 260808-51d | Added a start_mobile.md section for testing over an ngrok tunnel (remote contributor, different network) | 2026-08-08 | 8b430d8, 611292e | | [260808-51d-add-a-section-to-start-mobile-md-documen](./quick/260808-51d-add-a-section-to-start-mobile-md-documen/) |
 
 ## Deferred Items
 
