@@ -15,8 +15,8 @@ created: 2026-08-10
 
 ## Scope and Interaction Principles
 
-- Safe-zone management is **Guardian-only**. A Guardian reaches it from a 48px `Safe zones` (`Icons.fence_outlined`) action in the Live Map header/overlay; it is a pushed route, not a fifth bottom-navigation destination. Keep the existing Map / Activity / SOS / Insights / Privacy shell unchanged.
-- Add a 48px `Notifications` (`Icons.notifications_none`) action beside the existing Live Map actions. It opens the routine in-app notification feed; it must never force-navigate a user as an SOS alert does.
+- Safe-zone management is **Guardian-only**. A Guardian reaches it from a 48px `Safe zones` (`Icons.fence_outlined`) action in the Live Map header/overlay with the Semantics label **Manage safe zones**; it is a pushed route, not a fifth bottom-navigation destination. Keep the existing Map / Activity / SOS / Insights / Privacy shell unchanged.
+- Add a 48px `Notifications` (`Icons.notifications_none`) action beside the existing Live Map actions with the Semantics label **View notifications**. It opens the routine in-app notification feed; it must never force-navigate a user as an SOS alert does.
 - Members do not create, edit, or delete zones. They receive a zone's enter/exit alert only when its Guardian-controlled **Also notify {member name}** switch is enabled.
 - Use `VectorMap`, `VectorMapController`, `MapCircle`, and `OverlayMarker` only. No Phase 4 screen may import `maplibre_gl` or any other map SDK directly. Zone geometry is a metre-accurate circle, with a north-up, non-rotating map consistent with the Live Map.
 - Routine geofence UI and delivery use normal navigation, quiet hours, teal/safe/amber semantics, and ordinary notification priority. They must not share SOS screen chrome, SOS-red styling, AlertHub routing, foreground-force-navigation behavior, or SOS timing.
@@ -41,7 +41,8 @@ created: 2026-08-10
 ### 1. Safe zones list
 
 - Route title: **Safe zones**. Intro copy: **“Manage the places that matter to your family.”**
-- Guardian list cards use `SafePathCard` with: category icon in a 44px `primaryTintBg` tile, zone name, assigned member name/avatar, radius, and a compact enabled/needs-permission status badge. The whole card opens zone details; a dedicated trailing 48px `Activity` icon opens that zone's activity directly.
+- Guardian list cards use `SafePathCard` with: category icon in a 44px `primaryTintBg` tile, zone name, assigned member name/avatar, radius, and a compact enabled/needs-permission status badge. The whole card opens zone details; a dedicated trailing 48px `Activity` icon opens that zone's activity directly and has the Semantics label **View activity for {zone name}**.
+- The zone name and category-icon tile form each card's visual anchor at the leading edge; member, radius, and state are supporting metadata beneath or beside that anchor.
 - Add control: a 52px full-width `PrimaryButton` at the bottom of the list labelled **Add safe zone**. It remains reachable above the raised SOS navigation area.
 - No bottom-nav item, floating action button, or always-visible map control is added for zones.
 - Empty state: outlined `fence` icon at 44px, then the copy in the Copywriting Contract and the **Add safe zone** CTA.
@@ -63,7 +64,7 @@ The fixed bottom CTA is **Review zone** (52px, primary-navy fill). It is disable
 ### 3. Confirmation preview and activation
 
 - **Review safe zone** is a separate confirmation route, not an inline toast. It shows a non-editable map circle and center pin, then one summary card containing zone name/type, center (resolved address when available; otherwise latitude/longitude), radius, assigned member, sensitivity, selected Guardian recipients, and the member-notification setting.
-- Each summary group has a 48px **Edit** text/icon action returning to the appropriate creation section without discarding entered values.
+- Each summary group has a destination-specific 48px text/icon action—**Edit location**, **Edit details**, **Edit radius**, **Edit sensitivity**, or **Edit notifications**—returning to the appropriate creation section without discarding entered values.
 - Primary CTA: **Save safe zone**. On success, return to the Safe zones list, show a safe-green snackbar **“Safe zone active”**, and insert the new enabled card without a full-screen reload.
 - If the OS requires geofence/background-location authorization, show a plain-language rationale only after the Guardian presses **Save safe zone**, then open the system prompt. Do not ask when the map first opens or when **Use current location** is tapped. If denied, save the zone in a visible **Needs location permission** inactive state with a 48px **Open Settings** action; do not present it as active or promise notifications.
 
@@ -91,9 +92,8 @@ Use the existing locked 4pt-based scale; no Phase 4 additions.
 | Token | Value | Usage |
 |-------|-------|-------|
 | xs | 4px | Icon-to-label and status-dot gaps |
-| sm | 8px | Chip groups, compact card rows, timeline metadata |
-| xs-md | 12px | Card internal row gaps and filter-group spacing |
-| md | 16px | Default control separation and card padding |
+| sm | 8px | Chip groups, compact card rows, timeline metadata, and card internal row gaps |
+| md | 16px | Default control separation, card padding, and filter-group spacing |
 | lg | 24px | Screen gutter, section starts, map-to-form separation |
 | xl | 32px | Major separation before destructive controls or empty-state CTA |
 
@@ -155,7 +155,7 @@ Accent is reserved for the explicitly listed controls above; it is not a generic
 | Permission-needed state | **Location permission needed** — **Allow location access in Settings to activate alerts for this zone.** Action: **Open Settings** |
 | No eligible member | **Add a family member before creating a safe zone.** |
 | No Guardian recipient | **Select at least one Guardian to receive alerts.** |
-| Delete confirmation | Title: **Delete {zone name}?** Body: **This stops future enter and leave alerts for this zone. Existing activity remains available for up to 7 days.** Actions: **Cancel** / **Delete zone** |
+| Delete confirmation | Title: **Delete {zone name}?** Body: **This stops future enter and leave alerts for this zone. Existing activity remains available for up to 7 days.** Actions: **Keep safe zone** / **Delete zone** |
 | Routine push/feed title | **{member name} entered {zone name}** or **{member name} left {zone name}** |
 
 ---
@@ -173,19 +173,22 @@ Accent is reserved for the explicitly listed controls above; it is not a generic
 
 ## UI Considerations
 
-Applicable state considerations resolved: 16 covered, 2 backstop, 0 unresolved.
+Applicable state considerations resolved: 32 covered, 5 backstop, 0 unresolved.
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
-| empty | Safe zones list; zone activity; notification feed | ✅ covered | Render the documented distinct no-zones, no-activity, and all-caught-up copy with their next action. |
-| loading | Safe zones list; create/edit submit; activity; notification feed | ✅ covered | Use list skeletons on initial list load and an in-place disabled `Saving…` CTA or refresh indicator for in-flight work; preserve entered data. |
-| error | Safe zones list; create/edit submit; activity/filter | ✅ covered | Show documented actionable error copy, retry affordance, amber visual treatment, and retain the unsaved form. |
-| populated | Safe zones list; activity; notification feed | ✅ covered | Cards expose zone/member/radius/state; activity groups newest-first by day and feeds use one readable routine-alert row per transition. |
-| partial | Review summary; visit activity | ✅ covered | Address may fall back to coordinates; unmatched transition renders `Visit in progress` and never fabricates duration. |
-| overflow | Activity list; recipient list; filter sheet | ✅ covered | Long lists scroll; filter sheet scrolls above the safe area and does not hide its Apply action. |
-| zero-one-many | Zone cards; activity rows; Guardian recipients | ✅ covered | The empty states cover zero; one card/row stays full width; many list rows remain vertically scrollable with no grid compression. |
-| long-text | Zone name; member name; recipient label; activity title | 🧪 backstop | Cards cap visible labels at two lines with ellipsis while Semantics/detail views preserve full content; verify at largest system text size. |
-| long-text | CTA, segmented labels, timestamps | 🧪 backstop | Controls grow/wrap without overlap or clipping; verify English strings and largest system text size in a widget/golden test. |
+| empty | Safe zones list; create/edit form; review/detail; zone activity; notification feed | ✅ covered | Use the three documented empty-state copy pairs for collections. A new form opens with no member chosen, default Reliable sensitivity, the minimum valid radius, and Review disabled. Review/detail never renders an empty summary: missing zone data shows the load-error state with **Try again** and Back. |
+| loading | Safe zones list; create/edit map and submit; review/detail; zone activity; notification feed | ✅ covered | Lists use geometry-matched skeletons. The map uses a fixed-height neutral surface until ready so the form does not jump. Review/detail preserves its shell while loading. Submits retain entered data, disable the CTA, and show **Saving…**; in-place refresh uses a compact progress indicator. |
+| error | Safe zones list; create/edit form and map; review/detail; zone activity; notification feed | ✅ covered | Show the documented actionable load/save copy with **Try again**, preserve unsaved form values, and use amber—not SOS red. If map tiles fail, keep address/coordinate and radius controls usable with a labelled map-unavailable message. Feed/activity failures preserve any already-loaded rows. |
+| populated | Safe zones list; create/edit map; review/detail; zone activity; notification feed | ✅ covered | Zone cards expose the anchored zone name/category plus member, radius, and state; the form displays the pin/circle and current selections; review/detail shows every required summary field; activity groups paired visits newest-first; the feed uses one readable routine-alert row per transition. |
+| partial | Safe zones list; create/edit form; zone activity; notification feed | ✅ covered | Permission-denied zones remain visible as inactive cards. Incomplete forms retain valid fields and show errors only beside invalid fields. An unresolved address falls back to coordinates; unmatched activity shows **Visit in progress** without a fabricated duration. Feed history remains present when push delivery fails and never claims delivery. |
+| overflow | Safe zones list; create/edit form; review/detail; zone activity/filter; notification feed | ✅ covered | Screens and lists scroll vertically through the safe area; recipient and filter collections scroll without covering their fixed action; summary groups reflow vertically; no grid compression or horizontal clipping is allowed. |
+| zero-one-many | Safe zones list; zone activity; notification feed | ✅ covered | Zero uses the documented empty states; one item remains a full-width card/row with singular wording; many items use the same vertical rhythm and scroll without changing card structure. |
+| long-text | Safe zones list | 🧪 backstop | Zone/member names cap at two visible lines with ellipsis while Semantics and detail expose full values; verify at the largest supported system text size. |
+| long-text | Create/edit form and map controls | 🧪 backstop | Field values, recipient rows, chips, segmented choices, validation, and map actions wrap or grow vertically without overlap; verify with long localized strings and maximum text scale. |
+| long-text | Review/detail | 🧪 backstop | Summary values and destination-specific edit labels reflow without obscuring the map or actions; verify with long names, coordinates, and maximum text scale. |
+| long-text | Zone activity | 🧪 backstop | Names may ellipsize to two lines in rows, but full timestamps and meaning remain accessible; verify long names, localized dates, and maximum text scale in widget/golden tests. |
+| long-text | Notification feed | 🧪 backstop | Alert titles wrap without hiding transition direction or timestamp and expose complete Semantics; verify long member/zone names and maximum text scale. |
 
 ---
 
@@ -199,11 +202,11 @@ Applicable state considerations resolved: 16 covered, 2 backstop, 0 unresolved.
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS (destination-specific summary actions applied)
+- [x] Dimension 2 Visuals: PASS (list anchor and icon-action Semantics specified)
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** verified by `gsd-ui-checker`; post-verification state probe resolved with 32 explicit truths and 5 held-out backstops.
