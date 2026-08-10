@@ -1,4 +1,8 @@
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Application.Sos;
@@ -170,6 +174,69 @@ public class SmsFanOutTests : IDisposable
         var result = await gateway.SendAsync("+12025550182", "test body");
 
         Assert.False(string.IsNullOrWhiteSpace(result.ProviderMessageId));
+    }
+
+    [Fact]
+    public void TextBeeWebhookSignatureValidator_IsAlwaysFalse()
+    {
+        var validator = new SafePath.Infrastructure.Sms.TextBeeWebhookSignatureValidator();
+
+        Assert.False(validator.IsValid(
+            "https://api.example.com/webhooks/sms/status",
+            new Dictionary<string, string> { ["MessageSid"] = "SM123", ["MessageStatus"] = "delivered" },
+            "a-plausible-looking-signature"));
+
+        Assert.False(validator.IsValid(
+            "https://api.example.com/webhooks/sms/status",
+            new Dictionary<string, string>(),
+            null));
+    }
+
+    [Fact]
+    public async Task TextBeeSmsGateway_SendsTheExpectedRequestShapeAndExtractsTheProviderMessageId()
+    {
+        var captured = new List<HttpRequestMessage>();
+        var handler = new CapturingHttpMessageHandler(captured, () =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new { success = true, data = new { _id = "abc123" } }),
+            };
+            return response;
+        });
+
+        var gateway = new SafePath.Infrastructure.Sms.TextBeeSmsGateway(
+            new HttpClient(handler) { BaseAddress = new Uri("https://api.textbee.dev/") },
+            new SafePath.Infrastructure.Sms.TextBeeOptions { ApiKey = "test-key", DeviceId = "test-device" },
+            NullLogger<SafePath.Infrastructure.Sms.TextBeeSmsGateway>.Instance);
+
+        var result = await gateway.SendAsync("+12025550182", "test body");
+
+        var request = Assert.Single(captured);
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Contains("test-device", request.RequestUri!.AbsolutePath);
+        Assert.EndsWith("/send-sms", request.RequestUri!.AbsolutePath);
+        Assert.True(request.Headers.TryGetValues("x-api-key", out var apiKeyValues));
+        Assert.Equal("test-key", Assert.Single(apiKeyValues!));
+        Assert.Equal("abc123", result.ProviderMessageId);
+    }
+
+    private sealed class CapturingHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly List<HttpRequestMessage> _captured;
+        private readonly Func<HttpResponseMessage> _responseFactory;
+
+        public CapturingHttpMessageHandler(List<HttpRequestMessage> captured, Func<HttpResponseMessage> responseFactory)
+        {
+            _captured = captured;
+            _responseFactory = responseFactory;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            _captured.Add(request);
+            return Task.FromResult(_responseFactory());
+        }
     }
 
     [Fact]
@@ -444,9 +511,11 @@ public class SmsFanOutTests : IDisposable
 
 /// <summary>
 /// Deterministic ISmsWebhookSignatureValidator test double. The real
-/// TwilioWebhookSignatureValidator wraps Twilio's own (already SDK-tested) RequestValidator
-/// crypto; these tests instead verify RecordSmsDeliveryStatusCommandHandler's own behaviour
-/// (mutate only when valid, never otherwise) independent of that crypto.
+/// TextBeeWebhookSignatureValidator is a permanent no-op that always returns false, so
+/// FakeSignatureValidator exists specifically to let these tests exercise
+/// RecordSmsDeliveryStatusCommandHandler's own Delivered/Failed/ignore branching under both a
+/// valid and an invalid signature outcome -- something the real always-false validator alone
+/// could never produce.
 /// </summary>
 internal sealed class FakeSignatureValidator : ISmsWebhookSignatureValidator
 {

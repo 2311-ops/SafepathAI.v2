@@ -8,7 +8,7 @@ credentials that exist outside the repo.
 
 Nothing here is required to build, test, or demo this project. The backend falls back to a
 logging implementation for both push (`LoggingPushSender`) and SMS (`LoggingSmsGateway`) whenever
-Firebase or Twilio credentials are absent, and the mobile app catches and logs a failed
+Firebase or TextBee credentials are absent, and the mobile app catches and logs a failed
 `Firebase.initializeApp` rather than crashing. This document is required only to exercise real
 push delivery end to end and to ship a signed iOS build to TestFlight.
 
@@ -34,7 +34,7 @@ specifically until Apple Developer Program enrolment completes.
 | Apple Developer Program membership | Paid, annual | APNs auth key, TestFlight, iOS code signing |
 | Firebase project | Free | FCM push on Android and iOS, backend push sender |
 | Codemagic account | Free tier (500 build minutes/month, macOS M2) | `codemagic.yaml` CI builds, TestFlight upload |
-| Twilio account | Free trial, then paid | Real SMS delivery (see "Still outstanding") |
+| TextBee gateway device | Free (self-hosted Android SMS gateway; no per-message cost beyond the phone's own SMS plan) | Real SMS delivery (see "Still outstanding") |
 
 ## Firebase Project and App Registration
 
@@ -93,10 +93,9 @@ maps to the `Firebase:ProjectId` configuration value the code reads).
 | --- | --- |
 | `Firebase__ProjectId` | Firebase project id, from `Firebase Console -> Project settings -> General -> Project ID` |
 | `Firebase__CredentialsPath` | Absolute path to a Firebase service-account JSON key, from `Firebase Console -> Project settings -> Service accounts -> Generate new private key` |
-| `Twilio__AccountSid` | Twilio Account SID (already-live SMS fallback channel, see "Still outstanding") |
-| `Twilio__AuthToken` | Twilio Auth Token |
-| `Twilio__FromNumber` | Twilio sending phone number in E.164 form |
-| `Twilio__StatusCallbackUrl` | Publicly reachable URL Twilio posts delivery-status webhooks to |
+| `TextBee__ApiKey` | TextBee API key, from the TextBee dashboard after registering a gateway device (see "TextBee Device Registration" below) |
+| `TextBee__DeviceId` | The registered gateway device's id, same dashboard |
+| `TextBee__BaseUrl` | Optional; defaults to `https://api.textbee.dev` when unset |
 
 `03-06-PLAN.md`'s `user_setup` block named these variables `FIREBASE_PROJECT_ID` and
 `GOOGLE_APPLICATION_CREDENTIALS`. Those names are superseded: the shipped
@@ -108,10 +107,27 @@ Save the Firebase service-account JSON file outside the repository and set
 
 Observable success signal: on restart, the API logs "Push sender active: FirebasePushSender
 (Firebase credentials configured)" rather than the logging sender, and separately logs "SMS
-gateway active: TwilioSmsGateway (Twilio credentials configured)" rather than its own logging
+gateway active: TextBeeSmsGateway (TextBee credentials configured)" rather than its own logging
 fallback. If either log line still names the logging implementation after setting the
 corresponding keys, the values were not read (check for typos in the key names or a missing
 restart).
+
+## TextBee Device Registration
+
+TextBee is a free, self-hosted-Android-gateway SMS API: an Android phone running the TextBee
+companion app acts as the actual SMS sender, so there is no per-message cost beyond that phone's
+own SMS plan and no account approval process like Twilio's trial-number verification.
+
+1. Install the TextBee companion Android app (from `textbee.dev`) on the phone that will act as
+   the SMS gateway.
+2. Create or sign in to a TextBee account.
+3. Register that device as a gateway from the TextBee dashboard.
+4. Copy the generated API key and the device's id from the dashboard and set
+   `TextBee__ApiKey` / `TextBee__DeviceId` accordingly (see "Backend Configuration Keys" above).
+
+The phone must stay powered on, network-connected, and running the TextBee app for sends to
+succeed. TextBee has no delivery-status webhook: every SMS sent through it will show as Queued
+(sent, unconfirmed) forever by design, never Delivered, unlike the old Twilio-backed flow.
 
 ## App Store Connect API Key
 
@@ -242,6 +258,6 @@ to outlive any single phase.
 | OpenStreetMap production tile-hosting provider (MapTiler, Stadia Maps, or Thunderforest) | OSM's own tile server (`tile.openstreetmap.org`) is rate-limited and its usage policy disallows production app traffic at scale; see `.planning/phases/02-real-time-location-history-privacy/02-01-USER-SETUP.md` | Before any real-user traffic; no key is needed for development | Outstanding |
 | Android release signing keystore | The app module's `release` build type is still signed with the debug keystore (`mobile/android/app/build.gradle.kts`) | Before a real Play Store release; the `android-apk` Codemagic workflow deliberately builds `--debug` to avoid masking this gap | Outstanding |
 | Release-configuration APNs production entitlement | `aps-environment` is `development` for every build configuration today; see "Production APNs entitlement" above | Before any TestFlight or App Store push delivery can be trusted | Outstanding |
-| Twilio account and phone number provisioning | Real SMS delivery to emergency contacts; the code path is complete since 03-05 but no live Twilio account, verified numbers, or public status-callback URL exist yet | Before a real SMS can be sent or a Delivered status observed end to end | Outstanding (code-complete, unprovisioned) |
+| TextBee device provisioning | Real SMS delivery to emergency contacts; the code path is complete since quick task 260810-vcf but no TextBee gateway device is registered yet | Before a real SMS can be sent | Outstanding (code-complete, unprovisioned) |
 | Supabase Storage `avatar` bucket | Backend-mediated avatar upload/delete/signed-URL creation reads/writes this private bucket | Already required for profile-photo features | Done (verified in 02-13) |
 | Six Labors ImageSharp license | ImageSharp 4.0.0 enforces a build-time license (`sixlabors.lic` or `SIXLABORS_LICENSE_KEY`); required to build the backend at all | Every backend build, including CI | Outstanding for CI (a local uncommitted license file exists per developer machine per 02-13) |
