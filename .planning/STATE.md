@@ -6,9 +6,9 @@ current_phase: 4
 current_phase_name: Geofencing
 status: verifying
 stopped_at: Phase 4 planned
-last_updated: "2026-08-10T16:03:00.167Z"
-last_activity: 2026-08-08
-last_activity_desc: "Completed quick task 260808-51d: Add ngrok remote-contributor testing section to start_mobile.md"
+last_updated: "2026-08-10T19:55:00Z"
+last_activity: 2026-08-10
+last_activity_desc: "Completed quick task 260810-vcf: Migrate SMS gateway from Twilio to TextBee"
 progress:
   total_phases: 5
   completed_phases: 4
@@ -224,6 +224,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260807-qhg | Consolidated the splash lockup into a shared AnimatedSafePathMark (ring trace + staggered letter reveal + halo), synced both splash surfaces to 1800ms; fixed StartupSplashOverlay's Stopwatch-based progress to be FakeAsync-testable | 2026-08-07 | d6f667e, 2bb751f, c7be6c5, 1821d39 | | [260807-qhg-apply-splash-screen-enhancement-instruct](./quick/260807-qhg-apply-splash-screen-enhancement-instruct/) |
 | 260807-vqc | Added a country code picker (country_picker 2.0.28) to the profile phone-number field; composes/splits full E.164 numbers client-side, backend already normalized correctly (added regression tests only) | 2026-08-07 | b768b88, 7f7e94b, 15da58f | | [260807-vqc-add-a-country-code-picker-to-the-add-pho](./quick/260807-vqc-add-a-country-code-picker-to-the-add-pho/) |
 | 260808-51d | Added a start_mobile.md section for testing over an ngrok tunnel (remote contributor, different network) | 2026-08-08 | 8b430d8, 611292e | | [260808-51d-add-a-section-to-start-mobile-md-documen](./quick/260808-51d-add-a-section-to-start-mobile-md-documen/) |
+| 260810-vcf | Migrated the emergency-contact SMS fallback channel from Twilio to TextBee: new TextBeeSmsGateway/TextBeeOptions/TextBeeWebhookSignatureValidator behind the unchanged ISmsGateway seam, all Twilio references removed from backend/src and backend/tests, docs/EXTERNAL-SETUP.md and STATE.md updated for TextBee provisioning | 2026-08-10 | 2bc4367, b3f5ebe, 047b1b1 | | [260810-vcf-migrate-sms-gateway-from-twilio-to-textb](./quick/260810-vcf-migrate-sms-gateway-from-twilio-to-textb/) |
 
 ## Deferred Items
 
@@ -235,6 +236,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-10T16:02:59.705Z
-Stopped at: Phase 4 planned
+Last session: 2026-08-10T19:55:00Z
+Stopped at: Completed quick task 260810-vcf: Migrate SMS gateway from Twilio to TextBee
 Resume file: .planning/phases/04-geofencing/04-01-PLAN.md
