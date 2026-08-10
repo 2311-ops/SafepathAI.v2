@@ -11,8 +11,10 @@ import '../../../shared_widgets/no_circle_cta.dart';
 import '../../../shared_widgets/safepath_card.dart';
 import '../../../shared_widgets/toggle_row.dart';
 import '../../auth/data/auth_api.dart';
+import '../../auth/data/auth_models.dart';
 import '../../family/application/family_controller.dart';
 import '../../family/data/family_models.dart';
+import '../../profile/application/profile_controller.dart';
 import '../../sos/presentation/sos_reach_warning_card.dart';
 import '../application/privacy_controller.dart';
 import '../data/privacy_models.dart';
@@ -168,6 +170,20 @@ class PrivacyCenterScreen extends ConsumerWidget {
         .where((member) => member.userId != currentUserId)
         .toList();
     final now = ref.watch(privacyNowProvider)();
+    final profileState = ref.watch(profileControllerProvider).value;
+    final profileUserId = profileState?.profile?.userId;
+    final effectiveUserId = currentUserId ?? profileUserId;
+    final hasFamily = familyId != null;
+    final members = familyState?.members ?? const <FamilyMemberView>[];
+    FamilyMemberView? currentMember;
+    for (final member in members) {
+      if (member.userId == effectiveUserId) {
+        currentMember = member;
+        break;
+      }
+    }
+    final effectiveRole = currentMember?.role ?? profileState?.profile?.role;
+    final isGuardian = effectiveRole == Role.guardian;
 
     if ((familyState?.isLoading ?? false) || privacyState.isLoading) {
       return const Scaffold(
@@ -190,7 +206,21 @@ class PrivacyCenterScreen extends ConsumerWidget {
       backgroundColor: AppColors.appBg,
       appBar: AppBar(
         title: const Text('Privacy Center'),
-        actions: const [LogoutAction()],
+        actions: [
+          if (hasFamily && isGuardian)
+            IconButton(
+              icon: const Icon(Icons.person_add_alt_1),
+              tooltip: 'Invite',
+              onPressed: () => context.push('/circle/invite'),
+            ),
+          if (hasFamily && isGuardian)
+            IconButton(
+              icon: const Icon(Icons.tune),
+              tooltip: 'Permissions',
+              onPressed: () => context.push('/circle/permissions'),
+            ),
+          const LogoutAction(),
+        ],
       ),
       body: SafeArea(
         child: RefreshIndicator(

@@ -188,6 +188,9 @@ Widget _app(_SpyPrivacyController controller, {EmergencyContactApi? contactApi})
       emergencyContactApiProvider.overrideWithValue(
         contactApi ?? _hasContactApi(),
       ),
+      profileControllerProvider.overrideWith(
+        () => _SeededProfileController(Role.guardian),
+      ),
       privacyControllerProvider.overrideWith(() => controller),
       privacyNowProvider.overrideWithValue(
         () => DateTime.utc(2026, 7, 12, 10, 30),
@@ -240,6 +243,9 @@ Widget _routerApp(_SpyPrivacyController controller, {EmergencyContactApi? contac
       familyControllerProvider.overrideWith(_SeededFamilyController.new),
       emergencyContactApiProvider.overrideWithValue(
         contactApi ?? _noContactApi(),
+      ),
+      profileControllerProvider.overrideWith(
+        () => _SeededProfileController(Role.guardian),
       ),
       privacyControllerProvider.overrideWith(() => controller),
       privacyNowProvider.overrideWithValue(
