@@ -192,6 +192,7 @@ Recent decisions affecting current work:
 | Investigate sender-screen delivery chip not visually updating on Device A despite correct server-side Queued->Delivered tracking (found during 03-06 Task 3 verification 2026-08-05) | investigation | see 03-06-SUMMARY.md "Issues Encountered" |
 | Investigate FamilyController cold-start bootstrap issue: app relaunch showed "No circle yet" for a real family member until a full emulator reboot (found during 260805-uke Task 3 verification) | investigation | [todos/pending/2026-08-05-family-controller-cold-start-bootstrap-race.md](./todos/pending/2026-08-05-family-controller-cold-start-bootstrap-race.md) |
 | Live Map family/self pin visibly "rolls"/vibrates while panning left-right (post-260806-3zb maplibre_gl migration); suspected unguarded overlapping async reprojection calls resolving out of order | investigation | [todos/pending/2026-08-06-live-map-pin-jitter-during-pan.md](./todos/pending/2026-08-06-live-map-pin-jitter-during-pan.md) |
+| Evaluate an alternate SMS provider besides TextBee (post-260810-vcf migration); TextBee has no delivery-status webhook (permanent Queued, never Delivered) and depends on one phone staying powered/connected — user wants a better long-term fit for the SOS channel | backend | [todos/pending/2026-08-10-evaluate-an-alternate-sms-provider-besides-textbee.md](./todos/pending/2026-08-10-evaluate-an-alternate-sms-provider-besides-textbee.md) |
 
 ### Blockers/Concerns
 
