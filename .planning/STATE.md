@@ -6,14 +6,15 @@ current_phase: 4
 current_phase_name: Geofencing
 status: verifying
 stopped_at: Phase 4 planned
-last_updated: "2026-08-10T19:55:00Z"
-last_activity: 2026-08-10
-last_activity_desc: "Completed quick task 260810-vcf: Migrate SMS gateway from Twilio to TextBee"
+last_updated: "2026-08-11T00:00:00.000Z"
+last_activity: 2026-08-11
+last_activity_desc: "Completed quick task 260811-3jq: Restore Invite/Permissions entry points on Privacy Center"
 progress:
-  total_phases: 5
+  total_phases: 8
   completed_phases: 4
   total_plans: 61
   completed_plans: 44
+  percent: 50
 ---
 
 # Project State
@@ -91,6 +92,7 @@ Progress: [██████████] 100%
 | Phase 03-sos-fast-path P07 | 17min | 3 tasks | 17 files |
 | Phase 03 P08 | 45min | 3 tasks | 20 files |
 | Phase 03-sos-fast-path P09 | multi-session | 3 tasks | 12 files |
+| Phase quick-260811-3jq P01 | 15min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -226,6 +228,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260807-vqc | Added a country code picker (country_picker 2.0.28) to the profile phone-number field; composes/splits full E.164 numbers client-side, backend already normalized correctly (added regression tests only) | 2026-08-07 | b768b88, 7f7e94b, 15da58f | | [260807-vqc-add-a-country-code-picker-to-the-add-pho](./quick/260807-vqc-add-a-country-code-picker-to-the-add-pho/) |
 | 260808-51d | Added a start_mobile.md section for testing over an ngrok tunnel (remote contributor, different network) | 2026-08-08 | 8b430d8, 611292e | | [260808-51d-add-a-section-to-start-mobile-md-documen](./quick/260808-51d-add-a-section-to-start-mobile-md-documen/) |
 | 260810-vcf | Migrated the emergency-contact SMS fallback channel from Twilio to TextBee: new TextBeeSmsGateway/TextBeeOptions/TextBeeWebhookSignatureValidator behind the unchanged ISmsGateway seam, all Twilio references removed from backend/src and backend/tests, docs/EXTERNAL-SETUP.md and STATE.md updated for TextBee provisioning | 2026-08-10 | 2bc4367, b3f5ebe, 047b1b1 | | [260810-vcf-migrate-sms-gateway-from-twilio-to-textb](./quick/260810-vcf-migrate-sms-gateway-from-twilio-to-textb/) |
+| 260811-3jq | Restored the Invite/Permissions entry points that went missing when MainShell superseded the dead Phase-1 LandingStubScreen: added the same Guardian-gated IconButtons (person_add_alt_1 -> /circle/invite, tune -> /circle/permissions) to PrivacyCenterScreen's populated-state AppBar, reusing the stub's isGuardian gating logic verbatim | 2026-08-11 | 4c4073c | | [260811-3jq-add-missing-invite-permissions-entry-poi](./quick/260811-3jq-add-missing-invite-permissions-entry-poi/) |
 
 ## Deferred Items
 
@@ -237,6 +240,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-10T19:55:00Z
-Stopped at: Completed quick task 260810-vcf: Migrate SMS gateway from Twilio to TextBee
+Last session: 2026-08-11T00:00:00.000Z
+Stopped at: Completed quick task 260811-3jq: Restore Invite/Permissions entry points on Privacy Center
 Resume file: .planning/phases/04-geofencing/04-01-PLAN.md
