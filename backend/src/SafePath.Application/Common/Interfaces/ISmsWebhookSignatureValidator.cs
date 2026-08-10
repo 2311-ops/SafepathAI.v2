@@ -5,8 +5,8 @@ namespace SafePath.Application.Common.Interfaces;
 /// allowed to happen (threat T-03-19) — a forged callback must never be able to move a
 /// <see cref="SafePath.Domain.Entities.SosDeliveryAttempt"/> row to Delivered. Kept in the
 /// Application layer so no provider-specific crypto type ever appears there; implemented in
-/// Infrastructure by <c>TwilioWebhookSignatureValidator</c>, which wraps Twilio's own
-/// <c>RequestValidator</c>.
+/// Infrastructure by <c>TextBeeWebhookSignatureValidator</c>, a permanent no-op since TextBee (or
+/// any provider) has no delivery-status webhook to validate a signature for.
 /// </summary>
 public interface ISmsWebhookSignatureValidator
 {

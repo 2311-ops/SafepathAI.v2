@@ -1,9 +1,9 @@
 namespace SafePath.Application.Common.Interfaces;
 
 /// <summary>
-/// Provider-agnostic SMS seam — keeps Twilio (or any provider) entirely out of the Application
+/// Provider-agnostic SMS seam — keeps TextBee (or any provider) entirely out of the Application
 /// layer. Implemented in Infrastructure by <c>LoggingSmsGateway</c> (zero-cost default) and
-/// <c>TwilioSmsGateway</c> (registered only when Twilio credentials are configured).
+/// <c>TextBeeSmsGateway</c> (registered only when TextBee credentials are configured).
 /// </summary>
 public interface ISmsGateway
 {
