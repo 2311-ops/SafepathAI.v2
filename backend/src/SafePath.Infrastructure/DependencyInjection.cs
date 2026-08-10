@@ -10,7 +10,6 @@ using SafePath.Infrastructure.Push;
 using SafePath.Infrastructure.RealTime;
 using SafePath.Infrastructure.Sms;
 using SafePath.Infrastructure.Storage;
-using Twilio.Clients;
 
 namespace SafePath.Infrastructure;
 
@@ -59,45 +58,43 @@ public static class DependencyInjection
             }
         });
 
-        var twilioOptions = new TwilioOptions
+        var textBeeOptions = new TextBeeOptions
         {
-            AccountSid = configuration["Twilio:AccountSid"],
-            AuthToken = configuration["Twilio:AuthToken"],
-            FromNumber = configuration["Twilio:FromNumber"],
-            StatusCallbackUrl = configuration["Twilio:StatusCallbackUrl"],
+            ApiKey = configuration["TextBee:ApiKey"],
+            DeviceId = configuration["TextBee:DeviceId"],
+            BaseUrl = configuration["TextBee:BaseUrl"] ?? "https://api.textbee.dev",
         };
-        services.AddSingleton(twilioOptions);
+        services.AddSingleton(textBeeOptions);
 
-        // The default with no Twilio configuration present is LoggingSmsGateway (D-07) — a
-        // fresh clone builds, tests, and demos the whole SOS pipeline with no Twilio account
-        // and no spend. Logged once here (a throwaway bootstrap logger, since the DI container
-        // has not been built yet at this point) so the operator is never confused about why no
-        // real SMS arrived.
+        // The default with no TextBee configuration present is LoggingSmsGateway (D-07) — a
+        // fresh clone builds, tests, and demos the whole SOS pipeline with no TextBee gateway
+        // device and no cost. Logged once here (a throwaway bootstrap logger, since the DI
+        // container has not been built yet at this point) so the operator is never confused
+        // about why no real SMS arrived.
         using (var bootstrapLoggerFactory = LoggerFactory.Create(builder => builder.AddConsole()))
         {
             var bootstrapLogger = bootstrapLoggerFactory.CreateLogger("SafePath.Infrastructure.Sms");
-            if (twilioOptions.IsConfigured)
+            if (textBeeOptions.IsConfigured)
             {
-                bootstrapLogger.LogInformation("SMS gateway active: TwilioSmsGateway (Twilio credentials configured).");
+                bootstrapLogger.LogInformation("SMS gateway active: TextBeeSmsGateway (TextBee credentials configured).");
             }
             else
             {
-                bootstrapLogger.LogInformation("SMS gateway active: LoggingSmsGateway (no Twilio credentials configured — SMS sends are logged only, never sent).");
+                bootstrapLogger.LogInformation("SMS gateway active: LoggingSmsGateway (no TextBee credentials configured — SMS sends are logged only, never sent).");
             }
         }
 
-        if (twilioOptions.IsConfigured)
+        if (textBeeOptions.IsConfigured)
         {
-            services.AddSingleton<ITwilioRestClient>(_ =>
-                new TwilioRestClient(twilioOptions.AccountSid!, twilioOptions.AuthToken!, twilioOptions.AccountSid));
-            services.AddScoped<ISmsGateway, TwilioSmsGateway>();
+            services.AddHttpClient<ISmsGateway, TextBeeSmsGateway>(client =>
+                client.BaseAddress = new Uri(textBeeOptions.BaseUrl.TrimEnd('/') + "/"));
         }
         else
         {
             services.AddScoped<ISmsGateway, LoggingSmsGateway>();
         }
 
-        services.AddScoped<ISmsWebhookSignatureValidator, TwilioWebhookSignatureValidator>();
+        services.AddScoped<ISmsWebhookSignatureValidator, TextBeeWebhookSignatureValidator>();
 
         var firebaseOptions = new FirebaseOptions
         {

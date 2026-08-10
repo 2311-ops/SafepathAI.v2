@@ -17,7 +17,7 @@ public record RecordSmsDeliveryStatusCommand(
 public record RecordSmsDeliveryStatusResult(bool SignatureValid, bool Applied);
 
 /// <summary>
-/// Accepts Twilio's (or any configured provider's) delivery-status callback. A signature that
+/// Accepts TextBee's (or any configured provider's) delivery-status callback. A signature that
 /// does not validate mutates nothing (threat T-03-19). An unrecognised <c>ProviderMessageId</c>
 /// or a status that only means "still in flight" (queued/sending/sent) also mutates nothing —
 /// this is the only path allowed to write <see cref="SosDeliveryStatus.Delivered"/> for the SMS

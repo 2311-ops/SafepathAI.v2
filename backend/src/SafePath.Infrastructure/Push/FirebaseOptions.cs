@@ -6,7 +6,7 @@ namespace SafePath.Infrastructure.Push;
 /// outside the repository (threat T-03-08). <see cref="IsConfigured"/> gates which
 /// <c>IPushSender</c> implementation is registered: <c>LoggingPushSender</c> whenever either
 /// value is missing, so a fresh clone builds/tests/demos with no Firebase project and no spend
-/// (D-07, same shape as <c>TwilioOptions</c>).
+/// (D-07, same shape as <c>TextBeeOptions</c>).
 /// </summary>
 public class FirebaseOptions
 {

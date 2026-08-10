@@ -42,7 +42,7 @@ public static class DependencyInjection
         services.AddSingleton(sp =>
         {
             // Sos:LiveWindowMinutes, default 15 (same "no config = safe default" shape as
-            // FirebaseOptions/TwilioOptions) — lets a demo shorten the live-location window
+            // FirebaseOptions/TextBeeOptions) — lets a demo shorten the live-location window
             // without a rebuild. IConfiguration is registered by the host automatically, so this
             // does not require widening AddApplication's own signature.
             var configuration = sp.GetService<IConfiguration>();

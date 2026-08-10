@@ -12,8 +12,8 @@ namespace SafePath.Infrastructure.Sms;
 /// (<c>POST {BaseUrl}/api/v1/gateway/devices/{DeviceId}/send-sms</c>) via a typed
 /// <see cref="HttpClient"/>. A successful return here means only that TextBee's gateway device
 /// accepted the message for sending, never that it was delivered — <c>SosAlertDispatcher</c>
-/// records this as <see cref="SafePath.Domain.Enums.SosDeliveryStatus.Queued"/> exactly as it did
-/// for the superseded Twilio implementation (D-10, unchanged). Because
+/// records this as <see cref="SafePath.Domain.Enums.SosDeliveryStatus.Queued"/> for every SMS
+/// send (D-10, unchanged). Because
 /// <see cref="TextBeeWebhookSignatureValidator"/> never validates any inbound callback, a
 /// TextBee-sent row stays at Queued — honestly "sent, unconfirmed" — forever, rather than ever
 /// progressing to Delivered. This is the deliberate migration design, not a regression.
