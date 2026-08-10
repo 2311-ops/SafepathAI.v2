@@ -42,6 +42,15 @@ Deliver Guardian-managed safe zones for family members, reliable native enter/ex
 - Native geofencing package selection, permission flow details, and platform-specific recovery behavior, subject to current Android and iOS policy verification during research.
 - Empty-state wording, visual styling, and loading/error presentation within established app patterns.
 
+### Planning Resolutions (2026-08-10)
+
+These resolutions exercise the discretion above and close the research questions without changing Phase 4 scope:
+
+- **PR-01 — persistence:** Use the normalized relational model from research: zones, recipients, registration generations/acks, candidate state, activities, recipient-owned feed rows, routine push jobs, and quiet-hours settings are separate constrained records. Activity/feed persistence is independent of push success.
+- **PR-02 — authenticated process-death bridge:** Android persists every OS callback synchronously in an app-private native outbox, enqueues unique WorkManager work, and starts a headless Flutter entry point. That entry point initializes Supabase, restores/refreshes the existing persisted session, builds the existing authenticated Dio client, uploads to `POST /geofences/candidates`, and acknowledges the native row only after accepted/duplicate success. No access or refresh token is copied into native storage and no device credential is introduced. If headless auth/network cannot complete, the row remains and the normal cold-relaunch bootstrap drains it after auth restoration.
+- **PR-03 — quiet-hours ownership:** Quiet hours are owned per recipient, disabled by default, editable only by that authenticated recipient, and stored as local start/end plus an IANA time-zone identifier. The server evaluates the current setting on every routine job attempt and computes the next eligible UTC instant. Activity and feed rows are always created immediately; only routine push is deferred. SOS never reads this policy.
+- **PR-04 — iOS acceptance:** Source implementation and Flutter contract tests may run on Windows, but runtime acceptance requires a supported macOS/Xcode environment, a signed physical iPhone, Always-location authorization, and provisioned APNs. Phase 4 remains open if that evidence is unavailable; simulator/source-only evidence cannot close GEO-02 or the iOS half of NOTIF-02.
+
 </decisions>
 
 <canonical_refs>
