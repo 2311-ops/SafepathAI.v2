@@ -1,46 +1,72 @@
 {
   "version": "1.0",
-  "timestamp": "2026-08-02T12:47:44.270Z",
-  "phase": "03",
-  "phase_name": "sos-fast-path",
-  "phase_dir": ".planning/phases/03-sos-fast-path",
-  "plan": 6,
-  "task": 3,
-  "total_tasks": 3,
+  "timestamp": "2026-08-11T17:46:41.019Z",
+  "phase": "04",
+  "phase_name": "geofencing",
+  "phase_dir": "F:/SafepathAI.v2/.planning/phases/04-geofencing",
+  "plan": 3,
+  "task": 0,
+  "total_tasks": 2,
   "status": "paused",
   "completed_tasks": [
-    {"id": "03-01", "name": "Backend SOS session intake — SosSession/SosDeliveryAttempt schema, EF migration applied to Supabase, idempotent TriggerSosCommand + SosController", "status": "done", "commit": "02e26ee"},
-    {"id": "03-02", "name": "Mobile SOS arm button (3s press-hold) → full-screen sender emergency session screen", "status": "done", "commit": "fd6ee28"},
-    {"id": "03-03", "name": "Dedicated AlertHub + broadcast service, SOS-only fan-out dispatcher, acknowledge/cancel/session-status endpoints", "status": "done", "commit": "1530f5f"},
-    {"id": "03-04", "name": "Mobile responder screen (AlertHub client, force-navigation), honest per-recipient/per-channel delivery status", "status": "done", "commit": "58bb4ca"},
-    {"id": "03-05", "name": "Emergency-contact CRUD (E.164 normalized) + SMS fallback via Twilio with signature-validated delivery webhook", "status": "done", "commit": "e64149f"},
-    {"id": "03-06", "name": "FCM push to backgrounded/terminated guardians", "status": "in_progress", "progress": "Task 1/2 of 3 done (backend multi-device token registry + FCM dispatcher arm; mobile push_service.dart with token lifecycle, notification handling, responder deep-link). Task 3 (manual device verification) blocked — see blockers.", "commit": "40d5e0d"}
-  ],
-  "remaining_tasks": [
-    {"id": "03-06-task-3", "name": "Manually verify a real FCM push deep-links into the responder screen from backgrounded AND terminated app states (NOTIF-03 manual gate)", "status": "blocked", "detail": "Requires a provisioned Firebase project (Android + iOS apps registered, google-services.json + GoogleService-Info.plist placed, APNs auth key uploaded, Xcode Push Notifications capability enabled), FIREBASE_PROJECT_ID/GOOGLE_APPLICATION_CREDENTIALS set for the backend, and two physical/emulator devices. Exact 10-step verification script is in 03-06-PLAN.md's Task 3 block and was echoed to the user at pause time."},
-    {"id": "03-07", "name": "Offline SOS handling + background retry", "status": "not_started", "wave": 4, "depends_on": ["03-04", "03-05"], "autonomous": true},
-    {"id": "03-08", "name": "Live location streaming during active SOS", "status": "not_started", "wave": 5, "depends_on": ["03-06", "03-07"], "autonomous": true},
-    {"id": "03-09", "name": "False-alarm cancel + lock-screen quick actions", "status": "not_started", "wave": 6, "depends_on": ["03-08"], "autonomous": false, "note": "checkpoint plan — expect a pause for human verification/decision"}
-  ],
-  "blockers": [
     {
-      "description": "03-06 Task 3 cannot proceed without a real Firebase/APNs project. Nothing is provisioned in this environment (no google-services.json / GoogleService-Info.plist, no FIREBASE_PROJECT_ID). Backend currently falls back to LoggingPushSender and mobile falls back to a caught/logged Firebase.initializeApp failure — both degrade gracefully, but no real push has ever been sent or received.",
-      "type": "human_action",
-      "workaround": "User must: (1) create/confirm a Firebase project with Android + iOS apps registered, (2) place google-services.json in mobile/android/app/ and GoogleService-Info.plist in mobile/ios/Runner/, (3) upload an APNs auth key and enable the Push Notifications capability in Xcode, (4) set FIREBASE_PROJECT_ID/GOOGLE_APPLICATION_CREDENTIALS for the backend and restart it (confirm the startup log names the Firebase push sender, not the logging one), (5) with two devices (or emulator + real device), sign in as a Guardian on device B, background/terminate it, trigger SOS from device A, confirm the heads-up notification arrives and tapping it deep-links into the Responder screen from BOTH backgrounded and terminated states, and confirm device A's delivery chip for device B moves Queued -> Delivered."
+      "id": 1,
+      "name": "Plan 04-02 Task 1 — durable geofencing delivery and quiet-hours records",
+      "status": "done",
+      "commit": "56bc5cc, 513f631"
+    },
+    {
+      "id": 2,
+      "name": "Plan 04-02 Task 2 — generate, inspect, and apply geofencing migration",
+      "status": "done",
+      "commit": "30de0de, 93203c0"
     }
   ],
+  "remaining_tasks": [
+    {
+      "id": 1,
+      "name": "Plan 04-03 Task 1 — persist Android callbacks before Dart and deduplicate them",
+      "status": "not_started"
+    },
+    {
+      "id": 2,
+      "name": "Plan 04-03 Task 2 — register canonical zones through a capability-aware Flutter gateway",
+      "status": "not_started"
+    }
+  ],
+  "blockers": [],
   "async_jobs": [],
   "human_actions_pending": [
-    {"action": "Provision Firebase/APNs project and run the 10-step physical-device verification for 03-06 Task 3 (see blockers above and 03-06-PLAN.md Task 3's user_setup block for the exact script)", "context": "This is the last gate before 03-06 can be marked complete and Wave 4's second plan (03-07) can run — 03-07 does not depend on 03-06 so it CAN run in parallel/before this is resolved if the user prefers to keep moving; 03-08 does depend on 03-06 and must wait.", "blocking": false},
-    {"action": "Correct the requirements-traceability status in .planning/REQUIREMENTS.md before phase verification/milestone close", "context": "SOS-02 (SignalR+FCM+SMS) and SOS-03 (offline queue/retry) were marked [x] Complete by earlier plans' automated requirements.mark-complete step ahead of full delivery. SMS (03-05) has since landed for real; FCM (03-06) is code-complete but NOT manually verified yet (see blocker above); offline retry (03-07) still hasn't been built. Re-check both rows once 03-06 Task 3 and 03-07 land.", "blocking": false}
+    {
+      "action": "Rotate the Supabase database password that was exposed in chat and update the ignored backend/.env file.",
+      "context": "The current local connection is configured, but its password was shared in chat. Do not read, print, commit, or copy backend/.env.",
+      "blocking": false
+    }
   ],
   "decisions": [
-    {"decision": "Approved all 9 new Phase 3 packages exactly as researched", "rationale": "User approved the package-legitimacy checkpoint in 03-01 Task 1 without changes; firebase_core/firebase_messaging/FirebaseAdmin were covered by that approval and were not re-gated in 03-06.", "phase": "03"},
-    {"decision": "03-06's continuation agent added missing Android/iOS platform config (Google Services Gradle plugin, POST_NOTIFICATIONS permission, default FCM channel metadata, iOS UIBackgroundModes) before committing Task 2", "rationale": "The interrupted session's working tree had the Dart/test work done but not yet the native platform wiring the plan's file list required — the continuation agent verified this gap and closed it rather than assuming completeness.", "phase": "03"},
-    {"decision": "Backend and mobile both degrade gracefully with no Firebase project configured (LoggingPushSender / caught Firebase.initializeApp failure)", "rationale": "Matches the zero-cost-default/conditional-registration pattern already established for the SMS gateway in 03-05 — lets the rest of the phase proceed without blocking on Firebase provisioning.", "phase": "03"},
-    {"decision": "Two provider session/quota interruptions this session (during 03-03 and 03-06) were both resolved by spawning a continuation agent from the last committed task boundary, not by retrying the whole plan", "rationale": "Standard recoverable event per the execute-phase workflow's quota-exceeded failure class — verify committed state via git log first, then continue from there.", "phase": "03"}
+    {
+      "decision": "Use local toolchain paths on F drive",
+      "rationale": "The required .NET SDK 9.0.316 is installed at F:/DevTools/dotnet and dotnet-ef 9.0.9 at F:/DevTools/dotnet-tools.",
+      "phase": "04"
+    },
+    {
+      "decision": "Keep Six Labors license and database configuration local only",
+      "rationale": "sixlabors.lic and backend/.env are present locally and ignored by Git; neither may be committed or displayed.",
+      "phase": "04"
+    },
+    {
+      "decision": "Finish Plan 04-02 before pausing",
+      "rationale": "The user requested a clean persistence/migration boundary before the handoff.",
+      "phase": "04"
+    }
   ],
-  "uncommitted_files": [],
-  "next_action": "Two independent paths forward: (A) Resolve 03-06 Task 3's Firebase/APNs setup and physical-device verification (human-owned, see blockers), then spawn a continuation agent to write 03-06-SUMMARY.md and close the plan. (B) Since 03-07 depends only on 03-04+03-05 (not 03-06), it can be started in parallel by running /gsd-execute-phase 03 — but note the project's sequential/no-worktree config means only one executor runs at a time, so choose which to prioritize. 03-08 must wait for both 03-06 (fully closed) and 03-07.",
-  "context_notes": "Phase 3 is 5.67/9 plans deep. 03-06 is the phase's first plan that hits a checkpoint requiring genuinely external, human-only setup (a real cloud project + physical hardware) rather than something automatable or a quick approval — expect the same shape of pause again at 03-09 (the phase's other autonomous:false plan), though its trigger is unknown until reached. All code for 03-06 Tasks 1-2 is committed, tested, and believed correct; only the human verification step remains open."
+  "uncommitted_files": [
+    ".planning/STATE.md (pre-existing workflow tracking)",
+    ".planning/config.json (pre-existing workflow tracking)",
+    "mobile/android/app/build.gradle.kts (user change)",
+    "mobile/android/build.gradle.kts (user change)",
+    "mobile/pubspec.yaml (user change)"
+  ],
+  "next_action": "Resume Phase 04 at Plan 04-03. Read the plan and 04-02 summary, then implement the Android native receiver/outbox and Flutter registration gateway without changing SOS declarations or touching local secret files.",
+  "context_notes": "Plan 04-02 is complete. Migration 20260811173100_AddGeofencing was applied successfully; EF reports no pending model changes; focused schema tests passed 2/2 and the backend suite passed 192/192. No servers or async jobs are running."
 }
