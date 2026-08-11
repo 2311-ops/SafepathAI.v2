@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 4
 current_phase_name: Geofencing
 status: verifying
-stopped_at: "Completed quick task 260811-440: Fix touch target, token style, and empty states in ManagePermissionsScreen"
-last_updated: "2026-08-11T00:09:04.570Z"
+stopped_at: "Completed quick task 260811-5oo: Show member names instead of role labels; collapse Privacy Center to one shared control"
+last_updated: "2026-08-11T01:20:00.000Z"
 last_activity: 2026-08-11
-last_activity_desc: "Completed quick task 260811-440: Fix touch target, token style, and empty states in ManagePermissionsScreen"
+last_activity_desc: "Completed quick task 260811-5oo: Show member names instead of role labels; collapse Privacy Center to one shared control"
 progress:
   total_phases: 8
   completed_phases: 4
@@ -232,6 +232,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260810-vcf | Migrated the emergency-contact SMS fallback channel from Twilio to TextBee: new TextBeeSmsGateway/TextBeeOptions/TextBeeWebhookSignatureValidator behind the unchanged ISmsGateway seam, all Twilio references removed from backend/src and backend/tests, docs/EXTERNAL-SETUP.md and STATE.md updated for TextBee provisioning | 2026-08-10 | 2bc4367, b3f5ebe, 047b1b1 | | [260810-vcf-migrate-sms-gateway-from-twilio-to-textb](./quick/260810-vcf-migrate-sms-gateway-from-twilio-to-textb/) |
 | 260811-3jq | Restored the Invite/Permissions entry points that went missing when MainShell superseded the dead Phase-1 LandingStubScreen: added the same Guardian-gated IconButtons (person_add_alt_1 -> /circle/invite, tune -> /circle/permissions) to PrivacyCenterScreen's populated-state AppBar, reusing the stub's isGuardian gating logic verbatim | 2026-08-11 | 4c4073c | | [260811-3jq-add-missing-invite-permissions-entry-poi](./quick/260811-3jq-add-missing-invite-permissions-entry-poi/) |
 | 260811-440 | ui-ux-pro-max checklist pass on ManagePermissionsScreen: expanded the "Remove from circle" tap target to >=44pt, replaced its hardcoded TextStyle with the AppTypography.bodySecondary token, and gave both empty states (no circle / just you) the icon+title+body pattern already used by PrivacyCenterScreen and InviteMemberScreen | 2026-08-11 | 30474ad | | [260811-440-fix-touch-target-token-style-and-empty-s](./quick/260811-440-fix-touch-target-token-style-and-empty-s/) |
+| 260811-5oo | ManagePermissionsScreen member cards now show the person's displayName instead of the literal role word; PrivacyCenterScreen's per-recipient sharing matrix collapsed into one shared _SharedSharingControls card ("Your family") whose toggles/presets loop over every recipient via the existing per-recipient toggle/startTemporaryShare API | 2026-08-11 | c3f3005 | | [260811-5oo-show-member-names-instead-of-role-labels](./quick/260811-5oo-show-member-names-instead-of-role-labels/) |
 
 ## Deferred Items
 
