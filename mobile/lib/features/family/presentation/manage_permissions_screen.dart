@@ -128,6 +128,13 @@ class ManagePermissionsScreen extends ConsumerWidget {
             : ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
+                  Text('Permissions', style: AppTypography.heading),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Control what each family member can see and do',
+                    style: AppTypography.bodySecondary,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
                   for (final member in otherMembers)
                     Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -185,34 +192,28 @@ class ManagePermissionsScreen extends ConsumerWidget {
                               ],
                             ),
                             const SizedBox(height: AppSpacing.xsMd),
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: SegmentedButton<PermissionLevel>(
-                                segments: const [
-                                  ButtonSegment(
-                                    value: PermissionLevel.viewOnly,
-                                    label: Text('View only'),
+                            Column(
+                              children: [
+                                for (final level in PermissionLevel.values)
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      bottom: level == PermissionLevel.values.last
+                                          ? 0
+                                          : AppSpacing.sm,
+                                    ),
+                                    child: _PermissionLevelRow(
+                                      level: level,
+                                      selected: level == member.permission,
+                                      onTap: () => ref
+                                          .read(familyControllerProvider.notifier)
+                                          .updatePermission(
+                                            familyId,
+                                            member.memberId,
+                                            level,
+                                          ),
+                                    ),
                                   ),
-                                  ButtonSegment(
-                                    value: PermissionLevel.fullLocation,
-                                    label: Text('Full location'),
-                                  ),
-                                  ButtonSegment(
-                                    value: PermissionLevel.notificationOnly,
-                                    label: Text('Notifications'),
-                                  ),
-                                ],
-                                selected: {member.permission},
-                                onSelectionChanged: (selection) {
-                                  ref
-                                      .read(familyControllerProvider.notifier)
-                                      .updatePermission(
-                                        familyId,
-                                        member.memberId,
-                                        selection.first,
-                                      );
-                                },
-                              ),
+                              ],
                             ),
                           ],
                         ),
@@ -220,6 +221,73 @@ class ManagePermissionsScreen extends ConsumerWidget {
                     ),
                 ],
               ),
+      ),
+    );
+  }
+}
+
+/// Icon glyph for each [PermissionLevel], used by [_PermissionLevelRow].
+IconData _iconForPermissionLevel(PermissionLevel level) {
+  switch (level) {
+    case PermissionLevel.viewOnly:
+      return Icons.visibility_outlined;
+    case PermissionLevel.fullLocation:
+      return Icons.location_on_outlined;
+    case PermissionLevel.notificationOnly:
+      return Icons.notifications_outlined;
+  }
+}
+
+/// A single, always-full-width, tappable permission-level row. Replaces the
+/// previous `SegmentedButton`, which truncated its labels under
+/// horizontal-scroll layout pressure.
+class _PermissionLevelRow extends StatelessWidget {
+  const _PermissionLevelRow({
+    required this.level,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final PermissionLevel level;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xsMd,
+        ),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: selected ? AppColors.primaryTeal : AppColors.surface,
+          border: selected ? null : Border.all(color: AppColors.hairline),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              _iconForPermissionLevel(level),
+              size: 20,
+              color: selected ? AppColors.surface : AppColors.ink,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                level.label,
+                style: AppTypography.body.copyWith(
+                  color: selected ? AppColors.surface : AppColors.ink,
+                ),
+              ),
+            ),
+            if (selected)
+              const Icon(Icons.check, color: AppColors.surface, size: 20),
+          ],
+        ),
       ),
     );
   }
