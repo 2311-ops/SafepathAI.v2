@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 4
 current_phase_name: Geofencing
 status: verifying
-stopped_at: "Completed quick task 260811-5oo: Show member names instead of role labels; collapse Privacy Center to one shared control"
-last_updated: "2026-08-11T01:20:00.000Z"
+stopped_at: "Completed quick task 260811-65q: Redesigned Manage Permissions screen (vertical permission-row selector, avatar+badge member cards, overflow-menu remove)"
+last_updated: "2026-08-11T01:43:53.299Z"
 last_activity: 2026-08-11
-last_activity_desc: "Completed quick task 260811-5oo: Show member names instead of role labels; collapse Privacy Center to one shared control"
+last_activity_desc: "Completed quick task 260811-65q: Redesigned Manage Permissions screen (vertical permission-row selector, avatar+badge member cards, overflow-menu remove)"
 progress:
   total_phases: 8
   completed_phases: 4
@@ -94,6 +94,7 @@ Progress: [██████████] 100%
 | Phase 03-sos-fast-path P09 | multi-session | 3 tasks | 12 files |
 | Phase quick-260811-3jq P01 | 15min | 1 tasks | 2 files |
 | Phase quick-260811-440 P01 | 12min | 1 tasks | 1 files |
+| Phase quick-260811-65q P01 | 20min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -188,6 +189,7 @@ Recent decisions affecting current work:
 - [Phase 03-09]: Cancellation is additive-only (never mutates/deletes SosDeliveryAttempt rows) and the quick_actions shortcut reuses SosController.arm() verbatim, registered only while authenticated.
 - [Phase 03-09]: Fixed a real bug found during Task 3 manual verification: SosLiveLocationService now reports a best-effort one-shot GPS fix on start() so a stationary sender's live location no longer waits on movement (see 03-09-SUMMARY.md).
 - [Phase ?]: [Quick 260811-440]: Fixed ManagePermissionsScreen's Remove-from-circle touch target (InkWell borderRadius + Padding) and token style (AppTypography.bodySecondary.copyWith), and added icon+title+body empty states matching privacy_center_screen.dart/invite_member_screen.dart sibling patterns.
+- [Phase ?]: [Quick 260811-65q]: Redesigned ManagePermissionsScreen's permission selector into a vertical, always-full-width _PermissionLevelRow Column (fixes SegmentedButton label truncation); added ProfileAvatar + capitalized-name + permission-label badge to member cards; moved Remove-from-circle behind a PopupMenuButton overflow menu (unchanged _confirmRemove flow).
 
 ### Pending Todos
 
@@ -233,6 +235,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260811-3jq | Restored the Invite/Permissions entry points that went missing when MainShell superseded the dead Phase-1 LandingStubScreen: added the same Guardian-gated IconButtons (person_add_alt_1 -> /circle/invite, tune -> /circle/permissions) to PrivacyCenterScreen's populated-state AppBar, reusing the stub's isGuardian gating logic verbatim | 2026-08-11 | 4c4073c | | [260811-3jq-add-missing-invite-permissions-entry-poi](./quick/260811-3jq-add-missing-invite-permissions-entry-poi/) |
 | 260811-440 | ui-ux-pro-max checklist pass on ManagePermissionsScreen: expanded the "Remove from circle" tap target to >=44pt, replaced its hardcoded TextStyle with the AppTypography.bodySecondary token, and gave both empty states (no circle / just you) the icon+title+body pattern already used by PrivacyCenterScreen and InviteMemberScreen | 2026-08-11 | 30474ad | | [260811-440-fix-touch-target-token-style-and-empty-s](./quick/260811-440-fix-touch-target-token-style-and-empty-s/) |
 | 260811-5oo | ManagePermissionsScreen member cards now show the person's displayName instead of the literal role word; PrivacyCenterScreen's per-recipient sharing matrix collapsed into one shared _SharedSharingControls card ("Your family") whose toggles/presets loop over every recipient via the existing per-recipient toggle/startTemporaryShare API | 2026-08-11 | c3f3005 | | [260811-5oo-show-member-names-instead-of-role-labels](./quick/260811-5oo-show-member-names-instead-of-role-labels/) |
+| 260811-65q | Redesigned ManagePermissionsScreen's permission selector into a vertical, always-full-width row list (fixes SegmentedButton truncation), added ProfileAvatar + capitalized-name + permission-label badge to member cards, and moved Remove-from-circle behind a PopupMenuButton overflow menu | 2026-08-11 | b5f5d79, ca2df9d | | [260811-65q-redesign-manage-permissions-screen-fix-t](./quick/260811-65q-redesign-manage-permissions-screen-fix-t/) |
 
 ## Deferred Items
 
@@ -244,6 +247,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-11T00:09:04.553Z
-Stopped at: Completed quick task 260811-440: Fix touch target, token style, and empty states in ManagePermissionsScreen
+Last session: 2026-08-11T01:43:53.285Z
+Stopped at: Completed quick task 260811-65q: Redesigned Manage Permissions screen (vertical permission-row selector, avatar+badge member cards, overflow-menu remove)
 Resume file: .planning/phases/04-geofencing/04-01-PLAN.md
