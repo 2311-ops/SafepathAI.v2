@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared_widgets/profile_avatar.dart';
 import '../../../shared_widgets/safepath_card.dart';
 import '../../auth/data/auth_api.dart';
 import '../application/family_controller.dart';
@@ -54,6 +55,13 @@ class ManagePermissionsScreen extends ConsumerWidget {
     await ref
         .read(familyControllerProvider.notifier)
         .removeMember(familyId, member.memberId);
+  }
+
+  /// Display-only capitalization defense — does not mutate
+  /// [FamilyMemberView.displayName] or any other stored/model field.
+  String _capitalized(String value) {
+    if (value.isEmpty) return value;
+    return value[0].toUpperCase() + value.substring(1);
   }
 
   @override
@@ -135,7 +143,7 @@ class ManagePermissionsScreen extends ConsumerWidget {
                     style: AppTypography.bodySecondary,
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  for (final member in otherMembers)
+                  for (final (index, member) in otherMembers.indexed)
                     Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.md),
                       child: SafePathCard(
@@ -143,53 +151,94 @@ class ManagePermissionsScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
+                            Builder(
+                              builder: (context) {
+                                final resolvedName =
                                     (member.displayName?.isNotEmpty ?? false)
-                                        ? member.displayName!
-                                        : member.role.wireValue,
-                                    style: AppTypography.title,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                InkWell(
-                                  onTap: () => _confirmRemove(
-                                    context,
-                                    ref,
-                                    familyId,
-                                    member,
-                                    circleName,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                      horizontal: 8,
+                                    ? member.displayName!
+                                    : member.role.wireValue;
+                                final capitalizedName = _capitalized(
+                                  resolvedName,
+                                );
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    ProfileAvatar(
+                                      userId: member.userId,
+                                      label: capitalizedName,
+                                      size: 44,
+                                      identityColor: index.isEven
+                                          ? AppColors.memberViolet
+                                          : AppColors.memberPink,
                                     ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.person_remove,
-                                          color: AppColors.sosRedDeep,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: AppSpacing.xs),
-                                        Text(
-                                          'Remove from circle',
-                                          style: AppTypography.bodySecondary
-                                              .copyWith(
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            capitalizedName,
+                                            style: AppTypography.title,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: AppSpacing.xs),
+                                          Text(
+                                            member.permission.label,
+                                            style: AppTypography.bodySecondary,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    PopupMenuButton<String>(
+                                      icon: const Icon(
+                                        Icons.more_vert,
+                                        color: AppColors.bodySecondary,
+                                      ),
+                                      onSelected: (value) {
+                                        if (value == 'remove') {
+                                          _confirmRemove(
+                                            context,
+                                            ref,
+                                            familyId,
+                                            member,
+                                            circleName,
+                                          );
+                                        }
+                                      },
+                                      itemBuilder: (context) => [
+                                        PopupMenuItem(
+                                          value: 'remove',
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.person_remove,
                                                 color: AppColors.sosRedDeep,
-                                                fontWeight: FontWeight.w600,
+                                                size: 18,
                                               ),
+                                              const SizedBox(
+                                                width: AppSpacing.xs,
+                                              ),
+                                              Text(
+                                                'Remove from circle',
+                                                style: AppTypography
+                                                    .bodySecondary
+                                                    .copyWith(
+                                                      color:
+                                                          AppColors.sosRedDeep,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                ),
-                              ],
+                                  ],
+                                );
+                              },
                             ),
                             const SizedBox(height: AppSpacing.xsMd),
                             Column(
@@ -197,7 +246,8 @@ class ManagePermissionsScreen extends ConsumerWidget {
                                 for (final level in PermissionLevel.values)
                                   Padding(
                                     padding: EdgeInsets.only(
-                                      bottom: level == PermissionLevel.values.last
+                                      bottom:
+                                          level == PermissionLevel.values.last
                                           ? 0
                                           : AppSpacing.sm,
                                     ),
@@ -205,7 +255,9 @@ class ManagePermissionsScreen extends ConsumerWidget {
                                       level: level,
                                       selected: level == member.permission,
                                       onTap: () => ref
-                                          .read(familyControllerProvider.notifier)
+                                          .read(
+                                            familyControllerProvider.notifier,
+                                          )
                                           .updatePermission(
                                             familyId,
                                             member.memberId,
