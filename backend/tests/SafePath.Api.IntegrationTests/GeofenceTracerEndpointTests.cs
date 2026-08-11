@@ -112,6 +112,38 @@ public sealed class GeofenceTracerEndpointTests : IClassFixture<FamilyApiFactory
         Assert.Equal(HttpStatusCode.Forbidden, outsiderRegistration.StatusCode);
     }
 
+    [Fact]
+    public async Task Candidate_RejectsWrongMemberStaleGenerationAndInactiveRegistration()
+    {
+        var family = await SeedFamilyAsync();
+        var guardian = CreateClientAs(family.GuardianUserId);
+        var create = await guardian.PostAsJsonAsync($"/families/{family.FamilyId}/geofences", new
+        {
+            Category = "Home", Latitude = 30.0444, Longitude = 31.2357, RadiusMeters = 150.0,
+            AssignedMemberUserId = family.MemberUserId, Sensitivity = "Balanced",
+            RecipientUserIds = new[] { family.GuardianUserId }, NotifyAssignedMember = true,
+        });
+        using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
+        var zoneId = created.RootElement.GetProperty("zoneId").GetGuid();
+
+        var candidate = new { EventId = Guid.NewGuid(), ZoneId = zoneId, RegistrationGeneration = 1, Transition = "Exit", OccurredAtUtc = DateTime.UtcNow, Latitude = 30.0444, Longitude = 31.2357, AccuracyMeters = 5.0 };
+        var wrongMember = await guardian.PostAsJsonAsync("/geofences/candidates", candidate);
+        Assert.Equal(HttpStatusCode.Forbidden, wrongMember.StatusCode);
+
+        var member = CreateClientAs(family.MemberUserId);
+        var stale = await member.PostAsJsonAsync("/geofences/candidates", new { candidate.EventId, candidate.ZoneId, RegistrationGeneration = 2, candidate.Transition, candidate.OccurredAtUtc, candidate.Latitude, candidate.Longitude, candidate.AccuracyMeters });
+        Assert.Equal(HttpStatusCode.BadRequest, stale.StatusCode);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            db.FamilyMembers.Single(row => row.FamilyId == family.FamilyId && row.UserId == family.MemberUserId).IsActive = false;
+            await db.SaveChangesAsync();
+        }
+        var inactive = await member.PostAsJsonAsync("/geofences/candidates", candidate);
+        Assert.Equal(HttpStatusCode.Forbidden, inactive.StatusCode);
+    }
+
     private HttpClient CreateClientAs(Guid userId)
     {
         var client = _factory.CreateClient();
