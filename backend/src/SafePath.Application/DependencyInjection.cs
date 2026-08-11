@@ -7,6 +7,7 @@ using SafePath.Application.Location;
 using SafePath.Application.Profile;
 using SafePath.Application.Privacy;
 using SafePath.Application.Sos;
+using SafePath.Application.Geofencing;
 
 namespace SafePath.Application;
 
@@ -64,6 +65,10 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<RegisterDeviceTokenCommand, RegisterDeviceTokenResult>, RegisterDeviceTokenCommandHandler>();
         services.AddScoped<ICommandHandler<RemoveDeviceTokenCommand, bool>, RemoveDeviceTokenCommandHandler>();
         services.AddScoped<ICommandHandler<ConfirmPushReceiptCommand, ConfirmPushReceiptResult>, ConfirmPushReceiptCommandHandler>();
+        services.AddScoped<ICommandHandler<CreateSafeZoneCommand, CreateSafeZoneResult>, CreateSafeZoneCommandHandler>();
+        services.AddScoped<ICommandHandler<GetMySafeZoneRegistrationQuery, SafeZoneRegistrationDto?>, GetMySafeZoneRegistrationQueryHandler>();
+        services.AddScoped<ICommandHandler<AcknowledgeSafeZoneRegistrationCommand, bool>, AcknowledgeSafeZoneRegistrationCommandHandler>();
+        services.AddScoped<ICommandHandler<SubmitGeofenceCandidateCommand, SubmitGeofenceCandidateResult>, SubmitGeofenceCandidateCommandHandler>();
 
         return services;
     }
