@@ -140,7 +140,9 @@ class ManagePermissionsScreen extends ConsumerWidget {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    member.role.wireValue,
+                                    (member.displayName?.isNotEmpty ?? false)
+                                        ? member.displayName!
+                                        : member.role.wireValue,
                                     style: AppTypography.title,
                                     overflow: TextOverflow.ellipsis,
                                   ),
