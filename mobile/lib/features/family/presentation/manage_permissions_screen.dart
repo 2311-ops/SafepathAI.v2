@@ -70,15 +70,58 @@ class ManagePermissionsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Permissions')),
       body: SafeArea(
         child: familyId == null
-            ? const Center(child: Text('No circle yet.'))
+            ? Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.group_off,
+                        size: 44,
+                        color: AppColors.bodySecondary,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        'No circle yet',
+                        style: AppTypography.heading,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'Managing permissions needs an active family circle.',
+                        textAlign: TextAlign.center,
+                        style: AppTypography.bodySecondary,
+                      ),
+                    ],
+                  ),
+                ),
+              )
             : otherMembers.isEmpty
             ? Padding(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Center(
-                  child: Text(
-                    'Just you so far',
-                    style: AppTypography.title,
-                    textAlign: TextAlign.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.diversity_3,
+                        size: 48,
+                        color: AppColors.bodySecondary,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        'Just you so far',
+                        style: AppTypography.title,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'Invite a family member to manage their permissions here.',
+                        textAlign: TextAlign.center,
+                        style: AppTypography.bodySecondary,
+                      ),
+                    ],
                   ),
                 ),
               )
@@ -110,24 +153,31 @@ class ManagePermissionsScreen extends ConsumerWidget {
                                     member,
                                     circleName,
                                   ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.person_remove,
-                                        color: AppColors.sosRedDeep,
-                                        size: 18,
-                                      ),
-                                      SizedBox(width: AppSpacing.xs),
-                                      Text(
-                                        'Remove from circle',
-                                        style: TextStyle(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                      horizontal: 8,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.person_remove,
                                           color: AppColors.sosRedDeep,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13,
+                                          size: 18,
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(width: AppSpacing.xs),
+                                        Text(
+                                          'Remove from circle',
+                                          style: AppTypography.bodySecondary
+                                              .copyWith(
+                                                color: AppColors.sosRedDeep,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],
