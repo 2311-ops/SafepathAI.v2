@@ -48,8 +48,8 @@
 
 ### Geofencing (GEO)
 
-- [ ] **GEO-01**: Guardian can create a safe zone (Home, School, University, Workplace) with a defined radius
-- [ ] **GEO-02**: User/guardian receives enter/exit notifications for a safe zone, using native OS geofencing APIs with dwell-time/hysteresis to prevent GPS-drift false positives
+- [x] **GEO-01**: Guardian can create a safe zone (Home, School, University, Workplace) with a defined radius
+- [x] **GEO-02**: User/guardian receives enter/exit notifications for a safe zone, using native OS geofencing APIs with dwell-time/hysteresis to prevent GPS-drift false positives
 - [ ] **GEO-03**: User can view a zone activity log per geofence
 
 ### Emergency SOS System (SOS)
@@ -206,8 +206,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SOS-06 | Phase 3 | Complete |
 | NOTIF-03 | Phase 3 | Complete |
 | DESIGN-02 | Phase 3 | Complete |
-| GEO-01 | Phase 4 | Pending |
-| GEO-02 | Phase 4 | Pending |
+| GEO-01 | Phase 4 | Complete |
+| GEO-02 | Phase 4 | Complete |
 | GEO-03 | Phase 4 | Pending |
 | NOTIF-02 | Phase 4 | Pending |
 | AI-01 | Phase 5 | Pending |
