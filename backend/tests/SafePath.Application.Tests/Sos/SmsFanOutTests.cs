@@ -193,49 +193,102 @@ public class SmsFanOutTests : IDisposable
     }
 
     [Fact]
-    public async Task TextBeeSmsGateway_SendsTheExpectedRequestShapeAndExtractsTheProviderMessageId()
+    public async Task WhatsAppSmsGateway_SendsATemplateMessageAndExtractsTheMessageId()
     {
         var captured = new List<HttpRequestMessage>();
-        var handler = new CapturingHttpMessageHandler(captured, () =>
+        var capturedBodies = new List<string>();
+        var handler = new CapturingHttpMessageHandler(captured, capturedBodies, () =>
         {
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = JsonContent.Create(new { success = true, data = new { _id = "abc123" } }),
+                Content = JsonContent.Create(new { messaging_product = "whatsapp", messages = new[] { new { id = "wamid.TEST" } } }),
             };
             return response;
         });
 
-        var gateway = new SafePath.Infrastructure.Sms.TextBeeSmsGateway(
-            new HttpClient(handler) { BaseAddress = new Uri("https://api.textbee.dev/") },
-            new SafePath.Infrastructure.Sms.TextBeeOptions { ApiKey = "test-key", DeviceId = "test-device" },
-            NullLogger<SafePath.Infrastructure.Sms.TextBeeSmsGateway>.Instance);
+        var gateway = new SafePath.Infrastructure.Sms.WhatsAppSmsGateway(
+            new HttpClient(handler) { BaseAddress = new Uri("https://graph.facebook.com/") },
+            new SafePath.Infrastructure.Sms.WhatsAppOptions
+            {
+                AccessToken = "test-token",
+                PhoneNumberId = "test-phone-number-id",
+                TemplateName = "sos_alert",
+                TemplateLanguage = "en",
+                ApiVersion = "v22.0",
+            },
+            NullLogger<SafePath.Infrastructure.Sms.WhatsAppSmsGateway>.Instance);
 
         var result = await gateway.SendAsync("+12025550182", "test body");
 
         var request = Assert.Single(captured);
         Assert.Equal(HttpMethod.Post, request.Method);
-        Assert.Contains("test-device", request.RequestUri!.AbsolutePath);
-        Assert.EndsWith("/send-sms", request.RequestUri!.AbsolutePath);
-        Assert.True(request.Headers.TryGetValues("x-api-key", out var apiKeyValues));
-        Assert.Equal("test-key", Assert.Single(apiKeyValues!));
-        Assert.Equal("abc123", result.ProviderMessageId);
+        Assert.Contains("test-phone-number-id", request.RequestUri!.AbsolutePath);
+        Assert.EndsWith("/messages", request.RequestUri!.AbsolutePath);
+        Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
+        Assert.Equal("test-token", request.Headers.Authorization?.Parameter);
+        Assert.Equal("wamid.TEST", result.ProviderMessageId);
+    }
+
+    [Fact]
+    public async Task WhatsAppSmsGateway_NormalizesWhitespaceInTheTemplateParameter()
+    {
+        var captured = new List<HttpRequestMessage>();
+        var capturedBodies = new List<string>();
+        var handler = new CapturingHttpMessageHandler(captured, capturedBodies, () =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(new { messaging_product = "whatsapp", messages = new[] { new { id = "wamid.TEST" } } }),
+            };
+            return response;
+        });
+
+        var gateway = new SafePath.Infrastructure.Sms.WhatsAppSmsGateway(
+            new HttpClient(handler) { BaseAddress = new Uri("https://graph.facebook.com/") },
+            new SafePath.Infrastructure.Sms.WhatsAppOptions
+            {
+                AccessToken = "test-token",
+                PhoneNumberId = "test-phone-number-id",
+                TemplateName = "sos_alert",
+                TemplateLanguage = "en",
+                ApiVersion = "v22.0",
+            },
+            NullLogger<SafePath.Infrastructure.Sms.WhatsAppSmsGateway>.Instance);
+
+        await gateway.SendAsync("+12025550182", "Line one\nLine two\twith a\t\ttab and    spaces");
+
+        var body = Assert.Single(capturedBodies);
+        Assert.DoesNotContain('\n', body);
+        Assert.DoesNotContain('\t', body);
     }
 
     private sealed class CapturingHttpMessageHandler : HttpMessageHandler
     {
         private readonly List<HttpRequestMessage> _captured;
+        private readonly List<string>? _capturedBodies;
         private readonly Func<HttpResponseMessage> _responseFactory;
 
         public CapturingHttpMessageHandler(List<HttpRequestMessage> captured, Func<HttpResponseMessage> responseFactory)
+            : this(captured, null, responseFactory)
+        {
+        }
+
+        public CapturingHttpMessageHandler(List<HttpRequestMessage> captured, List<string>? capturedBodies, Func<HttpResponseMessage> responseFactory)
         {
             _captured = captured;
+            _capturedBodies = capturedBodies;
             _responseFactory = responseFactory;
         }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             _captured.Add(request);
-            return Task.FromResult(_responseFactory());
+            if (_capturedBodies is not null && request.Content is not null)
+            {
+                _capturedBodies.Add(await request.Content.ReadAsStringAsync(cancellationToken));
+            }
+
+            return _responseFactory();
         }
     }
 

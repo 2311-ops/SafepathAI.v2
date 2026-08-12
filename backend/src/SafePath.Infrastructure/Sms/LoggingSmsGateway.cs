@@ -4,10 +4,10 @@ using SafePath.Application.Common.Interfaces;
 namespace SafePath.Infrastructure.Sms;
 
 /// <summary>
-/// Zero-cost default <see cref="ISmsGateway"/> implementation, registered whenever TextBee
-/// credentials are absent (D-07). Sends nothing; logs the destination (redacted to its last
-/// four digits, threat T-03-21) and body at Information level and returns a synthetic message
-/// id, so the whole SOS pipeline is exercisable with no account and no cost.
+/// Zero-cost default <see cref="ISmsGateway"/> implementation, registered whenever WhatsApp
+/// Business Cloud API credentials are absent (D-07). Sends nothing; logs the destination
+/// (redacted to its last four digits, threat T-03-21) and body at Information level and returns
+/// a synthetic message id, so the whole SOS pipeline is exercisable with no account and no cost.
 /// </summary>
 public class LoggingSmsGateway : ISmsGateway
 {

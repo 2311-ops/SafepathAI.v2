@@ -58,36 +58,42 @@ public static class DependencyInjection
             }
         });
 
-        var textBeeOptions = new TextBeeOptions
+        var whatsAppOptions = new WhatsAppOptions
         {
-            ApiKey = configuration["TextBee:ApiKey"],
-            DeviceId = configuration["TextBee:DeviceId"],
-            BaseUrl = configuration["TextBee:BaseUrl"] ?? "https://api.textbee.dev",
+            AccessToken = configuration["WhatsApp:AccessToken"],
+            PhoneNumberId = configuration["WhatsApp:PhoneNumberId"],
+            WabaId = configuration["WhatsApp:WabaId"],
+            AppSecret = configuration["WhatsApp:AppSecret"],
+            WebhookVerifyToken = configuration["WhatsApp:WebhookVerifyToken"],
+            TemplateName = configuration["WhatsApp:TemplateName"] ?? "sos_alert",
+            TemplateLanguage = configuration["WhatsApp:TemplateLanguage"] ?? "en",
+            BaseUrl = configuration["WhatsApp:BaseUrl"] ?? "https://graph.facebook.com",
+            ApiVersion = configuration["WhatsApp:ApiVersion"] ?? "v22.0",
         };
-        services.AddSingleton(textBeeOptions);
+        services.AddSingleton(whatsAppOptions);
 
-        // The default with no TextBee configuration present is LoggingSmsGateway (D-07) — a
-        // fresh clone builds, tests, and demos the whole SOS pipeline with no TextBee gateway
-        // device and no cost. Logged once here (a throwaway bootstrap logger, since the DI
+        // The default with no WhatsApp configuration present is LoggingSmsGateway (D-07) — a
+        // fresh clone builds, tests, and demos the whole SOS pipeline with no WhatsApp Business
+        // account and no cost. Logged once here (a throwaway bootstrap logger, since the DI
         // container has not been built yet at this point) so the operator is never confused
         // about why no real SMS arrived.
         using (var bootstrapLoggerFactory = LoggerFactory.Create(builder => builder.AddConsole()))
         {
             var bootstrapLogger = bootstrapLoggerFactory.CreateLogger("SafePath.Infrastructure.Sms");
-            if (textBeeOptions.IsConfigured)
+            if (whatsAppOptions.IsConfigured)
             {
-                bootstrapLogger.LogInformation("SMS gateway active: TextBeeSmsGateway (TextBee credentials configured).");
+                bootstrapLogger.LogInformation("SMS gateway active: WhatsAppSmsGateway (WhatsApp credentials configured).");
             }
             else
             {
-                bootstrapLogger.LogInformation("SMS gateway active: LoggingSmsGateway (no TextBee credentials configured — SMS sends are logged only, never sent).");
+                bootstrapLogger.LogInformation("SMS gateway active: LoggingSmsGateway (no WhatsApp credentials configured — SMS sends are logged only, never sent).");
             }
         }
 
-        if (textBeeOptions.IsConfigured)
+        if (whatsAppOptions.IsConfigured)
         {
-            services.AddHttpClient<ISmsGateway, TextBeeSmsGateway>(client =>
-                client.BaseAddress = new Uri(textBeeOptions.BaseUrl.TrimEnd('/') + "/"));
+            services.AddHttpClient<ISmsGateway, WhatsAppSmsGateway>(client =>
+                client.BaseAddress = new Uri(whatsAppOptions.BaseUrl.TrimEnd('/') + "/"));
         }
         else
         {

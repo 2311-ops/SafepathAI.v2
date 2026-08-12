@@ -1,9 +1,10 @@
 namespace SafePath.Application.Common.Interfaces;
 
 /// <summary>
-/// Provider-agnostic SMS seam — keeps TextBee (or any provider) entirely out of the Application
-/// layer. Implemented in Infrastructure by <c>LoggingSmsGateway</c> (zero-cost default) and
-/// <c>TextBeeSmsGateway</c> (registered only when TextBee credentials are configured).
+/// Provider-agnostic SMS seam — keeps the WhatsApp Business Cloud API (or any provider) entirely
+/// out of the Application layer. Implemented in Infrastructure by <c>LoggingSmsGateway</c>
+/// (zero-cost default) and <c>WhatsAppSmsGateway</c> (registered only when WhatsApp credentials
+/// are configured).
 /// </summary>
 public interface ISmsGateway
 {
