@@ -8,6 +8,7 @@ import 'app.dart';
 import 'core/config/supabase_config.dart';
 import 'core/os_shortcuts/quick_actions_service.dart';
 import 'core/push/push_service.dart';
+import 'features/geofencing/data/geofence_candidate_uploader.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,13 +26,15 @@ Future<void> main() async {
     // default). The FCM channel simply stays inactive until Task 3's human
     // Firebase setup is done; PushServiceController below also guards its
     // own calls so this never crashes app startup.
-    debugPrint('Firebase.initializeApp failed (no Firebase project configured yet?): $error');
+    debugPrint(
+      'Firebase.initializeApp failed (no Firebase project configured yet?): $error',
+    );
   }
 
-  await Supabase.initialize(
-    url: supabaseUrl,
-    publishableKey: supabaseAnonKey,
-  );
+  await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseAnonKey);
+  // A killed-process geofence callback remains in native storage until this
+  // authenticated cold-relaunch drain receives accepted/duplicate from the API.
+  await drainGeofenceCandidatesAfterAuthRestoration();
 
   final container = ProviderContainer();
   // Bootstraps the FCM token lifecycle (register on sign-in, remove on
