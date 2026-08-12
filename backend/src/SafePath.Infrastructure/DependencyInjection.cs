@@ -100,7 +100,8 @@ public static class DependencyInjection
             services.AddScoped<ISmsGateway, LoggingSmsGateway>();
         }
 
-        services.AddScoped<ISmsWebhookSignatureValidator, TextBeeWebhookSignatureValidator>();
+        services.AddScoped<ISmsWebhookSignatureValidator, WhatsAppWebhookSignatureValidator>();
+        services.AddScoped<ISmsDeliveryStatusParser, WhatsAppDeliveryStatusParser>();
 
         var firebaseOptions = new FirebaseOptions
         {

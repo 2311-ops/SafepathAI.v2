@@ -7,89 +7,101 @@ namespace SafePath.Application.Sos;
 /// <summary>
 /// Carries the raw inbound webhook request pieces (never a pre-parsed/trusted status) so
 /// signature validation happens inside the handler, before any mutation — never in the
-/// controller alone, and never skippable by a caller of this command.
+/// controller alone, and never skippable by a caller of this command. The signature is computed
+/// over the exact request bytes, so the raw body string (not a re-serialized/form-decoded
+/// representation) must be preserved end to end.
 /// </summary>
-public record RecordSmsDeliveryStatusCommand(
-    string RequestUrl,
-    IReadOnlyDictionary<string, string> FormParameters,
-    string? SignatureHeader);
+public record RecordSmsDeliveryStatusCommand(string RawBody, string? SignatureHeader);
 
 public record RecordSmsDeliveryStatusResult(bool SignatureValid, bool Applied);
 
 /// <summary>
-/// Accepts TextBee's (or any configured provider's) delivery-status callback. A signature that
-/// does not validate mutates nothing (threat T-03-19). An unrecognised <c>ProviderMessageId</c>
-/// or a status that only means "still in flight" (queued/sending/sent) also mutates nothing —
-/// this is the only path allowed to write <see cref="SosDeliveryStatus.Delivered"/> for the SMS
-/// channel (D-10, 03-RESEARCH.md Pitfall 1).
+/// Accepts the WhatsApp Business Cloud API's (or any configured provider's) delivery-status
+/// callback. A signature that does not validate mutates nothing (threat T-WGL-02). An
+/// unrecognised <c>ProviderMessageId</c> or a status that only means "still in flight" (e.g.
+/// WhatsApp's <c>sent</c>) also mutates nothing — this is the only path allowed to write
+/// <see cref="SosDeliveryStatus.Delivered"/> for the SMS channel (D-10, 03-RESEARCH.md Pitfall
+/// 1).
 /// </summary>
 public class RecordSmsDeliveryStatusCommandHandler : ICommandHandler<RecordSmsDeliveryStatusCommand, RecordSmsDeliveryStatusResult>
 {
     private readonly IApplicationDbContext _db;
     private readonly IAlertBroadcastService _broadcast;
     private readonly ISmsWebhookSignatureValidator _signatureValidator;
+    private readonly ISmsDeliveryStatusParser _parser;
 
     public RecordSmsDeliveryStatusCommandHandler(
         IApplicationDbContext db,
         IAlertBroadcastService broadcast,
-        ISmsWebhookSignatureValidator signatureValidator)
+        ISmsWebhookSignatureValidator signatureValidator,
+        ISmsDeliveryStatusParser parser)
     {
         _db = db;
         _broadcast = broadcast;
         _signatureValidator = signatureValidator;
+        _parser = parser;
     }
 
     public async Task<RecordSmsDeliveryStatusResult> Handle(
         RecordSmsDeliveryStatusCommand command,
         CancellationToken cancellationToken = default)
     {
-        if (!_signatureValidator.IsValid(command.RequestUrl, command.FormParameters, command.SignatureHeader))
+        if (!_signatureValidator.IsValid(command.RawBody, command.SignatureHeader))
         {
             return new RecordSmsDeliveryStatusResult(SignatureValid: false, Applied: false);
         }
 
-        var messageSid = GetFirst(command.FormParameters, "MessageSid", "SmsSid");
-        var providerStatus = GetFirst(command.FormParameters, "MessageStatus", "SmsStatus");
-
-        if (string.IsNullOrWhiteSpace(messageSid) || string.IsNullOrWhiteSpace(providerStatus))
+        var updates = _parser.Parse(command.RawBody);
+        if (updates.Count == 0)
         {
             return new RecordSmsDeliveryStatusResult(SignatureValid: true, Applied: false);
         }
 
-        var attempt = await _db.SosDeliveryAttempts
-            .SingleOrDefaultAsync(a => a.ProviderMessageId == messageSid, cancellationToken);
+        var mutatedAttempts = new List<SafePath.Domain.Entities.SosDeliveryAttempt>();
 
-        if (attempt is null)
+        foreach (var update in updates)
         {
-            // Unknown id: return success without mutating anything so a stray retry cannot
-            // corrupt state or put the provider into a retry loop.
-            return new RecordSmsDeliveryStatusResult(SignatureValid: true, Applied: false);
+            var attempt = await _db.SosDeliveryAttempts
+                .SingleOrDefaultAsync(a => a.ProviderMessageId == update.ProviderMessageId, cancellationToken);
+
+            if (attempt is null)
+            {
+                // Unknown id: skip without mutating anything so a stray retry cannot corrupt
+                // state or put the provider into a retry loop.
+                continue;
+            }
+
+            switch (update.Outcome)
+            {
+                case SmsDeliveryOutcome.Delivered:
+                    attempt.Status = SosDeliveryStatus.Delivered;
+                    attempt.DeliveredAtUtc = DateTime.UtcNow;
+                    break;
+
+                case SmsDeliveryOutcome.Failed:
+                    attempt.Status = SosDeliveryStatus.Failed;
+                    attempt.FailureReason = update.FailureReason;
+                    break;
+            }
+
+            mutatedAttempts.Add(attempt);
         }
 
-        switch (providerStatus.Trim().ToLowerInvariant())
+        if (mutatedAttempts.Count == 0)
         {
-            case "delivered":
-                attempt.Status = SosDeliveryStatus.Delivered;
-                attempt.DeliveredAtUtc = DateTime.UtcNow;
-                break;
-
-            case "undelivered":
-            case "failed":
-                attempt.Status = SosDeliveryStatus.Failed;
-                attempt.FailureReason = GetFirst(command.FormParameters, "ErrorCode");
-                break;
-
-            default:
-                // queued / sending / sent -- the message has still only been accepted, not
-                // received. Do not mutate.
-                return new RecordSmsDeliveryStatusResult(SignatureValid: true, Applied: false);
+            return new RecordSmsDeliveryStatusResult(SignatureValid: true, Applied: false);
         }
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        var session = await _db.SosSessions.SingleOrDefaultAsync(s => s.Id == attempt.SosSessionId, cancellationToken);
-        if (session is not null)
+        foreach (var attempt in mutatedAttempts)
         {
+            var session = await _db.SosSessions.SingleOrDefaultAsync(s => s.Id == attempt.SosSessionId, cancellationToken);
+            if (session is null)
+            {
+                continue;
+            }
+
             var recipientUserIds = await SosSessionProjection.ResolveRecipientUserIds(_db, session.Id, cancellationToken);
             var broadcastRecipients = recipientUserIds.Append(session.TriggeredByUserId).Distinct();
 
@@ -107,18 +119,5 @@ public class RecordSmsDeliveryStatusCommandHandler : ICommandHandler<RecordSmsDe
         }
 
         return new RecordSmsDeliveryStatusResult(SignatureValid: true, Applied: true);
-    }
-
-    private static string? GetFirst(IReadOnlyDictionary<string, string> parameters, params string[] keys)
-    {
-        foreach (var key in keys)
-        {
-            if (parameters.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
-            {
-                return value;
-            }
-        }
-
-        return null;
     }
 }

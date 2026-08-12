@@ -177,19 +177,105 @@ public class SmsFanOutTests : IDisposable
     }
 
     [Fact]
-    public void TextBeeWebhookSignatureValidator_IsAlwaysFalse()
+    public void WhatsAppWebhookSignatureValidator_ValidatesACorrectlyComputedSignature()
     {
-        var validator = new SafePath.Infrastructure.Sms.TextBeeWebhookSignatureValidator();
+        var validator = new SafePath.Infrastructure.Sms.WhatsAppWebhookSignatureValidator(
+            new SafePath.Infrastructure.Sms.WhatsAppOptions { AppSecret = "test-secret" });
+        var body = "{\"entry\":[]}";
+        var signature = "sha256=" + ComputeHexHmac("test-secret", body);
 
-        Assert.False(validator.IsValid(
-            "https://api.example.com/webhooks/sms/status",
-            new Dictionary<string, string> { ["MessageSid"] = "SM123", ["MessageStatus"] = "delivered" },
-            "a-plausible-looking-signature"));
+        Assert.True(validator.IsValid(body, signature));
+    }
 
-        Assert.False(validator.IsValid(
-            "https://api.example.com/webhooks/sms/status",
-            new Dictionary<string, string>(),
-            null));
+    [Fact]
+    public void WhatsAppWebhookSignatureValidator_RejectsATamperedBody()
+    {
+        var validator = new SafePath.Infrastructure.Sms.WhatsAppWebhookSignatureValidator(
+            new SafePath.Infrastructure.Sms.WhatsAppOptions { AppSecret = "test-secret" });
+        var signature = "sha256=" + ComputeHexHmac("test-secret", "{\"entry\":[]}");
+
+        Assert.False(validator.IsValid("{\"entry\":[{\"tampered\":true}]}", signature));
+    }
+
+    [Fact]
+    public void WhatsAppWebhookSignatureValidator_RefusesACorrectlySignedBodyWhenNoAppSecretIsConfigured()
+    {
+        var validator = new SafePath.Infrastructure.Sms.WhatsAppWebhookSignatureValidator(
+            new SafePath.Infrastructure.Sms.WhatsAppOptions { AppSecret = null });
+        var body = "{\"entry\":[]}";
+        var signature = "sha256=" + ComputeHexHmac("test-secret", body);
+
+        Assert.False(validator.IsValid(body, signature));
+    }
+
+    [Fact]
+    public void WhatsAppDeliveryStatusParser_ParsesADeliveredStatus()
+    {
+        var parser = new SafePath.Infrastructure.Sms.WhatsAppDeliveryStatusParser();
+        var payload = BuildStatusPayload("wamid.ABC", "delivered");
+
+        var updates = parser.Parse(payload);
+
+        var update = Assert.Single(updates);
+        Assert.Equal("wamid.ABC", update.ProviderMessageId);
+        Assert.Equal(SmsDeliveryOutcome.Delivered, update.Outcome);
+    }
+
+    [Fact]
+    public void WhatsAppDeliveryStatusParser_ParsesAReadStatusAsDelivered()
+    {
+        var parser = new SafePath.Infrastructure.Sms.WhatsAppDeliveryStatusParser();
+        var payload = BuildStatusPayload("wamid.ABC", "read");
+
+        var updates = parser.Parse(payload);
+
+        var update = Assert.Single(updates);
+        Assert.Equal(SmsDeliveryOutcome.Delivered, update.Outcome);
+    }
+
+    [Fact]
+    public void WhatsAppDeliveryStatusParser_ParsesAFailedStatusWithAnErrorCode()
+    {
+        var parser = new SafePath.Infrastructure.Sms.WhatsAppDeliveryStatusParser();
+        var payload = "{\"entry\":[{\"changes\":[{\"value\":{\"statuses\":[{\"id\":\"wamid.ABC\",\"status\":\"failed\",\"errors\":[{\"code\":131047,\"title\":\"Re-engagement message\"}]}]}}]}]}";
+
+        var updates = parser.Parse(payload);
+
+        var update = Assert.Single(updates);
+        Assert.Equal(SmsDeliveryOutcome.Failed, update.Outcome);
+        Assert.Equal("131047", update.FailureReason);
+    }
+
+    [Fact]
+    public void WhatsAppDeliveryStatusParser_YieldsNoUpdateForASentStatus()
+    {
+        var parser = new SafePath.Infrastructure.Sms.WhatsAppDeliveryStatusParser();
+        var payload = BuildStatusPayload("wamid.ABC", "sent");
+
+        var updates = parser.Parse(payload);
+
+        Assert.Empty(updates);
+    }
+
+    [Fact]
+    public void WhatsAppDeliveryStatusParser_ReturnsAnEmptyListForMalformedInput()
+    {
+        var parser = new SafePath.Infrastructure.Sms.WhatsAppDeliveryStatusParser();
+
+        var updates = parser.Parse("not valid json");
+
+        Assert.Empty(updates);
+    }
+
+    private static string BuildStatusPayload(string messageId, string status) =>
+        $"{{\"entry\":[{{\"changes\":[{{\"value\":{{\"statuses\":[{{\"id\":\"{messageId}\",\"status\":\"{status}\"}}]}}}}]}}]}}";
+
+    private static string ComputeHexHmac(string secret, string body)
+    {
+        var hashBytes = System.Security.Cryptography.HMACSHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(secret),
+            System.Text.Encoding.UTF8.GetBytes(body));
+        return Convert.ToHexStringLower(hashBytes);
     }
 
     [Fact]
@@ -320,12 +406,10 @@ public class SmsFanOutTests : IDisposable
     {
         await using var db = _factory.CreateContext();
         var (_, sessionId, _, _, providerMessageId) = await SeedQueuedSmsAttempt(db);
-        var handler = new RecordSmsDeliveryStatusCommandHandler(db, Mock.Of<IAlertBroadcastService>(), new FakeSignatureValidator(isValid: true));
+        var parser = new FakeDeliveryStatusParser(new[] { new SmsDeliveryStatusUpdate(providerMessageId, SmsDeliveryOutcome.Delivered, null) });
+        var handler = new RecordSmsDeliveryStatusCommandHandler(db, Mock.Of<IAlertBroadcastService>(), new FakeSignatureValidator(isValid: true), parser);
 
-        var result = await handler.Handle(new RecordSmsDeliveryStatusCommand(
-            "https://api.example.com/webhooks/sms/status",
-            new Dictionary<string, string> { ["MessageSid"] = providerMessageId, ["MessageStatus"] = "delivered" },
-            "any-signature"));
+        var result = await handler.Handle(new RecordSmsDeliveryStatusCommand("{}", "any-signature"));
 
         Assert.True(result.Applied);
         var attempt = Assert.Single(db.SosDeliveryAttempts.Where(a => a.SosSessionId == sessionId));
@@ -338,17 +422,15 @@ public class SmsFanOutTests : IDisposable
     {
         await using var db = _factory.CreateContext();
         var (_, sessionId, _, _, providerMessageId) = await SeedQueuedSmsAttempt(db);
-        var handler = new RecordSmsDeliveryStatusCommandHandler(db, Mock.Of<IAlertBroadcastService>(), new FakeSignatureValidator(isValid: true));
+        var parser = new FakeDeliveryStatusParser(new[] { new SmsDeliveryStatusUpdate(providerMessageId, SmsDeliveryOutcome.Failed, "131047") });
+        var handler = new RecordSmsDeliveryStatusCommandHandler(db, Mock.Of<IAlertBroadcastService>(), new FakeSignatureValidator(isValid: true), parser);
 
-        var result = await handler.Handle(new RecordSmsDeliveryStatusCommand(
-            "https://api.example.com/webhooks/sms/status",
-            new Dictionary<string, string> { ["MessageSid"] = providerMessageId, ["MessageStatus"] = "failed", ["ErrorCode"] = "30006" },
-            "any-signature"));
+        var result = await handler.Handle(new RecordSmsDeliveryStatusCommand("{}", "any-signature"));
 
         Assert.True(result.Applied);
         var attempt = Assert.Single(db.SosDeliveryAttempts.Where(a => a.SosSessionId == sessionId));
         Assert.Equal(SosDeliveryStatus.Failed, attempt.Status);
-        Assert.Equal("30006", attempt.FailureReason);
+        Assert.Equal("131047", attempt.FailureReason);
     }
 
     [Fact]
@@ -356,12 +438,10 @@ public class SmsFanOutTests : IDisposable
     {
         await using var db = _factory.CreateContext();
         var (_, sessionId, _, _, _) = await SeedQueuedSmsAttempt(db);
-        var handler = new RecordSmsDeliveryStatusCommandHandler(db, Mock.Of<IAlertBroadcastService>(), new FakeSignatureValidator(isValid: true));
+        var parser = new FakeDeliveryStatusParser(new[] { new SmsDeliveryStatusUpdate("SM-unknown", SmsDeliveryOutcome.Delivered, null) });
+        var handler = new RecordSmsDeliveryStatusCommandHandler(db, Mock.Of<IAlertBroadcastService>(), new FakeSignatureValidator(isValid: true), parser);
 
-        var result = await handler.Handle(new RecordSmsDeliveryStatusCommand(
-            "https://api.example.com/webhooks/sms/status",
-            new Dictionary<string, string> { ["MessageSid"] = "SM-unknown", ["MessageStatus"] = "delivered" },
-            "any-signature"));
+        var result = await handler.Handle(new RecordSmsDeliveryStatusCommand("{}", "any-signature"));
 
         Assert.True(result.SignatureValid);
         Assert.False(result.Applied);
@@ -374,12 +454,10 @@ public class SmsFanOutTests : IDisposable
     {
         await using var db = _factory.CreateContext();
         var (_, sessionId, _, _, providerMessageId) = await SeedQueuedSmsAttempt(db);
-        var handler = new RecordSmsDeliveryStatusCommandHandler(db, Mock.Of<IAlertBroadcastService>(), new FakeSignatureValidator(isValid: false));
+        var parser = new FakeDeliveryStatusParser(new[] { new SmsDeliveryStatusUpdate(providerMessageId, SmsDeliveryOutcome.Delivered, null) });
+        var handler = new RecordSmsDeliveryStatusCommandHandler(db, Mock.Of<IAlertBroadcastService>(), new FakeSignatureValidator(isValid: false), parser);
 
-        var result = await handler.Handle(new RecordSmsDeliveryStatusCommand(
-            "https://api.example.com/webhooks/sms/status",
-            new Dictionary<string, string> { ["MessageSid"] = providerMessageId, ["MessageStatus"] = "delivered" },
-            "forged-signature"));
+        var result = await handler.Handle(new RecordSmsDeliveryStatusCommand("{}", "forged-signature"));
 
         Assert.False(result.SignatureValid);
         Assert.False(result.Applied);
@@ -396,12 +474,10 @@ public class SmsFanOutTests : IDisposable
         broadcast
             .Setup(b => b.DeliveryStatusChanged(It.IsAny<Guid>(), It.IsAny<IEnumerable<Guid>>(), It.IsAny<SosDeliveryStatusChangedDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        var handler = new RecordSmsDeliveryStatusCommandHandler(db, broadcast.Object, new FakeSignatureValidator(isValid: true));
+        var parser = new FakeDeliveryStatusParser(new[] { new SmsDeliveryStatusUpdate(providerMessageId, SmsDeliveryOutcome.Delivered, null) });
+        var handler = new RecordSmsDeliveryStatusCommandHandler(db, broadcast.Object, new FakeSignatureValidator(isValid: true), parser);
 
-        await handler.Handle(new RecordSmsDeliveryStatusCommand(
-            "https://api.example.com/webhooks/sms/status",
-            new Dictionary<string, string> { ["MessageSid"] = providerMessageId, ["MessageStatus"] = "delivered" },
-            "any-signature"));
+        await handler.Handle(new RecordSmsDeliveryStatusCommand("{}", "any-signature"));
 
         broadcast.Verify(
             b => b.DeliveryStatusChanged(
@@ -564,11 +640,11 @@ public class SmsFanOutTests : IDisposable
 
 /// <summary>
 /// Deterministic ISmsWebhookSignatureValidator test double. The real
-/// TextBeeWebhookSignatureValidator is a permanent no-op that always returns false, so
-/// FakeSignatureValidator exists specifically to let these tests exercise
-/// RecordSmsDeliveryStatusCommandHandler's own Delivered/Failed/ignore branching under both a
-/// valid and an invalid signature outcome -- something the real always-false validator alone
-/// could never produce.
+/// WhatsAppWebhookSignatureValidator depends on a configured app secret and computes a real
+/// HMAC-SHA256 over the raw body, so FakeSignatureValidator exists specifically to let these
+/// tests exercise RecordSmsDeliveryStatusCommandHandler's own Delivered/Failed/ignore branching
+/// under both a valid and an invalid signature outcome without needing to compute a real HMAC in
+/// every handler test.
 /// </summary>
 internal sealed class FakeSignatureValidator : ISmsWebhookSignatureValidator
 {
@@ -579,6 +655,24 @@ internal sealed class FakeSignatureValidator : ISmsWebhookSignatureValidator
         _isValid = isValid;
     }
 
-    public bool IsValid(string requestUrl, IReadOnlyDictionary<string, string> formParameters, string? signatureHeader) =>
-        _isValid;
+    public bool IsValid(string rawBody, string? signatureHeader) => _isValid;
+
+    public bool IsVerificationTokenValid(string? verifyToken) => _isValid;
+}
+
+/// <summary>
+/// Deterministic ISmsDeliveryStatusParser test double returning a fixed update list, so handler
+/// tests can exercise Delivered/Failed/unknown-id branching without depending on the real
+/// WhatsApp JSON payload shape.
+/// </summary>
+internal sealed class FakeDeliveryStatusParser : ISmsDeliveryStatusParser
+{
+    private readonly IReadOnlyList<SmsDeliveryStatusUpdate> _updates;
+
+    public FakeDeliveryStatusParser(IReadOnlyList<SmsDeliveryStatusUpdate> updates)
+    {
+        _updates = updates;
+    }
+
+    public IReadOnlyList<SmsDeliveryStatusUpdate> Parse(string rawBody) => _updates;
 }
