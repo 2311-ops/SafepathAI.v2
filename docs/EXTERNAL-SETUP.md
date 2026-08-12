@@ -98,7 +98,7 @@ maps to the `Firebase:ProjectId` configuration value the code reads).
 | `WhatsApp__WabaId` | The WhatsApp Business Account id, from `Meta App Dashboard -> WhatsApp -> API Setup -> WhatsApp Business Account ID` |
 | `WhatsApp__AppSecret` | The Meta app's secret, from `Meta App Dashboard -> App settings -> Basic -> App secret` — used only to verify `X-Hub-Signature-256` on inbound status callbacks |
 | `WhatsApp__WebhookVerifyToken` | An operator-chosen random string; must be typed identically into `Meta App Dashboard -> WhatsApp -> Configuration -> Webhook -> Verify token` |
-| `WhatsApp__TemplateName` | The approved Utility-category template name (the SOS alert template). Must NOT be a separate Authentication-category template (e.g. `otp_verification`) — Meta locks those to OTP-only |
+| `WhatsApp__TemplateName` | The approved Utility-category template name (the SOS alert template). Must NOT be a separate Authentication-category template (e.g. `otp_verification`) — Meta locks those to OTP-only. The template body must carry exactly three body placeholders (see "WhatsApp Business Platform Setup" step 4) — the backend always sends three ordered template parameters |
 | `WhatsApp__TemplateLanguage` | Optional; defaults to `en` when unset |
 | `WhatsApp__BaseUrl` | Optional; defaults to `https://graph.facebook.com` when unset |
 | `WhatsApp__ApiVersion` | Optional; defaults to the Graph API version pinned in `WhatsAppOptions` when unset |
@@ -137,7 +137,10 @@ Graph API) when configured, and through `LoggingSmsGateway` (free, no account) w
 3. Locate the Phone Number ID (`1190449597495068`) and WABA ID (`1605779661263531`).
    Location: `Meta App Dashboard -> WhatsApp -> API Setup`.
 4. Create and submit the Utility-category SOS template for approval (e.g. `sos_alert`), containing
-   a single body text parameter for the composed SOS message.
+   three body placeholders, in order: the triggering member's name, the location link, and the
+   trigger timestamp. The placeholder count must match what the backend sends, or Meta rejects
+   every send with a parameter-count mismatch. For example, the template body might read: `{{1}}
+   triggered an SOS on SafePath and needs help. Location: {{2}}. Time: {{3}}.`
    Location: `Meta App Dashboard -> WhatsApp -> Message Templates -> Create Template`.
    Do **not** use the separately-approved `otp_verification` Authentication-category template for
    SOS content — Meta locks Authentication templates to OTP-only, and setting it as
