@@ -80,6 +80,11 @@
             android:foregroundServiceType="location"
             android:stopWithTask="false"
             android:exported="false" />
+        <!-- Routine geofence callbacks are persisted locally and drained by the
+             authenticated Flutter lifecycle. They never start the SOS service. -->
+        <receiver
+            android:name=".GeofenceBroadcastReceiver"
+            android:exported="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
