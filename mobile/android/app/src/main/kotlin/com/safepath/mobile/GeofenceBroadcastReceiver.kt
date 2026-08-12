@@ -10,7 +10,7 @@ import java.util.UUID
 /** Receives routine Play Services transitions; it does not start any service. */
 class GeofenceBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val event = GeofencingEvent.fromIntent(intent)
+        val event = GeofencingEvent.fromIntent(intent) ?: return
         val occurredAt = System.currentTimeMillis()
         val location = event.triggeringLocation
         val transition = when (event.geofenceTransition) {
@@ -22,7 +22,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
         val ids = if (requestIds.isEmpty()) listOf("") else requestIds
         val store = GeofenceNativeStore(context.applicationContext)
         ids.forEach { requestId ->
-            store.persist(
+            if (store.persist(
                 GeofenceNativeStore.Candidate(
                     eventId = UUID.randomUUID().toString(),
                     requestId = requestId,
@@ -33,7 +33,9 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                     accuracyMeters = location?.accuracy?.toDouble(),
                     errorCode = event.errorCode.takeIf { event.hasError() }
                 )
-            )
+            )) {
+                GeofenceUploadWorker.enqueue(context.applicationContext)
+            }
         }
     }
 }

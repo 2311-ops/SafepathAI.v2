@@ -109,7 +109,6 @@ class MainActivity : FlutterActivity() {
             .addOnFailureListener { error ->
                 result.error("registration_failed", error.message, null)
             }
-        }
     }
 
     private fun toGeofence(zone: Map<String, Any?>): Geofence {

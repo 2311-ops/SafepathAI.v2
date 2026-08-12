@@ -2,7 +2,7 @@ plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    // Google Services (Firebase) — enables google-services.json processing
+    // Google Services (Firebase) ??? enables google-services.json processing
     // for FCM (03-06). Version declared in the root android/build.gradle.kts.
     id("com.google.gms.google-services")
 }
@@ -51,4 +51,7 @@ flutter {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
+    testImplementation("junit:junit:4.13.2")
 }
+
