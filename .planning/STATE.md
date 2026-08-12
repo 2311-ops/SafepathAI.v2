@@ -2,19 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 4
+current_phase: 04
 current_phase_name: Geofencing
-status: verifying
-stopped_at: "Completed quick task 260812-wgl: Migrated SOS SMS fallback from TextBee to WhatsApp Business Cloud API (code-complete, awaiting operator provisioning)"
-last_updated: "2026-08-12T20:22:19.056Z"
-last_activity: 2026-08-12
-last_activity_desc: "Completed quick task 260812-wgl: Migrated SOS SMS fallback from TextBee to WhatsApp Business Cloud API (code-complete, awaiting operator provisioning)"
+status: executing
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-08-12T22:37:08.990Z"
+last_activity: 2026-08-13
+last_activity_desc: Resumed Phase 04 at Plan 04-04
 progress:
-  total_phases: 8
+  total_phases: 5
   completed_phases: 4
   total_plans: 61
-  completed_plans: 44
-  percent: 50
+  completed_plans: 48
 ---
 
 # Project State
@@ -24,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-16)
 
 **Core value:** The SOS system must always work — a single tap or covert Silent/Duress trigger reliably delivers an immediate alert with live location to a user's designated guardians within seconds, bypassing every routine and AI pipeline.
-**Current focus:** Phase 03 — sos-fast-path
+**Current focus:** Phase 04 — geofencing
 
 ## Current Position
 
-Phase: 4 — Geofencing
-Plan: Not started
-Status: All plans complete — awaiting phase-level verification/closeout
-Last activity: 2026-08-08 — Completed quick task 260808-51d: Add ngrok remote-contributor testing section to start_mobile.md
+Phase: 04 (geofencing) — EXECUTING
+Plan: 5 of 17
+Status: Ready to execute
+Last activity: 2026-08-13 - Resumed Phase 04 at Plan 04-04
 
-Progress: [██████████] 100%
+Progress: [████████░░] 79%
 
 ## Performance Metrics
 
@@ -95,6 +94,12 @@ Progress: [██████████] 100%
 | Phase quick-260811-3jq P01 | 15min | 1 tasks | 2 files |
 | Phase quick-260811-440 P01 | 12min | 1 tasks | 1 files |
 | Phase quick-260811-65q P01 | 20min | 2 tasks | 1 files |
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 04-geofencing P01 | 32min | 2 tasks | 13 files |
+| Phase 04 P04 | 68min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -192,6 +197,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Quick 260811-65q]: Redesigned ManagePermissionsScreen's permission selector into a vertical, always-full-width _PermissionLevelRow Column (fixes SegmentedButton label truncation); added ProfileAvatar + capitalized-name + permission-label badge to member cards; moved Remove-from-circle behind a PopupMenuButton overflow menu (unchanged _confirmRemove flow).
 - [Quick 260812-wgl]: Migrated the SOS emergency-contact SMS fallback channel from TextBee to the WhatsApp Business Cloud API (Meta Graph API), fully behind the unchanged `ISmsGateway` seam: `WhatsAppOptions`/`WhatsAppSmsGateway` for sending a Utility-category template message, plus a new `ISmsDeliveryStatusParser` Application seam and `WhatsAppWebhookSignatureValidator`/`WhatsAppDeliveryStatusParser` wiring the real `X-Hub-Signature-256` HMAC-signed delivery-status callback and GET subscription handshake into the existing `SmsWebhookController`/`RecordSmsDeliveryStatusCommand` seam. `RecordSmsDeliveryStatusCommand` and `ISmsWebhookSignatureValidator` both moved from Twilio/TextBee-era form-encoded parameters to a raw-body shape, since the HMAC is computed over the exact JSON bytes. `SosAlertDispatcher`/`TriggerSosCommandHandler` changed only in doc-comment prose (SOS-01 held). All `TextBee*` classes and references removed from `backend/src`/`backend/tests`. WhatsApp Cloud API request/response/webhook shapes were verified against Meta's live docs post-execution (executor lacked WebFetch/WebSearch); that check also caught and fixed a stale pinned Graph API version (`v22.0` -> current stable `v26.0`) in `WhatsAppOptions`/`DependencyInjection.cs`/tests. Real end-to-end send still awaits the operator provisioning `backend/.env`.
 - [Quick 260813-09i]: `ISmsGateway.SendAsync`'s second parameter moved from a single composed `string` to an ordered `IReadOnlyList<string> templateParameters`, deliberately superseding the signature lock asserted in 260812-wgl's `<interface_contracts>`. Cause: the operator's actually-approved `sos_alert` template has three body placeholders while 260812-wgl assumed a single free-text one, so every real send would have failed on a Meta parameter-count mismatch. `SosAlertDispatcher` now builds three ordered values (sender display name, maps link with an explicit `Location unavailable` fallback when coordinates are absent, invariant-culture UTC timestamp) via `ComposeSmsTemplateParameters`, with its control flow and dependency set provably unchanged (`await`=18, `private readonly`=4, SOS-01 held). `WhatsAppSmsGateway` emits one normalized `WhatsAppTemplateParameter` per supplied value, in order, with an empty-value guard substituting a hyphen.
+- [Phase ?]: Geofence tracer persists only candidate callbacks; confirmation, push, activity, and SOS remain isolated.
+- [Phase ?]: Geofence process-death uploads use one credential-free WorkManager bridge and a shared Dart auth drain; native rows are acknowledged only after accepted or duplicate API success.
 
 ### Pending Todos
 
@@ -252,6 +259,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-11T01:43:53.285Z
-Stopped at: Completed quick task 260811-65q: Redesigned Manage Permissions screen (vertical permission-row selector, avatar+badge member cards, overflow-menu remove)
-Resume file: .planning/phases/04-geofencing/04-01-PLAN.md
+Last session: 2026-08-12T22:37:08.955Z
+Stopped at: Completed 04-04-PLAN.md
+Resume file: None
