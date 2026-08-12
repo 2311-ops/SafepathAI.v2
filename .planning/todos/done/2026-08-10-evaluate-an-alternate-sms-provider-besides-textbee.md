@@ -1,6 +1,6 @@
 ---
 created: 2026-08-10T22:00:35.276Z
-updated: 2026-08-11T20:00:28.378Z
+updated: 2026-08-12T00:00:00.000Z
 title: Migrate SOS fallback channel from TextBee to WhatsApp Business Cloud API (blocked on Meta template approval)
 area: backend
 files:
@@ -10,6 +10,7 @@ files:
   - backend/src/SafePath.Infrastructure/Sms/TextBeeWebhookSignatureValidator.cs
   - backend/src/SafePath.Application/Sos/SosAlertDispatcher.cs
   - docs/EXTERNAL-SETUP.md
+status: done
 ---
 
 ## Problem
@@ -82,3 +83,15 @@ templates to OTP-only) and must not be touched or referenced by this work.
 
 **Next step:** once the user confirms Meta has approved the Utility template, resume via
 `/gsd-quick` with this todo as the task description.
+
+## Resolution (2026-08-12)
+
+Executed via quick task `260812-wgl` exactly per the implementation plan above: `WhatsAppOptions`/
+`WhatsAppSmsGateway` (Task 1), a signed `X-Hub-Signature-256` delivery-status callback + GET
+subscription handshake wired into `SmsWebhookController`/`RecordSmsDeliveryStatusCommand` via a new
+`ISmsDeliveryStatusParser` Application seam (Task 2), and a zero-reference sweep plus
+`docs/EXTERNAL-SETUP.md`/`STATE.md` updates (Task 3). All `TextBee*` classes and references removed
+from `backend/src` and `backend/tests`. `SosAlertDispatcher`/`TriggerSosCommandHandler` changed only
+in doc-comment prose. See `.planning/quick/260812-wgl-migrate-sos-fallback-channel-from-textbe/260812-wgl-SUMMARY.md`
+for the full record, including the WhatsApp Cloud API version/shapes assumed (WebFetch/WebSearch
+tools were unavailable in that session) and the outstanding operator-side provisioning steps.
