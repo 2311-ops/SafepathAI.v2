@@ -300,7 +300,7 @@ public class SmsFanOutTests : IDisposable
                 PhoneNumberId = "test-phone-number-id",
                 TemplateName = "sos_alert",
                 TemplateLanguage = "en",
-                ApiVersion = "v22.0",
+                ApiVersion = "v26.0",
             },
             NullLogger<SafePath.Infrastructure.Sms.WhatsAppSmsGateway>.Instance);
 
@@ -337,7 +337,7 @@ public class SmsFanOutTests : IDisposable
                 PhoneNumberId = "test-phone-number-id",
                 TemplateName = "sos_alert",
                 TemplateLanguage = "en",
-                ApiVersion = "v22.0",
+                ApiVersion = "v26.0",
             },
             NullLogger<SafePath.Infrastructure.Sms.WhatsAppSmsGateway>.Instance);
 

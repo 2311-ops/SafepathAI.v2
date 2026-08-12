@@ -68,7 +68,7 @@ public static class DependencyInjection
             TemplateName = configuration["WhatsApp:TemplateName"] ?? "sos_alert",
             TemplateLanguage = configuration["WhatsApp:TemplateLanguage"] ?? "en",
             BaseUrl = configuration["WhatsApp:BaseUrl"] ?? "https://graph.facebook.com",
-            ApiVersion = configuration["WhatsApp:ApiVersion"] ?? "v22.0",
+            ApiVersion = configuration["WhatsApp:ApiVersion"] ?? "v26.0",
         };
         services.AddSingleton(whatsAppOptions);
 

@@ -25,7 +25,7 @@ public class WhatsAppOptions
     public string TemplateName { get; set; } = "sos_alert";
     public string TemplateLanguage { get; set; } = "en";
     public string BaseUrl { get; set; } = "https://graph.facebook.com";
-    public string ApiVersion { get; set; } = "v22.0";
+    public string ApiVersion { get; set; } = "v26.0";
 
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(AccessToken) && !string.IsNullOrWhiteSpace(PhoneNumberId);
