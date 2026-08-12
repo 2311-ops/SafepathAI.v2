@@ -254,7 +254,7 @@ public class AlertFanOutTests : IDisposable
 /// </summary>
 internal sealed class NoOpSmsGateway : ISmsGateway
 {
-    public Task<SmsSendResult> SendAsync(string toE164, string body, CancellationToken cancellationToken = default) =>
+    public Task<SmsSendResult> SendAsync(string toE164, IReadOnlyList<string> templateParameters, CancellationToken cancellationToken = default) =>
         Task.FromResult(new SmsSendResult($"noop-{Guid.NewGuid():N}"));
 }
 

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -115,7 +116,7 @@ public class SmsFanOutTests : IDisposable
         var (_, sessionId, contactId) = await SeedSessionWithOneSmsAttempt(db);
         var gateway = new Mock<ISmsGateway>();
         gateway
-            .Setup(g => g.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(g => g.SendAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SmsSendResult("SM123"));
         var dispatcher = new SosAlertDispatcher(db, Mock.Of<IAlertBroadcastService>(), gateway.Object, new NoOpPushSender());
 
@@ -147,7 +148,7 @@ public class SmsFanOutTests : IDisposable
 
         var gateway = new Mock<ISmsGateway>();
         gateway
-            .Setup(g => g.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(g => g.SendAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("simulated provider failure"));
         var broadcast = new Mock<IAlertBroadcastService>();
         broadcast
@@ -171,7 +172,7 @@ public class SmsFanOutTests : IDisposable
         var gateway = new SafePath.Infrastructure.Sms.LoggingSmsGateway(
             Microsoft.Extensions.Logging.Abstractions.NullLogger<SafePath.Infrastructure.Sms.LoggingSmsGateway>.Instance);
 
-        var result = await gateway.SendAsync("+12025550182", "test body");
+        var result = await gateway.SendAsync("+12025550182", new[] { "Sender", "Location unavailable", "2026-08-13 09:41 UTC" });
 
         Assert.False(string.IsNullOrWhiteSpace(result.ProviderMessageId));
     }
@@ -304,7 +305,8 @@ public class SmsFanOutTests : IDisposable
             },
             NullLogger<SafePath.Infrastructure.Sms.WhatsAppSmsGateway>.Instance);
 
-        var result = await gateway.SendAsync("+12025550182", "test body");
+        var inputs = new[] { "Alex Sender", "https://maps.google.com/?q=30.0444,31.2357", "2026-08-13 09:41 UTC" };
+        var result = await gateway.SendAsync("+12025550182", inputs);
 
         var request = Assert.Single(captured);
         Assert.Equal(HttpMethod.Post, request.Method);
@@ -313,6 +315,10 @@ public class SmsFanOutTests : IDisposable
         Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
         Assert.Equal("test-token", request.Headers.Authorization?.Parameter);
         Assert.Equal("wamid.TEST", result.ProviderMessageId);
+
+        var body = Assert.Single(capturedBodies);
+        var actualTexts = ExtractTemplateParameterTexts(body);
+        Assert.Equal(inputs, actualTexts);
     }
 
     [Fact]
@@ -341,11 +347,39 @@ public class SmsFanOutTests : IDisposable
             },
             NullLogger<SafePath.Infrastructure.Sms.WhatsAppSmsGateway>.Instance);
 
-        await gateway.SendAsync("+12025550182", "Line one\nLine two\twith a\t\ttab and    spaces");
+        var dirtyInputs = new[]
+        {
+            "Line one\nLine two\twith a\t\ttab and    spaces",
+            "https://maps.google.com/?q=30.0444,31.2357\nwith a\ttrailing tab",
+            "2026-08-13    09:41\tUTC\nextra line",
+        };
+        await gateway.SendAsync("+12025550182", dirtyInputs);
 
         var body = Assert.Single(capturedBodies);
         Assert.DoesNotContain('\n', body);
         Assert.DoesNotContain('\t', body);
+
+        var actualTexts = ExtractTemplateParameterTexts(body);
+        Assert.Equal(3, actualTexts.Count);
+        Assert.All(actualTexts, text => Assert.DoesNotContain('\n', text));
+        Assert.All(actualTexts, text => Assert.DoesNotContain('\t', text));
+    }
+
+    private static IReadOnlyList<string> ExtractTemplateParameterTexts(string requestBody)
+    {
+        using var document = JsonDocument.Parse(requestBody);
+        var parameters = document.RootElement
+            .GetProperty("template")
+            .GetProperty("components")[0]
+            .GetProperty("parameters");
+
+        var texts = new List<string>();
+        foreach (var parameter in parameters.EnumerateArray())
+        {
+            texts.Add(parameter.GetProperty("text").GetString()!);
+        }
+
+        return texts;
     }
 
     private sealed class CapturingHttpMessageHandler : HttpMessageHandler
@@ -379,26 +413,53 @@ public class SmsFanOutTests : IDisposable
     }
 
     [Fact]
-    public async Task Message_ContainsSenderNameAndALocationLink()
+    public async Task Message_SendsThreeOrderedTemplateParameters()
     {
         await using var db = _factory.CreateContext();
-        var (_, sessionId, _) = await SeedSessionWithOneSmsAttempt(db, latitude: 30.0444, longitude: 31.2357, senderDisplayName: "Alex Sender");
+        var (_, sessionId, contactId) = await SeedSessionWithOneSmsAttempt(db, latitude: 30.0444, longitude: 31.2357, senderDisplayName: "Alex Sender");
+        var contact = db.EmergencyContacts.Single(c => c.Id == contactId);
 
-        string? capturedBody = null;
+        IReadOnlyList<string>? capturedParameters = null;
         var gateway = new Mock<ISmsGateway>();
         gateway
-            .Setup(g => g.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Callback<string, string, CancellationToken>((_, body, _) => capturedBody = body)
+            .Setup(g => g.SendAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()))
+            .Callback<string, IReadOnlyList<string>, CancellationToken>((_, parameters, _) => capturedParameters = parameters)
             .ReturnsAsync(new SmsSendResult("SM123"));
         var dispatcher = new SosAlertDispatcher(db, Mock.Of<IAlertBroadcastService>(), gateway.Object, new NoOpPushSender());
 
         await dispatcher.DispatchAsync(sessionId);
 
-        Assert.NotNull(capturedBody);
-        Assert.Contains("Alex Sender", capturedBody);
-        Assert.Contains("30.0444", capturedBody);
-        Assert.Contains("31.2357", capturedBody);
-        Assert.DoesNotContain("+1", capturedBody);
+        Assert.NotNull(capturedParameters);
+        Assert.Equal(3, capturedParameters!.Count);
+        Assert.Equal("Alex Sender", capturedParameters[0]);
+        Assert.Contains("30.0444", capturedParameters[1]);
+        Assert.Contains("31.2357", capturedParameters[1]);
+        Assert.StartsWith("https://maps.google.com/?q=", capturedParameters[1]);
+        Assert.False(string.IsNullOrWhiteSpace(capturedParameters[2]));
+        Assert.Contains("UTC", capturedParameters[2]);
+        Assert.All(capturedParameters, p => Assert.DoesNotContain(contact.PhoneNumberE164, p));
+    }
+
+    [Fact]
+    public async Task Message_FallsBackToLocationUnavailableWhenCoordinatesAreNull()
+    {
+        await using var db = _factory.CreateContext();
+        var (_, sessionId, _) = await SeedSessionWithOneSmsAttempt(db, latitude: null, longitude: null, senderDisplayName: "Alex Sender");
+
+        IReadOnlyList<string>? capturedParameters = null;
+        var gateway = new Mock<ISmsGateway>();
+        gateway
+            .Setup(g => g.SendAsync(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()))
+            .Callback<string, IReadOnlyList<string>, CancellationToken>((_, parameters, _) => capturedParameters = parameters)
+            .ReturnsAsync(new SmsSendResult("SM123"));
+        var dispatcher = new SosAlertDispatcher(db, Mock.Of<IAlertBroadcastService>(), gateway.Object, new NoOpPushSender());
+
+        await dispatcher.DispatchAsync(sessionId);
+
+        Assert.NotNull(capturedParameters);
+        Assert.Equal(3, capturedParameters!.Count);
+        Assert.Equal("Location unavailable", capturedParameters[1]);
+        Assert.All(capturedParameters, p => Assert.False(string.IsNullOrEmpty(p)));
     }
 
     [Fact]
