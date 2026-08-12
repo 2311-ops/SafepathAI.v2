@@ -8,7 +8,7 @@ credentials that exist outside the repo.
 
 Nothing here is required to build, test, or demo this project. The backend falls back to a
 logging implementation for both push (`LoggingPushSender`) and SMS (`LoggingSmsGateway`) whenever
-Firebase or TextBee credentials are absent, and the mobile app catches and logs a failed
+Firebase or WhatsApp credentials are absent, and the mobile app catches and logs a failed
 `Firebase.initializeApp` rather than crashing. This document is required only to exercise real
 push delivery end to end and to ship a signed iOS build to TestFlight.
 
@@ -34,7 +34,7 @@ specifically until Apple Developer Program enrolment completes.
 | Apple Developer Program membership | Paid, annual | APNs auth key, TestFlight, iOS code signing |
 | Firebase project | Free | FCM push on Android and iOS, backend push sender |
 | Codemagic account | Free tier (500 build minutes/month, macOS M2) | `codemagic.yaml` CI builds, TestFlight upload |
-| TextBee gateway device | Free (self-hosted Android SMS gateway; no per-message cost beyond the phone's own SMS plan) | Real SMS delivery (see "Still outstanding") |
+| WhatsApp Business Cloud API (Meta Graph API) | Free for Utility-category template sends within Meta's free tier conversation limits | Real SOS fallback SMS delivery plus a genuine HMAC-signed delivery-status webhook (see "Still outstanding") |
 
 ## Firebase Project and App Registration
 
@@ -93,9 +93,15 @@ maps to the `Firebase:ProjectId` configuration value the code reads).
 | --- | --- |
 | `Firebase__ProjectId` | Firebase project id, from `Firebase Console -> Project settings -> General -> Project ID` |
 | `Firebase__CredentialsPath` | Absolute path to a Firebase service-account JSON key, from `Firebase Console -> Project settings -> Service accounts -> Generate new private key` |
-| `TextBee__ApiKey` | TextBee API key, from the TextBee dashboard after registering a gateway device (see "TextBee Device Registration" below) |
-| `TextBee__DeviceId` | The registered gateway device's id, same dashboard |
-| `TextBee__BaseUrl` | Optional; defaults to `https://api.textbee.dev` when unset |
+| `WhatsApp__AccessToken` | Meta System User access token with `whatsapp_business_messaging` + `whatsapp_business_management` scopes, from `Meta Business Suite -> Business settings -> Users -> System users -> Generate new token` |
+| `WhatsApp__PhoneNumberId` | The sending phone number's id, from `Meta App Dashboard -> WhatsApp -> API Setup -> Phone number ID` |
+| `WhatsApp__WabaId` | The WhatsApp Business Account id, from `Meta App Dashboard -> WhatsApp -> API Setup -> WhatsApp Business Account ID` |
+| `WhatsApp__AppSecret` | The Meta app's secret, from `Meta App Dashboard -> App settings -> Basic -> App secret` — used only to verify `X-Hub-Signature-256` on inbound status callbacks |
+| `WhatsApp__WebhookVerifyToken` | An operator-chosen random string; must be typed identically into `Meta App Dashboard -> WhatsApp -> Configuration -> Webhook -> Verify token` |
+| `WhatsApp__TemplateName` | The approved Utility-category template name (the SOS alert template). Must NOT be a separate Authentication-category template (e.g. `otp_verification`) — Meta locks those to OTP-only |
+| `WhatsApp__TemplateLanguage` | Optional; defaults to `en` when unset |
+| `WhatsApp__BaseUrl` | Optional; defaults to `https://graph.facebook.com` when unset |
+| `WhatsApp__ApiVersion` | Optional; defaults to the Graph API version pinned in `WhatsAppOptions` when unset |
 
 `03-06-PLAN.md`'s `user_setup` block named these variables `FIREBASE_PROJECT_ID` and
 `GOOGLE_APPLICATION_CREDENTIALS`. Those names are superseded: the shipped
@@ -103,31 +109,51 @@ maps to the `Firebase:ProjectId` configuration value the code reads).
 `Firebase:CredentialsPath`, and the names in the table above are authoritative.
 
 Save the Firebase service-account JSON file outside the repository and set
-`Firebase__CredentialsPath` to its absolute path. Never commit it.
+`Firebase__CredentialsPath` to its absolute path. Never commit it. All WhatsApp values above go
+only into the local gitignored `backend/.env` and never into `appsettings.json` or any committed
+file.
 
 Observable success signal: on restart, the API logs "Push sender active: FirebasePushSender
 (Firebase credentials configured)" rather than the logging sender, and separately logs "SMS
-gateway active: TextBeeSmsGateway (TextBee credentials configured)" rather than its own logging
+gateway active: WhatsAppSmsGateway (WhatsApp credentials configured)" rather than its own logging
 fallback. If either log line still names the logging implementation after setting the
 corresponding keys, the values were not read (check for typos in the key names or a missing
 restart).
 
-## TextBee Device Registration
+## WhatsApp Business Platform Setup
 
-TextBee is a free, self-hosted-Android-gateway SMS API: an Android phone running the TextBee
-companion app acts as the actual SMS sender, so there is no per-message cost beyond that phone's
-own SMS plan and no account approval process like Twilio's trial-number verification.
+The SOS emergency-contact fallback channel sends through the WhatsApp Business Cloud API (Meta
+Graph API) when configured, and through `LoggingSmsGateway` (free, no account) when not.
 
-1. Install the TextBee companion Android app (from `textbee.dev`) on the phone that will act as
-   the SMS gateway.
-2. Create or sign in to a TextBee account.
-3. Register that device as a gateway from the TextBee dashboard.
-4. Copy the generated API key and the device's id from the dashboard and set
-   `TextBee__ApiKey` / `TextBee__DeviceId` accordingly (see "Backend Configuration Keys" above).
+1. Create a Meta app and a WhatsApp Business Account (WABA), or reuse existing ones.
+   Location: `developers.facebook.com/apps -> Create App -> Business -> add the WhatsApp
+   product`.
+2. Generate a System User access token with the `whatsapp_business_messaging` and
+   `whatsapp_business_management` permissions.
+   Location: `Meta Business Suite -> Business settings -> Users -> System users -> Generate new
+   token`.
+   A temporary 24-hour token issued from `API Setup` will expire and is not suitable for anything
+   beyond a first smoke test — use the System User token for anything that needs to keep working.
+3. Locate the Phone Number ID (`1190449597495068`) and WABA ID (`1605779661263531`).
+   Location: `Meta App Dashboard -> WhatsApp -> API Setup`.
+4. Create and submit the Utility-category SOS template for approval (e.g. `sos_alert`), containing
+   a single body text parameter for the composed SOS message.
+   Location: `Meta App Dashboard -> WhatsApp -> Message Templates -> Create Template`.
+   Do **not** use the separately-approved `otp_verification` Authentication-category template for
+   SOS content — Meta locks Authentication templates to OTP-only, and setting it as
+   `WhatsApp__TemplateName` will fail every send.
+5. Subscribe the webhook once the API is reachable over a public https origin: set the callback
+   URL to that origin plus `/webhooks/sms/status`, set the verify token to match
+   `WhatsApp__WebhookVerifyToken` exactly, and subscribe the WABA to the `messages` field — no
+   status callback arrives until this subscription is active.
+   Location: `Meta App Dashboard -> WhatsApp -> Configuration -> Webhook`.
 
-The phone must stay powered on, network-connected, and running the TextBee app for sends to
-succeed. TextBee has no delivery-status webhook: every SMS sent through it will show as Queued
-(sent, unconfirmed) forever by design, never Delivered, unlike the old Twilio-backed flow.
+Two recipient-side caveats that will otherwise surprise the operator:
+
+- An emergency contact must have WhatsApp installed on the number stored in
+  `EmergencyContact.PhoneNumberE164` — the send fails otherwise.
+- Unverified/development Meta apps are limited to sending to pre-registered test recipient
+  numbers until the business is verified.
 
 ## App Store Connect API Key
 
@@ -258,6 +284,6 @@ to outlive any single phase.
 | OpenStreetMap production tile-hosting provider (MapTiler, Stadia Maps, or Thunderforest) | OSM's own tile server (`tile.openstreetmap.org`) is rate-limited and its usage policy disallows production app traffic at scale; see `.planning/phases/02-real-time-location-history-privacy/02-01-USER-SETUP.md` | Before any real-user traffic; no key is needed for development | Outstanding |
 | Android release signing keystore | The app module's `release` build type is still signed with the debug keystore (`mobile/android/app/build.gradle.kts`) | Before a real Play Store release; the `android-apk` Codemagic workflow deliberately builds `--debug` to avoid masking this gap | Outstanding |
 | Release-configuration APNs production entitlement | `aps-environment` is `development` for every build configuration today; see "Production APNs entitlement" above | Before any TestFlight or App Store push delivery can be trusted | Outstanding |
-| TextBee device provisioning | Real SMS delivery to emergency contacts; the code path is complete since quick task 260810-vcf but no TextBee gateway device is registered yet | Before a real SMS can be sent | Outstanding (code-complete, unprovisioned) |
+| WhatsApp Business Cloud API provisioning | Real SOS SMS delivery to emergency contacts plus a genuine Delivered status; the code path is complete since quick task 260812-wgl but `backend/.env` is not yet populated and the webhook is not yet subscribed | Before a real SOS SMS can be sent or a delivery status can be confirmed | Outstanding (code-complete, unprovisioned) |
 | Supabase Storage `avatar` bucket | Backend-mediated avatar upload/delete/signed-URL creation reads/writes this private bucket | Already required for profile-photo features | Done (verified in 02-13) |
 | Six Labors ImageSharp license | ImageSharp 4.0.0 enforces a build-time license (`sixlabors.lic` or `SIXLABORS_LICENSE_KEY`); required to build the backend at all | Every backend build, including CI | Outstanding for CI (a local uncommitted license file exists per developer machine per 02-13) |

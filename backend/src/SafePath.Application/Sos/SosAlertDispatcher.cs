@@ -10,12 +10,15 @@ namespace SafePath.Application.Sos;
 /// <see cref="SosDeliveryStatus.Delivered"/> or <see cref="SosDeliveryStatus.Acknowledged"/> —
 /// those two states are only ever written by AlertHub.ConfirmReceipt (SignalR), the FCM receipt
 /// callback added in plan 03-06, the SMS provider status webhook added in plan 03-05 (migrated
-/// to TextBee in quick task 260810-vcf), and AcknowledgeSosCommand. Do not "helpfully" mark a row
-/// Delivered on a successful send here:
-/// dispatching to a channel proves nothing about whether it actually arrived (D-10,
-/// 03-RESEARCH.md Pitfall 1). Each channel's dispatch is independently try/caught so one dead
-/// channel can never take the whole emergency down (03-RESEARCH.md "hidden single point of
-/// failure").
+/// to the WhatsApp Business Cloud API in quick task 260812-wgl), and AcknowledgeSosCommand.
+/// Unlike the previously configured SMS provider, the WhatsApp status webhook is a genuinely
+/// live, HMAC-signed callback — the SMS channel can now actually reach Delivered through
+/// <c>RecordSmsDeliveryStatusCommand</c>. This class itself remains structurally incapable of
+/// writing Delivered no matter which provider is configured: dispatching to a channel proves
+/// nothing about whether it actually arrived (D-10, 03-RESEARCH.md Pitfall 1). Do not
+/// "helpfully" mark a row Delivered on a successful send here. Each channel's dispatch is
+/// independently try/caught so one dead channel can never take the whole emergency down
+/// (03-RESEARCH.md "hidden single point of failure").
 /// </summary>
 public class SosAlertDispatcher : ISosAlertDispatcher
 {
