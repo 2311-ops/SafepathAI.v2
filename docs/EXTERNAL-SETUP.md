@@ -103,6 +103,12 @@ maps to the `Firebase:ProjectId` configuration value the code reads).
 | `WhatsApp__BaseUrl` | Optional; defaults to `https://graph.facebook.com` when unset |
 | `WhatsApp__ApiVersion` | Optional; defaults to the Graph API version pinned in `WhatsAppOptions` when unset |
 
+Future geofence WhatsApp alerts should reserve a separate Utility-category template named
+`geofence_alert`. This is a placeholder for later Phase 04 work only: the current
+`WhatsApp__TemplateName` key is SOS-only and should not be reused for routine geofence alerts.
+The intended `geofence_alert` body placeholders are, in order: `{{1}}` member name, `{{2}}`
+entered/exited, `{{3}}` zone name, and `{{4}}` time.
+
 `03-06-PLAN.md`'s `user_setup` block named these variables `FIREBASE_PROJECT_ID` and
 `GOOGLE_APPLICATION_CREDENTIALS`. Those names are superseded: the shipped
 `backend/src/SafePath.Infrastructure/Push/FirebaseOptions.cs` binds `Firebase:ProjectId` and
@@ -145,6 +151,10 @@ Graph API) when configured, and through `LoggingSmsGateway` (free, no account) w
    Do **not** use the separately-approved `otp_verification` Authentication-category template for
    SOS content — Meta locks Authentication templates to OTP-only, and setting it as
    `WhatsApp__TemplateName` will fail every send.
+   Future geofence notifications should use their own Utility-category template named
+   `geofence_alert`; do not reuse the SOS `sos_alert` template or route routine geofence alerts
+   through the SOS fallback channel. Its body placeholders should be `{{1}}` member name, `{{2}}`
+   entered/exited, `{{3}}` zone name, and `{{4}}` time.
 5. Subscribe the webhook once the API is reachable over a public https origin: set the callback
    URL to that origin plus `/webhooks/sms/status`, set the verify token to match
    `WhatsApp__WebhookVerifyToken` exactly, and subscribe the WABA to the `messages` field — no
