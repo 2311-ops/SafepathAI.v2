@@ -6,8 +6,9 @@ namespace SafePath.Infrastructure.Sms;
 /// <summary>
 /// Zero-cost default <see cref="ISmsGateway"/> implementation, registered whenever WhatsApp
 /// Business Cloud API credentials are absent (D-07). Sends nothing; logs the destination
-/// (redacted to its last four digits, threat T-03-21) and body at Information level and returns
-/// a synthetic message id, so the whole SOS pipeline is exercisable with no account and no cost.
+/// (redacted to its last four digits, threat T-03-21) and the ordered template parameter list at
+/// Information level and returns a synthetic message id, so the whole SOS pipeline is exercisable
+/// with no account and no cost.
 /// </summary>
 public class LoggingSmsGateway : ISmsGateway
 {
@@ -18,14 +19,14 @@ public class LoggingSmsGateway : ISmsGateway
         _logger = logger;
     }
 
-    public Task<SmsSendResult> SendAsync(string toE164, string body, CancellationToken cancellationToken = default)
+    public Task<SmsSendResult> SendAsync(string toE164, IReadOnlyList<string> templateParameters, CancellationToken cancellationToken = default)
     {
         var messageId = $"logging-{Guid.NewGuid():N}";
         _logger.LogInformation(
-            "LoggingSmsGateway: would send SMS to {RedactedNumber} (synthetic id {MessageId}): {Body}",
+            "LoggingSmsGateway: would send SMS to {RedactedNumber} (synthetic id {MessageId}): {TemplateParameters}",
             RedactAllButLastFour(toE164),
             messageId,
-            body);
+            string.Join(" | ", templateParameters));
 
         return Task.FromResult(new SmsSendResult(messageId));
     }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Domain.Entities;
@@ -212,7 +213,8 @@ public class SosAlertDispatcher : ISosAlertDispatcher
             .SingleOrDefaultAsync(cancellationToken);
         senderName = string.IsNullOrWhiteSpace(senderName) ? "A family member" : senderName;
 
-        var body = ComposeSmsBody(senderName, session.Latitude, session.Longitude);
+        var templateParameters = ComposeSmsTemplateParameters(
+            senderName, session.Latitude, session.Longitude, session.TriggeredAtUtc);
 
         foreach (var attempt in contactRows)
         {
@@ -223,7 +225,7 @@ public class SosAlertDispatcher : ISosAlertDispatcher
 
             try
             {
-                var result = await _smsGateway.SendAsync(contact.PhoneNumberE164, body, cancellationToken);
+                var result = await _smsGateway.SendAsync(contact.PhoneNumberE164, templateParameters, cancellationToken);
                 attempt.Status = SosDeliveryStatus.Queued;
                 attempt.QueuedAtUtc = DateTime.UtcNow;
                 attempt.ProviderMessageId = result.ProviderMessageId;
@@ -239,19 +241,27 @@ public class SosAlertDispatcher : ISosAlertDispatcher
     }
 
     /// <summary>
-    /// Sender display name + a short emergency statement + a maps link built from the session's
-    /// coordinates (omitted when null) — never the recipient's own phone number. Kept under 320
-    /// characters (at most two SMS segments on a trial balance).
+    /// Builds the three ordered template parameters the approved <c>sos_alert</c> WhatsApp
+    /// template expects, in placeholder order: the triggering member's display name; a maps link
+    /// built from the session's coordinates, or the literal fallback text <c>Location
+    /// unavailable</c> when either coordinate is null (WhatsApp has no way to omit a placeholder);
+    /// and the trigger time rendered in invariant-culture UTC so the value cannot drift with the
+    /// host locale. Never includes the recipient emergency contact's own phone number. Each
+    /// element is truncated to 320 characters (the old whole-body cap, now applied per element) so
+    /// an unbounded display name cannot breach Meta's per-parameter length limit.
     /// </summary>
-    private static string ComposeSmsBody(string senderDisplayName, double? latitude, double? longitude)
+    private static IReadOnlyList<string> ComposeSmsTemplateParameters(
+        string senderDisplayName, double? latitude, double? longitude, DateTime triggeredAtUtc)
     {
-        var body = $"{senderDisplayName} triggered an SOS on SafePath and needs help.";
-        if (latitude is { } lat && longitude is { } lng)
-        {
-            body += $" Location: https://maps.google.com/?q={lat},{lng}";
-        }
+        var locationText = latitude is { } lat && longitude is { } lng
+            ? $"https://maps.google.com/?q={lat},{lng}"
+            : "Location unavailable";
 
-        return body.Length > 320 ? body[..320] : body;
+        var timestampText = triggeredAtUtc.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture);
+
+        return new[] { senderDisplayName, locationText, timestampText }
+            .Select(value => value.Length > 320 ? value[..320] : value)
+            .ToList();
     }
 
     private async Task MarkChannelFailed(

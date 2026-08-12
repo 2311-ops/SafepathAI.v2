@@ -36,7 +36,7 @@ public class WhatsAppSmsGateway : ISmsGateway
         _logger = logger;
     }
 
-    public async Task<SmsSendResult> SendAsync(string toE164, string body, CancellationToken cancellationToken = default)
+    public async Task<SmsSendResult> SendAsync(string toE164, IReadOnlyList<string> templateParameters, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -45,7 +45,9 @@ public class WhatsAppSmsGateway : ISmsGateway
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _options.AccessToken);
 
             var toDigitsOnly = toE164.TrimStart('+');
-            var normalizedBody = NormalizeTemplateParameterText(body);
+            var normalizedParameters = templateParameters
+                .Select(value => new WhatsAppTemplateParameter("text", NormalizeTemplateParameterText(value)))
+                .ToArray();
 
             var payload = new WhatsAppSendMessageRequest(
                 MessagingProduct: "whatsapp",
@@ -58,7 +60,7 @@ public class WhatsAppSmsGateway : ISmsGateway
                     {
                         new WhatsAppTemplateComponent(
                             Type: "body",
-                            Parameters: new[] { new WhatsAppTemplateParameter("text", normalizedBody) }),
+                            Parameters: normalizedParameters),
                     }));
 
             request.Content = JsonContent.Create(payload);
@@ -97,10 +99,15 @@ public class WhatsAppSmsGateway : ISmsGateway
 
     /// <summary>
     /// Meta rejects newlines, tabs, and runs of 4+ spaces inside template parameter text.
-    /// Collapses every whitespace run to a single space and trims.
+    /// Collapses every whitespace run to a single space and trims, applied to each parameter
+    /// value independently. If a value normalizes to empty or whitespace, substitutes a single
+    /// hyphen — Meta rejects an empty placeholder and an SOS send must not fail on a blank slot.
     /// </summary>
-    private static string NormalizeTemplateParameterText(string body) =>
-        WhitespaceRunPattern.Replace(body, " ").Trim();
+    private static string NormalizeTemplateParameterText(string parameterValue)
+    {
+        var normalized = WhitespaceRunPattern.Replace(parameterValue, " ").Trim();
+        return string.IsNullOrWhiteSpace(normalized) ? "-" : normalized;
+    }
 
     /// <summary>
     /// Extracts the provider message id defensively: parses the response stream, reads
