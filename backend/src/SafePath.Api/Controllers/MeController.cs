@@ -134,6 +134,10 @@ public class MeController : ControllerBase
             var result = await _uploadProfileImage.Handle(new UploadProfileImageCommand(userId, buffer.ToArray()), cancellationToken);
             return Ok(ToResponse(result));
         }
+        catch (ProfileImageStorageNotConfiguredException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = ex.Message });
+        }
         catch (ArgumentException ex)
         {
             return BadRequest(new { error = ex.Message });
@@ -148,8 +152,15 @@ public class MeController : ControllerBase
             return Unauthorized();
         }
 
-        var result = await _deleteProfileImage.Handle(new DeleteProfileImageCommand(userId), cancellationToken);
-        return Ok(ToResponse(result));
+        try
+        {
+            var result = await _deleteProfileImage.Handle(new DeleteProfileImageCommand(userId), cancellationToken);
+            return Ok(ToResponse(result));
+        }
+        catch (ProfileImageStorageNotConfiguredException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = ex.Message });
+        }
     }
 
     private object ToResponse(GetMeResult result)

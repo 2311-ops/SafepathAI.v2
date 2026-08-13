@@ -1,5 +1,13 @@
 namespace SafePath.Application.Common.Interfaces;
 
+public sealed class ProfileImageStorageNotConfiguredException : InvalidOperationException
+{
+    public ProfileImageStorageNotConfiguredException()
+        : base("Supabase profile image storage is not configured. Set Supabase:ServiceRoleKey to enable avatar storage.")
+    {
+    }
+}
+
 public interface IProfileImageStorage
 {
     Task UploadAvatarAsync(Guid userId, byte[] jpegBytes, CancellationToken cancellationToken = default);

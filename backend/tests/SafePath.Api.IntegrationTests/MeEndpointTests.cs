@@ -1,20 +1,16 @@
 using System.Net;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+using SafePath.Domain.Entities;
+using SafePath.Domain.Enums;
 using SafePath.Infrastructure.Persistence;
 
 namespace SafePath.Api.IntegrationTests;
 
-public class MeEndpointTests : IClassFixture<ProtectedApiFactory>
+public class MeEndpointTests : IClassFixture<FamilyApiFactory>
 {
-    private readonly ProtectedApiFactory _factory;
+    private readonly FamilyApiFactory _factory;
 
-    public MeEndpointTests(ProtectedApiFactory factory)
+    public MeEndpointTests(FamilyApiFactory factory)
     {
         _factory = factory;
     }
@@ -28,41 +24,30 @@ public class MeEndpointTests : IClassFixture<ProtectedApiFactory>
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
-}
 
-public sealed class ProtectedApiFactory : WebApplicationFactory<Program>
-{
-    private readonly SqliteConnection _connection = new("DataSource=:memory:");
-
-    public ProtectedApiFactory()
+    [Fact]
+    public async Task Me_WithMissingServiceRoleKey_ReturnsProfileInsteadOfStorageConfigurationError()
     {
-        _connection.Open();
-    }
-
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        builder.UseEnvironment("Development");
-        builder.ConfigureServices(services =>
+        var userId = Guid.NewGuid();
+        using (var scope = _factory.Services.CreateScope())
         {
-            services.RemoveAll(typeof(DbContextOptions<ApplicationDbContext>));
-            services.RemoveAll(typeof(DbContextOptions));
-            services.RemoveAll(typeof(IDbContextOptionsConfiguration<ApplicationDbContext>));
-            services.RemoveAll(typeof(IDbContextOptionsConfiguration<DbContext>));
-            services.RemoveAll(typeof(ApplicationDbContext));
-            services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(_connection));
-
-            using var scope = services.BuildServiceProvider().CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            dbContext.Database.EnsureCreated();
-        });
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        base.Dispose(disposing);
-        if (disposing)
-        {
-            _connection.Dispose();
+            dbContext.Users.Add(new User
+            {
+                Id = userId,
+                Email = "member@safepath.test",
+                FullName = "Member Test",
+                Role = Role.Caregiver,
+                CreatedAt = DateTime.UtcNow,
+            });
+            await dbContext.SaveChangesAsync();
         }
+
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, userId.ToString());
+
+        var response = await client.GetAsync("/me");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 }

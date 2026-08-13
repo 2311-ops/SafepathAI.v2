@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Infrastructure.Identity;
 using SafePath.Infrastructure.Persistence;
@@ -17,8 +18,19 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        var defaultConnectionString = configuration.GetConnectionString("DefaultConnection");
+        if (!string.IsNullOrWhiteSpace(defaultConnectionString))
+        {
+            defaultConnectionString = BuildDefaultConnectionString(defaultConnectionString);
+        }
+
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            options.UseNpgsql(
+                defaultConnectionString,
+                npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorCodesToAdd: null)));
 
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
 
@@ -37,26 +49,27 @@ public static class DependencyInjection
         services.AddScoped<IAlertBroadcastService, AlertBroadcastService>();
         services.AddHostedService<SharingPreferenceSweepService>();
         services.AddSingleton<IProfileImageValidator, ImageSharpProfileImageValidator>();
-        services.AddHttpClient<IProfileImageStorage, SupabaseProfileImageStorage>((_, client) =>
+
+        var profileStorageSupabaseUrl = configuration["Supabase:Url"];
+        var profileStorageServiceRoleKey = configuration["Supabase:ServiceRoleKey"];
+        if (string.IsNullOrWhiteSpace(profileStorageSupabaseUrl) ||
+            string.IsNullOrWhiteSpace(profileStorageServiceRoleKey))
         {
-            var supabaseUrl = configuration["Supabase:Url"]
-                ?? throw new InvalidOperationException("Supabase:Url is not configured.");
-            var serviceRoleKey = configuration["Supabase:ServiceRoleKey"]
-                ?? throw new InvalidOperationException("Supabase:ServiceRoleKey is not configured.");
-
-            if (string.IsNullOrWhiteSpace(serviceRoleKey))
+            services.AddScoped<IProfileImageStorage, DisabledProfileImageStorage>();
+        }
+        else
+        {
+            services.AddHttpClient<IProfileImageStorage, SupabaseProfileImageStorage>((_, client) =>
             {
-                throw new InvalidOperationException("Supabase:ServiceRoleKey is not configured.");
-            }
+                client.BaseAddress = new Uri($"{profileStorageSupabaseUrl.TrimEnd('/')}/storage/v1/");
+                client.DefaultRequestHeaders.Add("apikey", profileStorageServiceRoleKey);
 
-            client.BaseAddress = new Uri($"{supabaseUrl.TrimEnd('/')}/storage/v1/");
-            client.DefaultRequestHeaders.Add("apikey", serviceRoleKey);
-
-            if (serviceRoleKey.StartsWith("eyJ", StringComparison.Ordinal))
-            {
-                client.DefaultRequestHeaders.Authorization = new("Bearer", serviceRoleKey);
-            }
-        });
+                if (profileStorageServiceRoleKey.StartsWith("eyJ", StringComparison.Ordinal))
+                {
+                    client.DefaultRequestHeaders.Authorization = new("Bearer", profileStorageServiceRoleKey);
+                }
+            });
+        }
 
         var whatsAppOptions = new WhatsAppOptions
         {
@@ -138,5 +151,45 @@ public static class DependencyInjection
         }
 
         return services;
+    }
+
+    private static string BuildDefaultConnectionString(string connectionString)
+    {
+        var configuredKeys = connectionString
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(part => part.Split('=', 2)[0].Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var builder = new NpgsqlConnectionStringBuilder(connectionString);
+
+        if (!configuredKeys.Contains("Timeout") &&
+            !configuredKeys.Contains("Connection Timeout"))
+        {
+            builder.Timeout = 60;
+        }
+
+        if (!configuredKeys.Contains("Command Timeout"))
+        {
+            builder.CommandTimeout = 60;
+        }
+
+        if (!configuredKeys.Contains("Keepalive"))
+        {
+            builder.KeepAlive = 30;
+        }
+
+        if (builder.Port == 6543)
+        {
+            if (!configuredKeys.Contains("Pooling"))
+            {
+                builder.Pooling = false;
+            }
+
+            if (!configuredKeys.Contains("Max Auto Prepare"))
+            {
+                builder.MaxAutoPrepare = 0;
+            }
+        }
+
+        return builder.ConnectionString;
     }
 }
