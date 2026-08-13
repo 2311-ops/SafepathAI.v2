@@ -1,72 +1,78 @@
 {
   "version": "1.0",
-  "timestamp": "2026-08-11T17:46:41.019Z",
+  "timestamp": "2026-08-13T02:59:35.840Z",
   "phase": "04",
   "phase_name": "geofencing",
-  "phase_dir": "F:/SafepathAI.v2/.planning/phases/04-geofencing",
-  "plan": 3,
-  "task": 0,
-  "total_tasks": 2,
+  "phase_dir": ".planning/phases/04-geofencing",
+  "plan": 5,
+  "task": 1,
+  "total_tasks": 1,
   "status": "paused",
   "completed_tasks": [
     {
       "id": 1,
-      "name": "Plan 04-02 Task 1 — durable geofencing delivery and quiet-hours records",
-      "status": "done",
-      "commit": "56bc5cc, 513f631"
-    },
-    {
-      "id": 2,
-      "name": "Plan 04-02 Task 2 — generate, inspect, and apply geofencing migration",
-      "status": "done",
-      "commit": "30de0de, 93203c0"
+      "name": "Prove Android process-death registration and authenticated upload",
+      "status": "in_progress",
+      "progress": "Native registration proven end-to-end on the physical device (zone fetch -> native replaceMonitoredZones -> server acknowledge), cross-confirmed via matching timestamps between backend ack and device Geofencer log. Fixed a real wiring gap (commit 3153e43). Discovered Play Services floors effective geofence radius to ~80m regardless of configured value. Boundary-crossing and all downstream steps (process-death kill, native candidate write, headless upload, network-toggle replay, SOS isolation) not yet attempted."
     }
   ],
   "remaining_tasks": [
     {
       "id": 1,
-      "name": "Plan 04-03 Task 1 — persist Android callbacks before Dart and deduplicate them",
-      "status": "not_started"
-    },
-    {
-      "id": 2,
-      "name": "Plan 04-03 Task 2 — register canonical zones through a capability-aware Flutter gateway",
-      "status": "not_started"
+      "name": "Complete physical verification checklist",
+      "status": "in_progress",
+      "subtasks": [
+        "Create the queued 100m-radius zone (create-zone.ps1 already updated to radiusMeters=100, not yet run)",
+        "Hot-restart the app to pick up the new zone",
+        "Confirm native registration via logcat (match backend acknowledgedAtUtc to device Geofencer log timestamp, as done for the 5m test)",
+        "Human physically crosses the ~100m boundary",
+        "Orchestrator captures the EXIT transition + native candidate write via logcat",
+        "adb shell am kill com.safepath.mobile (process-death simulation, not force-stop)",
+        "Confirm WorkManager headless upload drains the candidate and acknowledges only on 200/202",
+        "Repeat with network disabled (adb shell svc wifi/data disable) then re-enabled + cold relaunch to prove replay-safe drain",
+        "Trigger SOS with a candidate pending; confirm immediate/independent delivery per D-11",
+        "Executor writes 04-05-SUMMARY.md documenting the main.dart deviation and the ~80m Play Services floor finding"
+      ]
     }
   ],
-  "blockers": [],
+  "blockers": [
+    {
+      "description": "Human cannot currently physically travel 80m+ to cross the enforced geofence boundary",
+      "type": "human_action",
+      "workaround": "Paused; resume when the human can walk/drive that distance. A 100m zone (matching the observed Play Services floor) is queued via create-zone.ps1."
+    }
+  ],
   "async_jobs": [],
   "human_actions_pending": [
     {
-      "action": "Rotate the Supabase database password that was exposed in chat and update the ignored backend/.env file.",
-      "context": "The current local connection is configured, but its password was shared in chat. Do not read, print, commit, or copy backend/.env.",
-      "blocking": false
+      "action": "Run create-zone.ps1 (scratchpad, already set to radiusMeters=100) to create the 100m zone assigned to guts",
+      "context": "Zone-creation UI does not exist yet (ships in wave 7 / plan 04-12), so this plan verifies via the production API directly, per the plan's own instructions",
+      "blocking": true
+    },
+    {
+      "action": "Physically cross the ~100m zone boundary once created and registered",
+      "context": "Play Services floors the effective monitored radius to ~80m regardless of configured value (confirmed with both 40m and 5m test zones); a 100m zone matches this floor for a reliable transition",
+      "blocking": true
     }
   ],
   "decisions": [
     {
-      "decision": "Use local toolchain paths on F drive",
-      "rationale": "The required .NET SDK 9.0.316 is installed at F:/DevTools/dotnet and dotnet-ef 9.0.9 at F:/DevTools/dotnet-tools.",
+      "decision": "Created safe zones via direct backend API call (PowerShell script run by the human in their own terminal, credentials never shared with the assistant) rather than app UI",
+      "rationale": "The zone-creation Flutter UI ships in wave 7 (plan 04-12), not yet built; plan 04-05 explicitly anticipates using 'the production POST endpoint' for this reason",
       "phase": "04"
     },
     {
-      "decision": "Keep Six Labors license and database configuration local only",
-      "rationale": "sixlabors.lic and backend/.env are present locally and ignored by Git; neither may be committed or displayed.",
+      "decision": "Fixed geofenceRegistrationControllerProvider having zero callers anywhere in the app by adding a container.read() call in main.dart's startup block (commit 3153e43)",
+      "rationale": "Riverpod providers only run build() when read/watched; nothing in the codebase referenced this provider outside its own file and unit test, so native registration was structurally dead code despite passing unit tests. Mirrors the existing pattern for pushServiceControllerProvider/quickActionsServiceProvider already in main.dart. Documented as a plan deviation (files_modified was declared empty).",
       "phase": "04"
     },
     {
-      "decision": "Finish Plan 04-02 before pausing",
-      "rationale": "The user requested a clean persistence/migration boundary before the handoff.",
+      "decision": "Test roles: Guardian = 'mohh' (youssefhassan.2311.2005@gmail.com, userId 24a51971-0b4b-4245-a671-13ca001af7f2), assigned Member = 'guts' (userId 00d60457-820a-430c-9f57-b15091c17f28), family 'bom' (familyId a16955a1-7a2b-42d5-93b8-3e1a2b31ab46)",
+      "rationale": "Only one physical device available; guts was the member account the human had credentials for and it has FullLocation permissions",
       "phase": "04"
     }
   ],
-  "uncommitted_files": [
-    ".planning/STATE.md (pre-existing workflow tracking)",
-    ".planning/config.json (pre-existing workflow tracking)",
-    "mobile/android/app/build.gradle.kts (user change)",
-    "mobile/android/build.gradle.kts (user change)",
-    "mobile/pubspec.yaml (user change)"
-  ],
-  "next_action": "Resume Phase 04 at Plan 04-03. Read the plan and 04-02 summary, then implement the Android native receiver/outbox and Flutter registration gateway without changing SOS declarations or touching local secret files.",
-  "context_notes": "Plan 04-02 is complete. Migration 20260811173100_AddGeofencing was applied successfully; EF reports no pending model changes; focused schema tests passed 2/2 and the backend suite passed 192/192. No servers or async jobs are running."
+  "uncommitted_files": [],
+  "next_action": "Run create-zone.ps1 (already set to 100m) to create the zone; then stop and restart the flutter run process on device R58M30TGNXV to pick it up (backend + adb reverse tcp:5059 need to be restarted too if the prior session's background tasks are gone); confirm native registration via logcat; then have the human physically cross the boundary while watching the log for the EXIT transition, and proceed through the rest of the physical verification checklist.",
+  "context_notes": "This is a blocking human-verify checkpoint (plan 04-05, gate=blocking) that must NOT be marked complete without genuine physical device evidence — explicitly instructed never to fabricate device evidence, event IDs, or log output. Two throwaway 5m test zones (777a996f-3594-42ec-9ceb-98a370a44b59, c8ef953d-a6a1-4cdc-95a7-7a54b613aaa0) exist in the DB alongside the original 40m zone; harmless, since GetMySafeZoneRegistrationQuery always serves the most-recently-issued registration for the caller."
 }
