@@ -8,6 +8,7 @@ import 'app.dart';
 import 'core/config/supabase_config.dart';
 import 'core/os_shortcuts/quick_actions_service.dart';
 import 'core/push/push_service.dart';
+import 'features/geofencing/application/geofence_registration_controller.dart';
 import 'features/geofencing/data/geofence_candidate_uploader.dart';
 
 Future<void> main() async {
@@ -49,6 +50,11 @@ Future<void> main() async {
   // invocation handler (SOS-06) alongside the push/deep-link bootstrap
   // above — same startup-time-wiring convention, one shared ProviderContainer.
   container.read(quickActionsServiceProvider);
+  // Mirrors the authenticated server geofence registration into native
+  // Android/iOS monitoring on sign-in and clears it on sign-out (GEO-02).
+  // Reading it here is required: NotifierProvider.build() only runs once
+  // something reads the provider, and nothing else in the app tree did.
+  container.read(geofenceRegistrationControllerProvider);
 
   runApp(
     UncontrolledProviderScope(container: container, child: const SafePathApp()),
