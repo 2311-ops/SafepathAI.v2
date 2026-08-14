@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: geofencing
 status: executing
-stopped_at: Completed 04-12-PLAN.md (04-05 remains incomplete by explicit override)
-last_updated: "2026-08-14T00:37:20.600Z"
+stopped_at: Completed 04-09-PLAN.md
+last_updated: "2026-08-14T01:26:33.982Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 61
-  completed_plans: 51
+  completed_plans: 54
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 04 (geofencing) — EXECUTING
-Plan: 3 of 17
+Plan: 4 of 17
 Status: Ready to execute
 Last activity: 2026-08-13 — Phase 04 execution started
 
-Progress: [████████░░] 84%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -103,6 +103,7 @@ Progress: [████████░░] 84%
 | Phase 04-geofencing P06 | 47min | 2 tasks | 8 files |
 | Phase 04-geofencing P07 | 32min | 2 tasks | 9 files |
 | Phase 04 P12 | 44min | 2 tasks | 7 files |
+| Phase 04-geofencing P09 | 20min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -207,6 +208,8 @@ Recent decisions affecting current work:
 - [Phase ?]: 04-07: Only confirmed evidence atomically records geofence activity, recipient feed rows, and pending routine jobs; candidate replay returns Duplicate.
 - [Phase ?]: 04-12: Safe-zone permission coordination runs only after authoritative CRUD save; no map-open or current-location prompt.
 - [Phase ?]: 04-12: Explicit user override bypassed incomplete 04-05 without creating evidence or completion metadata for it.
+- [Phase ?]: Routine feed identity and quiet-hours ownership derive solely from ICurrentUserService; no caller-supplied recipient id is accepted.
+- [Phase ?]: RoutineNotificationDispatcher only re-evaluates durable routine job timing; it has no SOS or push-sender dependency.
 
 ### Pending Todos
 
@@ -267,6 +270,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-14T00:37:20.568Z
-Stopped at: Completed 04-12-PLAN.md (04-05 remains incomplete by explicit override)
+Last session: 2026-08-14T01:26:33.949Z
+Stopped at: Completed 04-09-PLAN.md
 Resume file: None
