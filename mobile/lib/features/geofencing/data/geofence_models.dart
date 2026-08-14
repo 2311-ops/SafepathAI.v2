@@ -60,6 +60,7 @@ class SafeZoneDraft {
     this.category = SafeZoneCategory.home,
     this.name = 'Home',
     this.center = const SafeZoneCenter(latitude: 0, longitude: 0),
+    this.hasExplicitCenter = false,
     this.radiusMeters = 100,
     this.assignedMemberId,
     this.sensitivity = SafeZoneSensitivity.reliable,
@@ -72,6 +73,7 @@ class SafeZoneDraft {
   final SafeZoneCategory category;
   final String name;
   final SafeZoneCenter center;
+  final bool hasExplicitCenter;
   final int radiusMeters;
   final String? assignedMemberId;
   final SafeZoneSensitivity sensitivity;
@@ -94,6 +96,7 @@ class SafeZoneDraft {
     SafeZoneCategory? category,
     String? name,
     SafeZoneCenter? center,
+    bool? hasExplicitCenter,
     int? radiusMeters,
     String? assignedMemberId,
     bool clearAssignedMember = false,
@@ -106,6 +109,7 @@ class SafeZoneDraft {
     category: category ?? this.category,
     name: name ?? this.name,
     center: center ?? this.center,
+    hasExplicitCenter: hasExplicitCenter ?? this.hasExplicitCenter,
     radiusMeters: radiusMeters ?? this.radiusMeters,
     assignedMemberId: clearAssignedMember
         ? null
@@ -126,6 +130,7 @@ class SafeZoneDraft {
         category: zone.category,
         name: zone.name,
         center: zone.center,
+        hasExplicitCenter: true,
         radiusMeters: zone.radiusMeters,
         assignedMemberId: zone.assignedMemberId,
         sensitivity: zone.sensitivity,
@@ -150,18 +155,24 @@ class SafeZoneDraft {
 class SafeZoneValidation {
   const SafeZoneValidation({
     this.name,
+    this.location,
     this.member,
     this.radius,
     this.recipients,
   });
 
   final String? name;
+  final String? location;
   final String? member;
   final String? radius;
   final String? recipients;
 
   bool get isValid =>
-      name == null && member == null && radius == null && recipients == null;
+      name == null &&
+      location == null &&
+      member == null &&
+      radius == null &&
+      recipients == null;
 }
 
 class SafeZone {

@@ -34,11 +34,16 @@ void main() {
         familyId: 'family-1',
         activeGuardianIds: const {'guardian-1'},
         defaultAssignedMemberId: 'member-1',
+        initialCenter: const SafeZoneCenter(
+          latitude: 30.0444,
+          longitude: 31.2357,
+        ),
       );
 
       expect(controller.draft.familyId, 'family-1');
       expect(controller.draft.category, SafeZoneCategory.home);
       expect(controller.draft.name, 'Home');
+      expect(controller.draft.hasExplicitCenter, isTrue);
       expect(controller.draft.assignedMemberId, 'member-1');
       expect(controller.draft.guardianRecipientIds, {'guardian-1'});
       expect(controller.isReadyForReview, isTrue);
@@ -57,6 +62,10 @@ void main() {
 
       expect(controller.validateForReview(), isFalse);
       expect(controller.state.validation.name, 'Enter a zone name.');
+      expect(
+        controller.state.validation.location,
+        'Choose a zone location before review.',
+      );
       expect(controller.state.validation.member, 'Choose a family member.');
       expect(
         controller.state.validation.recipients,
@@ -78,6 +87,7 @@ void main() {
 
         expect(controller.validateForReview(), isFalse);
         expect(controller.state.validation.name, isNotNull);
+        expect(controller.state.validation.location, isNotNull);
         expect(controller.state.validation.member, isNotNull);
         expect(controller.state.validation.radius, isNotNull);
         expect(controller.state.validation.recipients, isNotNull);

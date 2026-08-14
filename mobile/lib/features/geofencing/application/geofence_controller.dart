@@ -71,6 +71,7 @@ class GeofenceController extends Notifier<GeofenceEditorState> {
 
   bool get isReadyForReview =>
       draft.name.trim().isNotEmpty &&
+      draft.hasExplicitCenter &&
       draft.assignedMemberId != null &&
       draft.hasValidRadius &&
       draft.guardianRecipientIds.isNotEmpty;
@@ -87,10 +88,14 @@ class GeofenceController extends Notifier<GeofenceEditorState> {
     required String familyId,
     required Set<String> activeGuardianIds,
     String? defaultAssignedMemberId,
+    SafeZoneCenter? initialCenter,
   }) {
     _replace(
       SafeZoneDraft(
         familyId: familyId,
+        center:
+            initialCenter ?? const SafeZoneCenter(latitude: 0, longitude: 0),
+        hasExplicitCenter: initialCenter != null,
         assignedMemberId: defaultAssignedMemberId,
         guardianRecipientIds: activeGuardianIds,
       ),
@@ -132,7 +137,7 @@ class GeofenceController extends Notifier<GeofenceEditorState> {
 
   void setName(String name) => _replace(draft.copyWith(name: name));
   void setCenter(SafeZoneCenter center) =>
-      _replace(draft.copyWith(center: center));
+      _replace(draft.copyWith(center: center, hasExplicitCenter: true));
   void setAssignedMember(String? memberId) => _replace(
     memberId == null
         ? draft.copyWith(clearAssignedMember: true)
@@ -161,6 +166,9 @@ class GeofenceController extends Notifier<GeofenceEditorState> {
   bool validateForReview() {
     final validation = SafeZoneValidation(
       name: draft.name.trim().isEmpty ? 'Enter a zone name.' : null,
+      location: draft.hasExplicitCenter
+          ? null
+          : 'Choose a zone location before review.',
       member: draft.assignedMemberId == null ? 'Choose a family member.' : null,
       radius: draft.hasValidRadius
           ? null

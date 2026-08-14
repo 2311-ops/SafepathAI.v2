@@ -56,17 +56,17 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
           SafeZoneDraft.fromZone(initialZone, familyId: widget.familyId),
         );
       } else {
+        final locationState = ref.read(locationControllerProvider).value;
+        final defaultAssignedMemberId = _defaultAssignedMemberId;
         controller.startNewDraft(
           familyId: widget.familyId,
           activeGuardianIds: guardians,
-          defaultAssignedMemberId: _defaultAssignedMemberId,
+          defaultAssignedMemberId: defaultAssignedMemberId,
+          initialCenter: _initialCenterForNewDraft(
+            locationState,
+            defaultAssignedMemberId,
+          ),
         );
-        final self = ref.read(locationControllerProvider).value?.selfPosition;
-        if (self != null) {
-          controller.setCenter(
-            SafeZoneCenter(latitude: self.lat, longitude: self.lng),
-          );
-        }
       }
       _nameController.text = controller.draft.name;
     });
@@ -84,7 +84,23 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
     final editor = ref.watch(geofenceControllerProvider);
     final controller = ref.read(geofenceControllerProvider.notifier);
     final draft = editor.draft;
+    final locationState = ref.watch(locationControllerProvider).value;
     final media = MediaQuery.of(context);
+    if (!draft.hasExplicitCenter && widget.initialZone == null) {
+      final nextCenter = _initialCenterForNewDraft(
+        locationState,
+        draft.assignedMemberId,
+      );
+      if (nextCenter != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final latestDraft = ref.read(geofenceControllerProvider).draft;
+          if (!latestDraft.hasExplicitCenter) {
+            _setCenter(nextCenter, animate: true);
+          }
+        });
+      }
+    }
 
     return MediaQuery(
       data: media.copyWith(
@@ -128,7 +144,11 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
               const SizedBox(height: AppSpacing.lg),
               _LocationPickerPanel(
                 draft: draft,
-                map: widget.mapOverride ?? _map(draft),
+                map: draft.hasExplicitCenter
+                    ? widget.mapOverride ?? _map(draft)
+                    : null,
+                hasLocation: draft.hasExplicitCenter,
+                locationError: editor.validation.location,
                 showNudges: _showNudges,
                 onOpenMap: () => _openMapPicker(draft),
                 onUseCurrentLocation: _useCurrentLocation,
@@ -145,6 +165,7 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
               Text('ZONE TYPE AND NAME', style: AppTypography.caption),
               Wrap(
                 spacing: 8,
+                runSpacing: 8,
                 children: [
                   for (final category in SafeZoneCategory.values)
                     ChoiceChip(
@@ -183,12 +204,25 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
                     .toList(growable: false),
                 onChanged: widget.members.isEmpty
                     ? null
-                    : controller.setAssignedMember,
+                    : (memberId) {
+                        controller.setAssignedMember(memberId);
+                        final center = _centerForMember(
+                          ref.read(locationControllerProvider).value,
+                          memberId,
+                        );
+                        final latestDraft = ref
+                            .read(geofenceControllerProvider)
+                            .draft;
+                        if (center != null && !latestDraft.hasExplicitCenter) {
+                          _setCenter(center, animate: true);
+                        }
+                      },
               ),
               const SizedBox(height: 24),
               Text('Radius', style: AppTypography.title),
               Wrap(
                 spacing: 8,
+                runSpacing: 8,
                 children: [
                   for (final preset in SafeZoneDraft.radiusPresets)
                     ChoiceChip(
@@ -262,11 +296,16 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
   }
 
   Future<void> _openMapPicker(SafeZoneDraft draft) async {
+    final locationState = ref.read(locationControllerProvider).value;
+    final suggestedCenter = draft.hasExplicitCenter
+        ? draft.center
+        : _initialCenterForNewDraft(locationState, draft.assignedMemberId);
     final selected = await Navigator.of(context).push<SafeZoneCenter>(
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (context) => _SafeZoneMapPickerScreen(
-          initialCenter: draft.center,
+          initialCenter: suggestedCenter ?? _fallbackMapCenter,
+          hasInitialLocation: suggestedCenter != null,
           radiusMeters: draft.radiusMeters,
           mapOverride: widget.mapOverride,
         ),
@@ -284,6 +323,24 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
           ?.userId ??
       widget.members.firstOrNull?.userId;
 
+  SafeZoneCenter? _initialCenterForNewDraft(
+    LocationState? state,
+    String? assignedMemberId,
+  ) => _centerForMember(state, assignedMemberId) ?? _centerForSelf(state);
+
+  SafeZoneCenter? _centerForMember(LocationState? state, String? memberId) {
+    if (state == null || memberId == null) return null;
+    final location = state.members[memberId];
+    if (location == null) return null;
+    return SafeZoneCenter(latitude: location.lat, longitude: location.lng);
+  }
+
+  SafeZoneCenter? _centerForSelf(LocationState? state) {
+    final self = state?.selfPosition;
+    if (self == null) return null;
+    return SafeZoneCenter(latitude: self.lat, longitude: self.lng);
+  }
+
   void _handleReview() {
     final controller = ref.read(geofenceControllerProvider.notifier);
     if (controller.validateForReview()) {
@@ -294,6 +351,7 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
     final validation = ref.read(geofenceControllerProvider).validation;
     final message =
         validation.name ??
+        validation.location ??
         validation.member ??
         validation.recipients ??
         validation.radius ??
@@ -373,6 +431,8 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
   );
 }
 
+const _fallbackMapCenter = SafeZoneCenter(latitude: 20, longitude: 0);
+
 String _formatCenter(SafeZoneCenter center) =>
     '${center.latitude.toStringAsFixed(4)}, ${center.longitude.toStringAsFixed(4)}';
 
@@ -380,6 +440,8 @@ class _LocationPickerPanel extends StatelessWidget {
   const _LocationPickerPanel({
     required this.draft,
     required this.map,
+    required this.hasLocation,
+    required this.locationError,
     required this.showNudges,
     required this.onOpenMap,
     required this.onUseCurrentLocation,
@@ -388,7 +450,9 @@ class _LocationPickerPanel extends StatelessWidget {
   });
 
   final SafeZoneDraft draft;
-  final Widget map;
+  final Widget? map;
+  final bool hasLocation;
+  final String? locationError;
   final bool showNudges;
   final VoidCallback onOpenMap;
   final VoidCallback onUseCurrentLocation;
@@ -397,9 +461,10 @@ class _LocationPickerPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mapHeight = (MediaQuery.sizeOf(context).height * 0.30).clamp(
-      190.0,
-      284.0,
+    final viewHeight = MediaQuery.sizeOf(context).height;
+    final mapHeight = (viewHeight * (viewHeight < 700 ? 0.24 : 0.28)).clamp(
+      150.0,
+      260.0,
     );
 
     return DecoratedBox(
@@ -444,29 +509,33 @@ class _LocationPickerPanel extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               child: SizedBox(
                 height: mapHeight,
-                child: Stack(
-                  children: [
-                    Positioned.fill(child: map),
-                    Positioned(
-                      left: AppSpacing.sm,
-                      top: AppSpacing.sm,
-                      child: _MapInstructionChip(
-                        text: _formatCenter(draft.center),
-                      ),
-                    ),
-                    Positioned(
-                      right: AppSpacing.sm,
-                      bottom: AppSpacing.sm,
-                      child: FilledButton.tonalIcon(
-                        onPressed: onOpenMap,
-                        icon: const Icon(Icons.map_outlined),
-                        label: const Text('Choose on map'),
-                      ),
-                    ),
-                  ],
-                ),
+                width: double.infinity,
+                child: hasLocation && map != null
+                    ? map!
+                    : const _LocationPlaceholder(),
               ),
             ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (hasLocation)
+                  _MapInstructionChip(text: _formatCenter(draft.center))
+                else
+                  const _MapInstructionChip(text: 'No location selected'),
+                SizedBox(
+                  height: 48,
+                  child: FilledButton.tonalIcon(
+                    onPressed: onOpenMap,
+                    icon: const Icon(Icons.map_outlined),
+                    label: const Text('Choose on map'),
+                  ),
+                ),
+              ],
+            ),
+            if (locationError != null) _ValidationText(locationError!),
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
@@ -507,11 +576,13 @@ class _LocationPickerPanel extends StatelessWidget {
 class _SafeZoneMapPickerScreen extends StatefulWidget {
   const _SafeZoneMapPickerScreen({
     required this.initialCenter,
+    required this.hasInitialLocation,
     required this.radiusMeters,
     this.mapOverride,
   });
 
   final SafeZoneCenter initialCenter;
+  final bool hasInitialLocation;
   final int radiusMeters;
   final Widget? mapOverride;
 
@@ -522,6 +593,7 @@ class _SafeZoneMapPickerScreen extends StatefulWidget {
 
 class _SafeZoneMapPickerScreenState extends State<_SafeZoneMapPickerScreen> {
   late SafeZoneCenter _center = widget.initialCenter;
+  late bool _hasCenter = widget.hasInitialLocation;
   final _controller = VectorMapController();
 
   @override
@@ -538,7 +610,9 @@ class _SafeZoneMapPickerScreenState extends State<_SafeZoneMapPickerScreen> {
         title: const Text('Pick zone location'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(_center),
+            onPressed: _hasCenter
+                ? () => Navigator.of(context).pop(_center)
+                : null,
             child: const Text('Done'),
           ),
         ],
@@ -584,7 +658,9 @@ class _SafeZoneMapPickerScreenState extends State<_SafeZoneMapPickerScreen> {
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Text(
-                          _formatCenter(_center),
+                          _hasCenter
+                              ? _formatCenter(_center)
+                              : 'Drag to your area, then tap the map.',
                           style: AppTypography.bodySecondary,
                         ),
                         const SizedBox(height: AppSpacing.md),
@@ -592,7 +668,9 @@ class _SafeZoneMapPickerScreenState extends State<_SafeZoneMapPickerScreen> {
                           width: double.infinity,
                           height: 50,
                           child: ElevatedButton.icon(
-                            onPressed: () => Navigator.of(context).pop(_center),
+                            onPressed: _hasCenter
+                                ? () => Navigator.of(context).pop(_center)
+                                : null,
                             icon: const Icon(Icons.check),
                             label: const Text('Use this location'),
                           ),
@@ -612,35 +690,76 @@ class _SafeZoneMapPickerScreenState extends State<_SafeZoneMapPickerScreen> {
   Widget _map() => VectorMap(
     controller: _controller,
     initialTarget: MapPoint(_center.latitude, _center.longitude),
-    initialZoom: 16,
+    initialZoom: _hasCenter ? 16 : 1.5,
     onTap: (point) {
       final next = SafeZoneCenter(latitude: point.lat, longitude: point.lng);
-      setState(() => _center = next);
+      setState(() {
+        _center = next;
+        _hasCenter = true;
+      });
       _controller.animateTo(lat: point.lat, lng: point.lng, zoom: 16);
     },
     circles: [
-      MapCircle(
-        id: 'picker-safe-zone-radius',
-        center: MapPoint(_center.latitude, _center.longitude),
-        radiusMeters: widget.radiusMeters.toDouble(),
-        colorHex: '#2E7D7B',
-        outlineOpacity: .8,
-      ),
+      if (_hasCenter)
+        MapCircle(
+          id: 'picker-safe-zone-radius',
+          center: MapPoint(_center.latitude, _center.longitude),
+          radiusMeters: widget.radiusMeters.toDouble(),
+          colorHex: '#2E7D7B',
+          outlineOpacity: .8,
+        ),
     ],
     markers: [
-      OverlayMarker(
-        id: 'picker-safe-zone-center',
-        lat: _center.latitude,
-        lng: _center.longitude,
-        width: 56,
-        height: 56,
-        child: const Icon(
-          Icons.location_pin,
-          color: AppColors.primaryTeal,
-          size: 56,
+      if (_hasCenter)
+        OverlayMarker(
+          id: 'picker-safe-zone-center',
+          lat: _center.latitude,
+          lng: _center.longitude,
+          width: 56,
+          height: 56,
+          child: const Icon(
+            Icons.location_pin,
+            color: AppColors.primaryTeal,
+            size: 56,
+          ),
+        ),
+    ],
+  );
+}
+
+class _LocationPlaceholder extends StatelessWidget {
+  const _LocationPlaceholder();
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: const BoxDecoration(color: AppColors.primaryTintBg),
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.location_searching_outlined,
+              color: AppColors.primaryTeal,
+              size: 34,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'No location selected',
+              textAlign: TextAlign.center,
+              style: AppTypography.title,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Use a member location, your current location, or choose on map.',
+              textAlign: TextAlign.center,
+              style: AppTypography.bodySecondary,
+            ),
+          ],
         ),
       ),
-    ],
+    ),
   );
 }
 
@@ -650,6 +769,8 @@ class _NudgeControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Wrap(
     alignment: WrapAlignment.center,
+    spacing: AppSpacing.sm,
+    runSpacing: AppSpacing.sm,
     children: [
       IconButton(
         onPressed: () => onNudge(.0001, 0),

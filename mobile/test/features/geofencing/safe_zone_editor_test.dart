@@ -61,7 +61,7 @@ void main() {
     expect(find.text('Current'), findsOneWidget);
     expect(find.text('Choose on map'), findsOneWidget);
 
-    await tester.tap(find.text('Current'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Current'));
     await tester.pump();
 
     expect(find.textContaining('30.0444, 31.2357'), findsOneWidget);
@@ -81,6 +81,7 @@ void main() {
     );
 
     expect(find.text('Create a safe zone'), findsOneWidget);
+    expect(find.text('No location selected'), findsWidgets);
     expect(find.text('Choose on map'), findsOneWidget);
     expect(find.text('Current'), findsOneWidget);
     expect(find.text('100 m'), findsWidgets);
@@ -102,7 +103,7 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.text('Choose on map'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Choose on map'));
     await tester.pumpAndSettle();
 
     expect(find.text('Pick zone location'), findsOneWidget);
@@ -110,7 +111,33 @@ void main() {
       find.text('Tap the map to move the safe-zone marker.'),
       findsOneWidget,
     );
+    expect(find.text('Drag to your area, then tap the map.'), findsOneWidget);
     expect(find.text('Use this location'), findsOneWidget);
+  });
+
+  testWidgets('editor seeds the zone from the assigned member location', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          locationControllerProvider.overrideWith(
+            _SeededMemberLocationController.new,
+          ),
+        ],
+        child: MaterialApp(
+          home: SafeZoneEditorScreen(
+            familyId: 'family-1',
+            members: [member, guardian],
+            mapOverride: const ColoredBox(color: Colors.white),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.textContaining('29.9765, 31.1325'), findsOneWidget);
+    expect(find.text('No location selected'), findsNothing);
   });
 
   testWidgets(
@@ -181,5 +208,20 @@ class _SeededLocationController extends LocationController {
       accuracyMeters: 12,
       recordedAtUtc: DateTime.utc(2026, 8, 14, 12),
     ),
+  );
+}
+
+class _SeededMemberLocationController extends LocationController {
+  @override
+  LocationState build() => LocationState(
+    members: {
+      'member-1': LiveLocation(
+        userId: 'member-1',
+        lat: 29.9765,
+        lng: 31.1325,
+        accuracyMeters: 18,
+        recordedAtUtc: DateTime.utc(2026, 8, 14, 12),
+      ),
+    },
   );
 }
