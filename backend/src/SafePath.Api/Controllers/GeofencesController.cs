@@ -17,6 +17,7 @@ public sealed class GeofencesController : ControllerBase
     private readonly ICommandHandler<DeleteZoneCommand, ZoneMutationResult> _delete;
     private readonly ICommandHandler<GetMyZoneRegistrationsQuery, IReadOnlyList<ZoneDto>> _registrations;
     private readonly ICommandHandler<AcknowledgeCurrentZoneRegistrationCommand, bool> _acknowledge;
+    private readonly ICommandHandler<GetGeofenceActivityQuery, IReadOnlyList<GeofenceActivityDto>> _activity;
     private readonly ICurrentUserService _currentUser;
 
     public GeofencesController(
@@ -28,6 +29,7 @@ public sealed class GeofencesController : ControllerBase
         ICommandHandler<DeleteZoneCommand, ZoneMutationResult> delete,
         ICommandHandler<GetMyZoneRegistrationsQuery, IReadOnlyList<ZoneDto>> registrations,
         ICommandHandler<AcknowledgeCurrentZoneRegistrationCommand, bool> acknowledge,
+        ICommandHandler<GetGeofenceActivityQuery, IReadOnlyList<GeofenceActivityDto>> activity,
         ICurrentUserService currentUser)
     {
         _list = list;
@@ -38,6 +40,7 @@ public sealed class GeofencesController : ControllerBase
         _delete = delete;
         _registrations = registrations;
         _acknowledge = acknowledge;
+        _activity = activity;
         _currentUser = currentUser;
     }
 
@@ -125,6 +128,33 @@ public sealed class GeofencesController : ControllerBase
         try { return await _acknowledge.Handle(new AcknowledgeCurrentZoneRegistrationCommand(userId, zoneId, generation), cancellationToken) ? NoContent() : NotFound(); }
         catch (FamilyAuthorizationDeniedException) { return Forbid(); }
     }
+
+    [HttpGet("families/{familyId:guid}/geofences/activity")]
+    public async Task<ActionResult<IReadOnlyList<GeofenceActivityDto>>> GetActivity(
+        Guid familyId,
+        [FromQuery] Guid? memberUserId,
+        [FromQuery] Guid? zoneId,
+        [FromQuery] SafePath.Domain.Enums.GeofenceTransition? transition,
+        [FromQuery] DateTime? fromUtc,
+        [FromQuery] DateTime? toUtc,
+        CancellationToken cancellationToken)
+    {
+        if (_currentUser.UserId is not { } userId) return Unauthorized();
+        try { return Ok(await _activity.Handle(new GetGeofenceActivityQuery(userId, familyId, memberUserId, zoneId, transition, fromUtc, toUtc), cancellationToken)); }
+        catch (FamilyAuthorizationDeniedException) { return Forbid(); }
+        catch (ArgumentException exception) { return BadRequest(new { error = exception.Message }); }
+    }
+
+    [HttpGet("families/{familyId:guid}/geofences/{zoneId:guid}/activity")]
+    public Task<ActionResult<IReadOnlyList<GeofenceActivityDto>>> GetZoneActivity(
+        Guid familyId,
+        Guid zoneId,
+        [FromQuery] Guid? memberUserId,
+        [FromQuery] SafePath.Domain.Enums.GeofenceTransition? transition,
+        [FromQuery] DateTime? fromUtc,
+        [FromQuery] DateTime? toUtc,
+        CancellationToken cancellationToken) =>
+        GetActivity(familyId, memberUserId, zoneId, transition, fromUtc, toUtc, cancellationToken);
 }
 
 public sealed record UpdateZoneRequest(

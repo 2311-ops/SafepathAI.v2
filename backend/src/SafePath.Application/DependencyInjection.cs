@@ -78,6 +78,7 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<GetZoneQuery, ZoneDto?>, GetZoneQueryHandler>();
         services.AddScoped<ICommandHandler<GetMyZoneRegistrationsQuery, IReadOnlyList<ZoneDto>>, GetMyZoneRegistrationsQueryHandler>();
         services.AddScoped<ICommandHandler<AcknowledgeCurrentZoneRegistrationCommand, bool>, AcknowledgeCurrentZoneRegistrationCommandHandler>();
+        services.AddScoped<ICommandHandler<GetGeofenceActivityQuery, IReadOnlyList<GeofenceActivityDto>>, GetGeofenceActivityQueryHandler>();
 
         return services;
     }
