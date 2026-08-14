@@ -170,6 +170,29 @@ void main() {
     },
   );
 
+  testWidgets('/safe-zones switch toggles the zone active state', (
+    tester,
+  ) async {
+    final geofenceApi = FakeGeofenceApi()..zonesToReturn = [_seededZone()];
+    final container = _buildContainer(geofenceApi);
+    addTearDown(container.dispose);
+    final router = container.read(routerProvider);
+
+    router.go('/safe-zones');
+    await tester.pumpWidget(_app(container, router));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+
+    expect(geofenceApi.setActiveCalls, 1);
+    expect(geofenceApi.lastSetActiveZoneId, 'zone-1');
+    expect(geofenceApi.lastSetActiveValue, isFalse);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+  });
+
   testWidgets(
     'create journey: list -> add -> review -> save calls create once',
     (tester) async {

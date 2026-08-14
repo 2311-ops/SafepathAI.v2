@@ -14,11 +14,14 @@ class FakeGeofenceApi implements GeofenceApi {
   int listCalls = 0;
   int createCalls = 0;
   int updateCalls = 0;
+  int setActiveCalls = 0;
   int deleteCalls = 0;
 
   SafeZoneDraft? lastCreateDraft;
   SafeZoneDraft? lastUpdateDraft;
   String? lastUpdateZoneId;
+  String? lastSetActiveZoneId;
+  bool? lastSetActiveValue;
 
   @override
   Future<List<SafeZone>> list(String familyId) async {
@@ -75,6 +78,21 @@ class FakeGeofenceApi implements GeofenceApi {
       guardianRecipientIds: draft.guardianRecipientIds,
       notifyAssignedMember: draft.notifyAssignedMember,
     );
+  }
+
+  @override
+  Future<SafeZoneActivation> setActive(
+    String familyId,
+    String zoneId,
+    bool active,
+  ) async {
+    setActiveCalls++;
+    lastSetActiveZoneId = zoneId;
+    lastSetActiveValue = active;
+    if (throwsOnUpdate) {
+      throw const GeofenceApiException('That safe zone could not be saved.');
+    }
+    return active ? SafeZoneActivation.active : SafeZoneActivation.inactive;
   }
 
   @override

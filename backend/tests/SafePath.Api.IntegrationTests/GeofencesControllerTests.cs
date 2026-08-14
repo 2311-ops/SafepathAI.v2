@@ -66,8 +66,14 @@ public sealed class GeofencesControllerTests : IClassFixture<FamilyApiFactory>
         Assert.Equal(HttpStatusCode.NoContent, current.StatusCode);
         var staleCandidate = await member.PostAsJsonAsync("/geofences/candidates", new
         {
-            EventId = Guid.NewGuid(), ZoneId = zoneId, RegistrationGeneration = currentGeneration - 1,
-            Transition = "Enter", OccurredAtUtc = DateTime.UtcNow, Latitude = 30.0444, Longitude = 31.2357, AccuracyMeters = 5.0,
+            EventId = Guid.NewGuid(),
+            ZoneId = zoneId,
+            RegistrationGeneration = currentGeneration - 1,
+            Transition = "Enter",
+            OccurredAtUtc = DateTime.UtcNow,
+            Latitude = 30.0444,
+            Longitude = 31.2357,
+            AccuracyMeters = 5.0,
         });
         Assert.Equal(HttpStatusCode.BadRequest, staleCandidate.StatusCode);
     }
@@ -92,10 +98,36 @@ public sealed class GeofencesControllerTests : IClassFixture<FamilyApiFactory>
         Assert.Single(verificationDb.GeofenceActivities.Where(activity => activity.SafeZoneId == zoneId));
     }
 
+    [Fact]
+    public async Task Toggle_DisablesAndEnablesZone()
+    {
+        var family = await SeedFamilyAsync();
+        var guardian = CreateClientAs(family.GuardianUserId);
+        using var created = JsonDocument.Parse(await (await guardian.PostAsJsonAsync($"/families/{family.FamilyId}/geofences", Request(family.MemberUserId, 100))).Content.ReadAsStringAsync());
+        var zoneId = created.RootElement.GetProperty("zoneId").GetGuid();
+
+        var disabled = await guardian.PostAsync($"/families/{family.FamilyId}/geofences/{zoneId}/disable", null);
+        Assert.Equal(HttpStatusCode.OK, disabled.StatusCode);
+        using var disabledBody = JsonDocument.Parse(await disabled.Content.ReadAsStringAsync());
+        Assert.False(disabledBody.RootElement.GetProperty("active").GetBoolean());
+
+        var enabled = await guardian.PostAsync($"/families/{family.FamilyId}/geofences/{zoneId}/enable", null);
+        Assert.Equal(HttpStatusCode.OK, enabled.StatusCode);
+        using var enabledBody = JsonDocument.Parse(await enabled.Content.ReadAsStringAsync());
+        Assert.True(enabledBody.RootElement.GetProperty("active").GetBoolean());
+        Assert.True(enabledBody.RootElement.GetProperty("needsLocationPermission").GetBoolean());
+    }
+
     private static object Request(Guid assignedMemberUserId, double radius) => new
     {
-        Category = "Home", Latitude = 30.0444, Longitude = 31.2357, RadiusMeters = radius,
-        AssignedMemberUserId = assignedMemberUserId, Sensitivity = "Balanced", RecipientUserIds = (Guid[]?)null, NotifyAssignedMember = false,
+        Category = "Home",
+        Latitude = 30.0444,
+        Longitude = 31.2357,
+        RadiusMeters = radius,
+        AssignedMemberUserId = assignedMemberUserId,
+        Sensitivity = "Balanced",
+        RecipientUserIds = (Guid[]?)null,
+        NotifyAssignedMember = false,
     };
 
     private HttpClient CreateClientAs(Guid userId)

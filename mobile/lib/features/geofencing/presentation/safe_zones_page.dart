@@ -78,9 +78,9 @@ class _SafeZonesPageState extends ConsumerState<SafeZonesPage> {
       memberNames: memberNames,
       onAdd: () => context.push('/safe-zones/add'),
       onOpen: (zone) => context.push('/safe-zones/${zone.id}', extra: zone),
-      onActivity: (zone) => context.push(
-        '/zone-activity?zoneId=${Uri.encodeComponent(zone.id)}',
-      ),
+      onActivity: (zone) =>
+          context.push('/zone-activity?zoneId=${Uri.encodeComponent(zone.id)}'),
+      onToggle: (zone, enabled) => _toggle(context, zone, enabled),
       onRetry: () => _retry(family.id),
       mapOverride: ref.watch(safeZoneMapOverrideProvider),
     );
@@ -88,6 +88,23 @@ class _SafeZonesPageState extends ConsumerState<SafeZonesPage> {
 
   void _retry(String familyId) {
     ref.read(geofenceListControllerProvider.notifier).load(familyId);
+  }
+
+  Future<void> _toggle(
+    BuildContext context,
+    SafeZone zone,
+    bool enabled,
+  ) async {
+    await ref
+        .read(geofenceListControllerProvider.notifier)
+        .toggleZone(zone, enabled);
+    if (!context.mounted) return;
+    final error = ref.read(geofenceListControllerProvider).error;
+    if (error != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
+    }
   }
 }
 
@@ -170,8 +187,7 @@ class SafeZoneDetailPage extends ConsumerWidget {
     final familyState = ref.watch(familyControllerProvider).value;
     final listState = ref.watch(geofenceListControllerProvider);
     final resolvedZone =
-        zone ??
-        listState.zones.where((item) => item.id == zoneId).firstOrNull;
+        zone ?? listState.zones.where((item) => item.id == zoneId).firstOrNull;
     if (resolvedZone == null) {
       // A cold deep link with no extra and no loaded list yet — fall back to
       // the list rather than rendering a detail screen with nothing to show.

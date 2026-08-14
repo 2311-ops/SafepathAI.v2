@@ -33,26 +33,29 @@ void main() {
     expect(filters.toUtc, now);
   });
 
-  test('newer activity requests win when stale response finishes last', () async {
-    final first = _CompleterActivityApi();
-    final controller = GeofenceActivityController(first, () => now);
+  test(
+    'newer activity requests win when stale response finishes last',
+    () async {
+      final first = _CompleterActivityApi();
+      final controller = GeofenceActivityController(first, () => now);
 
-    final oldLoad = controller.load(
-      const GeofenceActivityFilters(zoneId: 'old'),
-      familyId: 'family-1',
-    );
-    final newLoad = controller.load(
-      const GeofenceActivityFilters(zoneId: 'new'),
-      familyId: 'family-1',
-    );
-    first.completeFor('new', [pairedVisit]);
-    await newLoad;
-    first.completeFor('old', const []);
-    await oldLoad;
+      final oldLoad = controller.load(
+        const GeofenceActivityFilters(zoneId: 'old'),
+        familyId: 'family-1',
+      );
+      final newLoad = controller.load(
+        const GeofenceActivityFilters(zoneId: 'new'),
+        familyId: 'family-1',
+      );
+      first.completeFor('new', [pairedVisit]);
+      await newLoad;
+      first.completeFor('old', const []);
+      await oldLoad;
 
-    expect(controller.state.filters.zoneId, 'new');
-    expect(controller.state.activity, [pairedVisit]);
-  });
+      expect(controller.state.filters.zoneId, 'new');
+      expect(controller.state.activity, [pairedVisit]);
+    },
+  );
 
   testWidgets('renders paired visits, unmatched activity, and filter summary', (
     tester,
@@ -103,7 +106,6 @@ void main() {
     );
     expect(find.text('Try again'), findsOneWidget);
   });
-
 }
 
 void _noop() {}
@@ -115,19 +117,29 @@ class _CompleterActivityApi implements GeofenceApi {
   Future<List<GeofenceActivity>> activity(
     String familyId,
     GeofenceActivityFilters filters,
-    ) => (_pending[filters.zoneId!] ??= Completer<List<GeofenceActivity>>()).future;
+  ) => (_pending[filters.zoneId!] ??= Completer<List<GeofenceActivity>>())
+      .future;
 
   void completeFor(String zoneId, List<GeofenceActivity> activity) =>
       _pending[zoneId]!.complete(activity);
 
   @override
-  Future<void> delete(String familyId, String zoneId) => throw UnimplementedError();
+  Future<void> delete(String familyId, String zoneId) =>
+      throw UnimplementedError();
   @override
   Future<SafeZone> create(SafeZoneDraft draft) => throw UnimplementedError();
   @override
-  Future<SafeZone> get(String familyId, String zoneId) => throw UnimplementedError();
+  Future<SafeZone> get(String familyId, String zoneId) =>
+      throw UnimplementedError();
   @override
   Future<List<SafeZone>> list(String familyId) => throw UnimplementedError();
   @override
-  Future<SafeZone> update(String zoneId, SafeZoneDraft draft) => throw UnimplementedError();
+  Future<SafeZoneActivation> setActive(
+    String familyId,
+    String zoneId,
+    bool active,
+  ) => throw UnimplementedError();
+  @override
+  Future<SafeZone> update(String zoneId, SafeZoneDraft draft) =>
+      throw UnimplementedError();
 }

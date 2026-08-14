@@ -13,6 +13,7 @@ public sealed class GeofencesController : ControllerBase
     private readonly ICommandHandler<CreateZoneCommand, ZoneMutationResult> _create;
     private readonly ICommandHandler<GetZoneQuery, ZoneDto?> _get;
     private readonly ICommandHandler<UpdateZoneCommand, ZoneMutationResult> _update;
+    private readonly ICommandHandler<EnableZoneCommand, ZoneMutationResult> _enable;
     private readonly ICommandHandler<DisableZoneCommand, ZoneMutationResult> _disable;
     private readonly ICommandHandler<DeleteZoneCommand, ZoneMutationResult> _delete;
     private readonly ICommandHandler<GetMyZoneRegistrationsQuery, IReadOnlyList<ZoneDto>> _registrations;
@@ -25,6 +26,7 @@ public sealed class GeofencesController : ControllerBase
         ICommandHandler<CreateZoneCommand, ZoneMutationResult> create,
         ICommandHandler<GetZoneQuery, ZoneDto?> get,
         ICommandHandler<UpdateZoneCommand, ZoneMutationResult> update,
+        ICommandHandler<EnableZoneCommand, ZoneMutationResult> enable,
         ICommandHandler<DisableZoneCommand, ZoneMutationResult> disable,
         ICommandHandler<DeleteZoneCommand, ZoneMutationResult> delete,
         ICommandHandler<GetMyZoneRegistrationsQuery, IReadOnlyList<ZoneDto>> registrations,
@@ -36,6 +38,7 @@ public sealed class GeofencesController : ControllerBase
         _create = create;
         _get = get;
         _update = update;
+        _enable = enable;
         _disable = disable;
         _delete = delete;
         _registrations = registrations;
@@ -101,6 +104,16 @@ public sealed class GeofencesController : ControllerBase
         if (_currentUser.UserId is not { } userId) return Unauthorized();
         try { return Ok(await _disable.Handle(new DisableZoneCommand(userId, familyId, zoneId), cancellationToken)); }
         catch (FamilyAuthorizationDeniedException) { return Forbid(); }
+        catch (ZoneNotFoundException) { return NotFound(); }
+    }
+
+    [HttpPost("families/{familyId:guid}/geofences/{zoneId:guid}/enable")]
+    public async Task<ActionResult<ZoneMutationResult>> Enable(Guid familyId, Guid zoneId, CancellationToken cancellationToken)
+    {
+        if (_currentUser.UserId is not { } userId) return Unauthorized();
+        try { return Ok(await _enable.Handle(new EnableZoneCommand(userId, familyId, zoneId), cancellationToken)); }
+        catch (FamilyAuthorizationDeniedException) { return Forbid(); }
+        catch (ZoneLimitReachedException exception) { return Conflict(new { error = exception.Message }); }
         catch (ZoneNotFoundException) { return NotFound(); }
     }
 

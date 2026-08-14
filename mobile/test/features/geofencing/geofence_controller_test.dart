@@ -150,6 +150,36 @@ void main() {
         expect(controller.state.saveError, isNotNull);
       },
     );
+
+    test('toggles a listed zone active and inactive', () async {
+      final api = _FakeGeofenceApi();
+      final container = ProviderContainer(
+        overrides: [geofenceApiProvider.overrideWithValue(api)],
+      );
+      addTearDown(container.dispose);
+      final controller = container.read(
+        geofenceListControllerProvider.notifier,
+      );
+
+      await controller.load('family-1');
+      expect(controller.state.zones.single.isActive, isTrue);
+
+      await controller.toggleZone(controller.state.zones.single, false);
+      expect(api.setActiveCalls, 1);
+      expect(api.lastSetActiveValue, isFalse);
+      expect(
+        controller.state.zones.single.activation,
+        SafeZoneActivation.inactive,
+      );
+
+      await controller.toggleZone(controller.state.zones.single, true);
+      expect(api.setActiveCalls, 2);
+      expect(api.lastSetActiveValue, isTrue);
+      expect(
+        controller.state.zones.single.activation,
+        SafeZoneActivation.active,
+      );
+    });
   });
 }
 
@@ -167,9 +197,23 @@ class _FakeGeofenceApi implements GeofenceApi {
 
   final bool throwsOnCreate;
   int createCalls = 0;
+  int setActiveCalls = 0;
+  bool? lastSetActiveValue;
 
   @override
-  Future<List<SafeZone>> list(String familyId) async => const [];
+  Future<List<SafeZone>> list(String familyId) async => [
+    const SafeZone(
+      id: 'zone-1',
+      name: 'Home',
+      category: SafeZoneCategory.home,
+      center: SafeZoneCenter(latitude: 30.0444, longitude: 31.2357),
+      radiusMeters: 100,
+      assignedMemberId: 'member-1',
+      sensitivity: SafeZoneSensitivity.reliable,
+      guardianRecipientIds: {'guardian-1'},
+      notifyAssignedMember: false,
+    ),
+  ];
 
   @override
   Future<SafeZone> get(String familyId, String zoneId) async => SafeZone(
@@ -209,6 +253,17 @@ class _FakeGeofenceApi implements GeofenceApi {
 
   @override
   Future<SafeZone> update(String zoneId, SafeZoneDraft draft) => create(draft);
+
+  @override
+  Future<SafeZoneActivation> setActive(
+    String familyId,
+    String zoneId,
+    bool active,
+  ) async {
+    setActiveCalls++;
+    lastSetActiveValue = active;
+    return active ? SafeZoneActivation.active : SafeZoneActivation.inactive;
+  }
 
   @override
   Future<void> delete(String familyId, String zoneId) async {}

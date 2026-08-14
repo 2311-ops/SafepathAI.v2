@@ -13,6 +13,7 @@ public sealed record UpdateZoneCommand(Guid CallerUserId, Guid FamilyId, Guid Zo
     double Latitude, double Longitude, double RadiusMeters, Guid AssignedMemberUserId, SafeZoneSensitivity Sensitivity,
     IReadOnlyCollection<Guid>? RecipientUserIds, bool NotifyAssignedMember);
 
+public sealed record EnableZoneCommand(Guid CallerUserId, Guid FamilyId, Guid ZoneId);
 public sealed record DisableZoneCommand(Guid CallerUserId, Guid FamilyId, Guid ZoneId);
 public sealed record DeleteZoneCommand(Guid CallerUserId, Guid FamilyId, Guid ZoneId);
 
@@ -45,10 +46,18 @@ public sealed class CreateZoneCommandHandler : ICommandHandler<CreateZoneCommand
         var now = DateTime.UtcNow;
         var zone = new SafeZone
         {
-            Id = Guid.NewGuid(), FamilyId = command.FamilyId, AssignedMemberUserId = command.AssignedMemberUserId,
-            CreatedByUserId = command.CallerUserId, Category = command.Category, CustomName = ZoneCommandValidation.NormalizeName(command.Category, command.CustomName),
-            Latitude = command.Latitude, Longitude = command.Longitude, RadiusMeters = command.RadiusMeters,
-            Sensitivity = command.Sensitivity, NotifyAssignedMember = command.NotifyAssignedMember, CreatedAtUtc = now,
+            Id = Guid.NewGuid(),
+            FamilyId = command.FamilyId,
+            AssignedMemberUserId = command.AssignedMemberUserId,
+            CreatedByUserId = command.CallerUserId,
+            Category = command.Category,
+            CustomName = ZoneCommandValidation.NormalizeName(command.Category, command.CustomName),
+            Latitude = command.Latitude,
+            Longitude = command.Longitude,
+            RadiusMeters = command.RadiusMeters,
+            Sensitivity = command.Sensitivity,
+            NotifyAssignedMember = command.NotifyAssignedMember,
+            CreatedAtUtc = now,
         };
         _db.SafeZones.Add(zone);
         foreach (var recipient in recipients)
@@ -113,6 +122,53 @@ public sealed class DisableZoneCommandHandler : ICommandHandler<DisableZoneComma
         ZoneCommandValidation.Deactivate(_db, _authorization, command.CallerUserId, command.FamilyId, command.ZoneId, cancellationToken);
 }
 
+public sealed class EnableZoneCommandHandler : ICommandHandler<EnableZoneCommand, ZoneMutationResult>
+{
+    private readonly IApplicationDbContext _db;
+    private readonly IFamilyAuthorizationService _authorization;
+
+    public EnableZoneCommandHandler(IApplicationDbContext db, IFamilyAuthorizationService authorization)
+    {
+        _db = db;
+        _authorization = authorization;
+    }
+
+    public async Task<ZoneMutationResult> Handle(EnableZoneCommand command, CancellationToken cancellationToken = default)
+    {
+        await _authorization.RequireRole(command.CallerUserId, command.FamilyId, Role.Guardian, cancellationToken);
+        var zone = await _db.SafeZones.SingleOrDefaultAsync(item => item.Id == command.ZoneId && item.FamilyId == command.FamilyId, cancellationToken)
+            ?? throw new ZoneNotFoundException();
+
+        if (!zone.IsActive)
+        {
+            var activeCount = await _db.SafeZones.CountAsync(item => item.FamilyId == command.FamilyId && item.IsActive, cancellationToken);
+            if (activeCount >= 20)
+            {
+                throw new ZoneLimitReachedException();
+            }
+        }
+
+        var recipientIds = await _db.SafeZoneRecipients
+            .Where(item => item.SafeZoneId == zone.Id)
+            .Select(item => item.RecipientUserId)
+            .ToArrayAsync(cancellationToken);
+        await ZoneCommandValidation.ValidateMemberships(
+            _db,
+            command.FamilyId,
+            zone.AssignedMemberUserId,
+            command.CallerUserId,
+            recipientIds,
+            cancellationToken);
+
+        var generation = await _db.SafeZoneRegistrations.Where(item => item.SafeZoneId == zone.Id).MaxAsync(item => (int?)item.Generation, cancellationToken) ?? 0;
+        generation++;
+        zone.IsActive = true;
+        _db.SafeZoneRegistrations.Add(ZoneCommandValidation.NewRegistration(zone.Id, zone.AssignedMemberUserId, generation, DateTime.UtcNow));
+        await _db.SaveChangesAsync(cancellationToken);
+        return ZoneCommandValidation.ToMutationResult(zone.Id, generation, active: true, acknowledgedAtUtc: null);
+    }
+}
+
 public sealed class DeleteZoneCommandHandler : ICommandHandler<DeleteZoneCommand, ZoneMutationResult>
 {
     private readonly IApplicationDbContext _db;
@@ -168,7 +224,11 @@ internal static class ZoneCommandValidation
 
     public static SafeZoneRegistration NewRegistration(Guid zoneId, Guid memberUserId, int generation, DateTime issuedAtUtc) => new()
     {
-        Id = Guid.NewGuid(), SafeZoneId = zoneId, MemberUserId = memberUserId, Generation = generation, IssuedAtUtc = issuedAtUtc,
+        Id = Guid.NewGuid(),
+        SafeZoneId = zoneId,
+        MemberUserId = memberUserId,
+        Generation = generation,
+        IssuedAtUtc = issuedAtUtc,
     };
 
     public static ZoneMutationResult ToMutationResult(Guid zoneId, int generation, bool active, DateTime? acknowledgedAtUtc) =>

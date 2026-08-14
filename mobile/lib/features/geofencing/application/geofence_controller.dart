@@ -282,6 +282,43 @@ class GeofenceListController extends Notifier<GeofenceListState> {
       state = state.copyWith(error: error.message);
     }
   }
+
+  Future<void> toggleZone(SafeZone zone, bool enabled) async {
+    final familyId = state.familyId;
+    if (familyId == null) return;
+    final previousZones = state.zones;
+    final optimisticActivation = enabled
+        ? SafeZoneActivation.active
+        : SafeZoneActivation.inactive;
+    state = state.copyWith(
+      zones: _replaceZone(
+        previousZones,
+        zone.copyWith(activation: optimisticActivation),
+      ),
+      clearError: true,
+    );
+    try {
+      final activation = await ref
+          .read(geofenceApiProvider)
+          .setActive(familyId, zone.id, enabled);
+      state = state.copyWith(
+        zones: _replaceZone(state.zones, zone.copyWith(activation: activation)),
+        clearError: true,
+      );
+    } on GeofenceApiException catch (error) {
+      state = state.copyWith(zones: previousZones, error: error.message);
+    } catch (_) {
+      state = state.copyWith(
+        zones: previousZones,
+        error:
+            "Couldn't update this safe zone. Check your connection and try again.",
+      );
+    }
+  }
+
+  List<SafeZone> _replaceZone(List<SafeZone> zones, SafeZone next) => zones
+      .map((item) => item.id == next.id ? next : item)
+      .toList(growable: false);
 }
 
 final geofenceListControllerProvider =

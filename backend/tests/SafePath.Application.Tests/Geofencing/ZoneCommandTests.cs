@@ -70,11 +70,16 @@ public sealed class ZoneCommandTests : IDisposable
             DateTime.UtcNow, 30.0444, 31.2357, 5)));
         var disable = new DisableZoneCommandHandler(db, new FamilyAuthorizationService(db));
         var disabled = await disable.Handle(new DisableZoneCommand(fixture.GuardianUserId, fixture.FamilyId, created.ZoneId));
+        var enable = new EnableZoneCommandHandler(db, new FamilyAuthorizationService(db));
+        var enabled = await enable.Handle(new EnableZoneCommand(fixture.GuardianUserId, fixture.FamilyId, created.ZoneId));
         var delete = new DeleteZoneCommandHandler(db, new FamilyAuthorizationService(db));
         var deleted = await delete.Handle(new DeleteZoneCommand(fixture.GuardianUserId, fixture.FamilyId, created.ZoneId));
 
         Assert.Equal(2, updated.RegistrationGeneration);
         Assert.Equal(3, disabled.RegistrationGeneration);
+        Assert.Equal(4, enabled.RegistrationGeneration);
+        Assert.True(enabled.Active);
+        Assert.True(enabled.NeedsLocationPermission);
         Assert.False(deleted.Active);
         Assert.Single(db.GeofenceActivities);
     }

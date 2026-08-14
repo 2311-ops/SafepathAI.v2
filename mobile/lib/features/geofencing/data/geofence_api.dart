@@ -20,6 +20,11 @@ abstract class GeofenceApi {
   ) => Future<List<GeofenceActivity>>.error(UnimplementedError());
   Future<SafeZone> create(SafeZoneDraft draft);
   Future<SafeZone> update(String zoneId, SafeZoneDraft draft);
+  Future<SafeZoneActivation> setActive(
+    String familyId,
+    String zoneId,
+    bool active,
+  );
   Future<void> delete(String familyId, String zoneId);
 }
 
@@ -67,9 +72,8 @@ class DioGeofenceApi implements GeofenceApi {
       return (response.data ?? const [])
           .whereType<Map>()
           .map(
-            (entry) => GeofenceActivity.fromJson(
-              Map<String, dynamic>.from(entry),
-            ),
+            (entry) =>
+                GeofenceActivity.fromJson(Map<String, dynamic>.from(entry)),
           )
           .toList(growable: false);
     } on DioException catch (error) {
@@ -117,6 +121,22 @@ class DioGeofenceApi implements GeofenceApi {
   }
 
   @override
+  Future<SafeZoneActivation> setActive(
+    String familyId,
+    String zoneId,
+    bool active,
+  ) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/families/$familyId/geofences/$zoneId/${active ? 'enable' : 'disable'}',
+      );
+      return _activationFromMutation(response.data);
+    } on DioException catch (error) {
+      throw _mapError(error);
+    }
+  }
+
+  @override
   Future<void> delete(String familyId, String zoneId) async {
     try {
       await _dio.delete<Map<String, dynamic>>(
@@ -143,7 +163,17 @@ class DioGeofenceApi implements GeofenceApi {
       sensitivity: draft.sensitivity,
       guardianRecipientIds: draft.guardianRecipientIds,
       notifyAssignedMember: draft.notifyAssignedMember,
+      activation: _activationFromMutation(response),
     );
+  }
+
+  SafeZoneActivation _activationFromMutation(Map<String, dynamic>? response) {
+    if (response?['needsLocationPermission'] == true) {
+      return SafeZoneActivation.needsLocationPermission;
+    }
+    return response?['active'] == false
+        ? SafeZoneActivation.inactive
+        : SafeZoneActivation.active;
   }
 
   GeofenceApiException _mapError(DioException error) {
@@ -297,9 +327,8 @@ class GeofenceActivity {
         isInProgress: json['isInProgress'] as bool? ?? false,
       );
 
-  static DateTime? _parseUtc(Object? value) => value is String
-      ? DateTime.parse(value).toUtc()
-      : null;
+  static DateTime? _parseUtc(Object? value) =>
+      value is String ? DateTime.parse(value).toUtc() : null;
 }
 
 final geofenceApiProvider = Provider<GeofenceApi>(
