@@ -61,6 +61,12 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
           activeGuardianIds: guardians,
           defaultAssignedMemberId: _defaultAssignedMemberId,
         );
+        final self = ref.read(locationControllerProvider).value?.selfPosition;
+        if (self != null) {
+          controller.setCenter(
+            SafeZoneCenter(latitude: self.lat, longitude: self.lng),
+          );
+        }
       }
       _nameController.text = controller.draft.name;
     });
@@ -108,57 +114,34 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Choose location', style: AppTypography.title),
+              Text(
+                widget.initialZone != null
+                    ? 'Adjust the safe zone'
+                    : 'Create a safe zone',
+                style: AppTypography.heading.copyWith(fontSize: 26),
+              ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                'Tap the map to place the zone center, or use your current location.',
+                'Pick the exact place on the map, set the radius, then choose who gets enter and leave alerts.',
                 style: AppTypography.bodySecondary,
               ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 236,
-                child: Stack(
-                  children: [
-                    Positioned.fill(child: widget.mapOverride ?? _map(draft)),
-                    Positioned(
-                      left: AppSpacing.sm,
-                      top: AppSpacing.sm,
-                      child: _MapInstructionChip(
-                        text:
-                            '${draft.center.latitude.toStringAsFixed(4)}, ${draft.center.longitude.toStringAsFixed(4)}',
-                      ),
-                    ),
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: FilledButton.tonalIcon(
-                          onPressed: () =>
-                              setState(() => _showNudges = !_showNudges),
-                          icon: const Icon(Icons.open_with),
-                          label: const Text('Fine tune'),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (_showNudges)
-                _NudgeControls(
-                  onNudge: (lat, lng) => _setCenter(
-                    SafeZoneCenter(
-                      latitude: draft.center.latitude + lat,
-                      longitude: draft.center.longitude + lng,
-                    ),
+              const SizedBox(height: AppSpacing.lg),
+              _LocationPickerPanel(
+                draft: draft,
+                map: widget.mapOverride ?? _map(draft),
+                showNudges: _showNudges,
+                onOpenMap: () => _openMapPicker(draft),
+                onUseCurrentLocation: _useCurrentLocation,
+                onToggleNudges: () =>
+                    setState(() => _showNudges = !_showNudges),
+                onNudge: (lat, lng) => _setCenter(
+                  SafeZoneCenter(
+                    latitude: draft.center.latitude + lat,
+                    longitude: draft.center.longitude + lng,
                   ),
                 ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: _useCurrentLocation,
-                icon: const Icon(Icons.my_location_outlined),
-                label: const Text('Use current location'),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.lg),
               Text('ZONE TYPE AND NAME', style: AppTypography.caption),
               Wrap(
                 spacing: 8,
@@ -278,6 +261,22 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
     );
   }
 
+  Future<void> _openMapPicker(SafeZoneDraft draft) async {
+    final selected = await Navigator.of(context).push<SafeZoneCenter>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => _SafeZoneMapPickerScreen(
+          initialCenter: draft.center,
+          radiusMeters: draft.radiusMeters,
+          mapOverride: widget.mapOverride,
+        ),
+      ),
+    );
+
+    if (!mounted || selected == null) return;
+    _setCenter(selected, animate: true);
+  }
+
   String? get _defaultAssignedMemberId =>
       widget.members
           .where((member) => member.role.name != 'guardian')
@@ -340,8 +339,10 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
     controller: _mapController,
     initialTarget: MapPoint(draft.center.latitude, draft.center.longitude),
     initialZoom: 15,
-    onTap: (point) =>
-        _setCenter(SafeZoneCenter(latitude: point.lat, longitude: point.lng)),
+    onTap: (point) => _setCenter(
+      SafeZoneCenter(latitude: point.lat, longitude: point.lng),
+      animate: true,
+    ),
     circles: [
       MapCircle(
         id: 'safe-zone-radius',
@@ -366,6 +367,277 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
             color: AppColors.primaryTeal,
             size: 48,
           ),
+        ),
+      ),
+    ],
+  );
+}
+
+String _formatCenter(SafeZoneCenter center) =>
+    '${center.latitude.toStringAsFixed(4)}, ${center.longitude.toStringAsFixed(4)}';
+
+class _LocationPickerPanel extends StatelessWidget {
+  const _LocationPickerPanel({
+    required this.draft,
+    required this.map,
+    required this.showNudges,
+    required this.onOpenMap,
+    required this.onUseCurrentLocation,
+    required this.onToggleNudges,
+    required this.onNudge,
+  });
+
+  final SafeZoneDraft draft;
+  final Widget map;
+  final bool showNudges;
+  final VoidCallback onOpenMap;
+  final VoidCallback onUseCurrentLocation;
+  final VoidCallback onToggleNudges;
+  final void Function(double lat, double lng) onNudge;
+
+  @override
+  Widget build(BuildContext context) {
+    final mapHeight = (MediaQuery.sizeOf(context).height * 0.30).clamp(
+      190.0,
+      284.0,
+    );
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.hairline),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120C3A3F),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.add_location_alt_outlined),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Zone location', style: AppTypography.title),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Open the map and tap the place to set the marker.',
+                        style: AppTypography.bodySecondary,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                height: mapHeight,
+                child: Stack(
+                  children: [
+                    Positioned.fill(child: map),
+                    Positioned(
+                      left: AppSpacing.sm,
+                      top: AppSpacing.sm,
+                      child: _MapInstructionChip(
+                        text: _formatCenter(draft.center),
+                      ),
+                    ),
+                    Positioned(
+                      right: AppSpacing.sm,
+                      bottom: AppSpacing.sm,
+                      child: FilledButton.tonalIcon(
+                        onPressed: onOpenMap,
+                        icon: const Icon(Icons.map_outlined),
+                        label: const Text('Choose on map'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onUseCurrentLocation,
+                    icon: const Icon(Icons.my_location_outlined),
+                    label: const Text('Current'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onToggleNudges,
+                    icon: const Icon(Icons.open_with),
+                    label: Text(showNudges ? 'Hide tune' : 'Fine tune'),
+                  ),
+                ),
+              ],
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: showNudges
+                  ? Padding(
+                      key: const ValueKey('nudge-controls'),
+                      padding: const EdgeInsets.only(top: AppSpacing.sm),
+                      child: _NudgeControls(onNudge: onNudge),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SafeZoneMapPickerScreen extends StatefulWidget {
+  const _SafeZoneMapPickerScreen({
+    required this.initialCenter,
+    required this.radiusMeters,
+    this.mapOverride,
+  });
+
+  final SafeZoneCenter initialCenter;
+  final int radiusMeters;
+  final Widget? mapOverride;
+
+  @override
+  State<_SafeZoneMapPickerScreen> createState() =>
+      _SafeZoneMapPickerScreenState();
+}
+
+class _SafeZoneMapPickerScreenState extends State<_SafeZoneMapPickerScreen> {
+  late SafeZoneCenter _center = widget.initialCenter;
+  final _controller = VectorMapController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.appBg,
+      appBar: AppBar(
+        title: const Text('Pick zone location'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(_center),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(child: widget.mapOverride ?? _map()),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: 0.94),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppColors.hairline),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x240C3A3F),
+                        blurRadius: 20,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.touch_app_outlined),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Text(
+                                'Tap the map to move the safe-zone marker.',
+                                style: AppTypography.body,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          _formatCenter(_center),
+                          style: AppTypography.bodySecondary,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton.icon(
+                            onPressed: () => Navigator.of(context).pop(_center),
+                            icon: const Icon(Icons.check),
+                            label: const Text('Use this location'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _map() => VectorMap(
+    controller: _controller,
+    initialTarget: MapPoint(_center.latitude, _center.longitude),
+    initialZoom: 16,
+    onTap: (point) {
+      final next = SafeZoneCenter(latitude: point.lat, longitude: point.lng);
+      setState(() => _center = next);
+      _controller.animateTo(lat: point.lat, lng: point.lng, zoom: 16);
+    },
+    circles: [
+      MapCircle(
+        id: 'picker-safe-zone-radius',
+        center: MapPoint(_center.latitude, _center.longitude),
+        radiusMeters: widget.radiusMeters.toDouble(),
+        colorHex: '#2E7D7B',
+        outlineOpacity: .8,
+      ),
+    ],
+    markers: [
+      OverlayMarker(
+        id: 'picker-safe-zone-center',
+        lat: _center.latitude,
+        lng: _center.longitude,
+        width: 56,
+        height: 56,
+        child: const Icon(
+          Icons.location_pin,
+          color: AppColors.primaryTeal,
+          size: 56,
         ),
       ),
     ],

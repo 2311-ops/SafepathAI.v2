@@ -459,6 +459,7 @@ class _VectorMapState extends State<VectorMap> {
           onMapCreated: _onMapCreated,
           onStyleLoadedCallback: _onStyleLoaded,
           onCameraIdle: _onCameraIdle,
+          featureTapsTriggersMapClick: widget.onTap != null,
           onMapClick: (_, coordinates) => widget.onTap?.call(
             MapPoint(coordinates.latitude, coordinates.longitude),
           ),

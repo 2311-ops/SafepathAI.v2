@@ -49,17 +49,19 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Choose location'), findsOneWidget);
+    expect(find.text('Create a safe zone'), findsOneWidget);
     expect(
       find.text(
-        'Tap the map to place the zone center, or use your current location.',
+        'Pick the exact place on the map, set the radius, then choose who gets enter and leave alerts.',
       ),
       findsOneWidget,
     );
-    expect(find.textContaining('0.0000, 0.0000'), findsOneWidget);
-    expect(find.text('Use current location'), findsOneWidget);
+    expect(find.text('Zone location'), findsOneWidget);
+    expect(find.textContaining('30.0444, 31.2357'), findsOneWidget);
+    expect(find.text('Current'), findsOneWidget);
+    expect(find.text('Choose on map'), findsOneWidget);
 
-    await tester.tap(find.text('Use current location'));
+    await tester.tap(find.text('Current'));
     await tester.pump();
 
     expect(find.textContaining('30.0444, 31.2357'), findsOneWidget);
@@ -78,13 +80,37 @@ void main() {
       ),
     );
 
-    expect(find.text('Choose location'), findsOneWidget);
-    expect(find.text('Use current location'), findsOneWidget);
+    expect(find.text('Create a safe zone'), findsOneWidget);
+    expect(find.text('Choose on map'), findsOneWidget);
+    expect(find.text('Current'), findsOneWidget);
     expect(find.text('100 m'), findsWidgets);
     expect(find.text('1 km'), findsOneWidget);
     expect(find.text('Fine tune'), findsOneWidget);
     expect(find.byIcon(Icons.open_with), findsOneWidget);
     expect(find.text('Review zone'), findsOneWidget);
+  });
+
+  testWidgets('choose on map opens a full-screen picker', (tester) async {
+    await tester.pumpWidget(
+      app(
+        SafeZoneEditorScreen(
+          familyId: 'family-1',
+          members: [member, guardian],
+          mapOverride: const ColoredBox(color: Colors.white),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Choose on map'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pick zone location'), findsOneWidget);
+    expect(
+      find.text('Tap the map to move the safe-zone marker.'),
+      findsOneWidget,
+    );
+    expect(find.text('Use this location'), findsOneWidget);
   });
 
   testWidgets(
@@ -108,6 +134,11 @@ void main() {
       );
       expect(reviewButton.onPressed, isNotNull);
 
+      await tester.drag(
+        find.byType(SingleChildScrollView),
+        const Offset(0, -160),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Custom'));
       await tester.pump();
       await tester.tap(find.widgetWithText(ElevatedButton, 'Review zone'));
