@@ -11,6 +11,13 @@ import java.util.UUID
 class GeofenceBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val event = GeofencingEvent.fromIntent(intent) ?: return
+        if (event.hasError() && event.errorCode == GEOFENCE_NOT_AVAILABLE) {
+            // Play Services can temporarily lose geofence availability. Do not
+            // persist an un-uploadable pseudo-candidate: request the normal
+            // authenticated canonical replacement on the next app bootstrap.
+            GeofenceBootReceiver.markCanonicalResync(context.applicationContext)
+            return
+        }
         val occurredAt = System.currentTimeMillis()
         val location = event.triggeringLocation
         val transition = when (event.geofenceTransition) {
@@ -37,5 +44,9 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                 GeofenceUploadWorker.enqueue(context.applicationContext)
             }
         }
+    }
+
+    private companion object {
+        const val GEOFENCE_NOT_AVAILABLE = 1000
     }
 }

@@ -9,6 +9,9 @@
          used for routine tracking, only while an SOS's live-location
          window is open (SosLiveLocationService). -->
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+    <!-- Allows the routine geofence recovery receiver to request the next
+         authenticated canonical registration after a device restart. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
 
@@ -85,6 +88,17 @@
         <receiver
             android:name=".GeofenceBroadcastReceiver"
             android:exported="false" />
+        <!-- Boot/package recovery is deliberately limited to a durable
+             resync marker and one bounded outbox retry. It does not start
+             the SOS foreground service or a continuous location tracker. -->
+        <receiver
+            android:name=".GeofenceBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

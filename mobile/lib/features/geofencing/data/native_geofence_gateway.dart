@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/dio_client.dart';
 
 const int geofenceZoneLimit = 20;
+const int nativeGeofenceNotAvailableErrorCode = 1000;
 
 enum NativeGeofenceCapability {
   ready,
@@ -68,6 +69,13 @@ class NativeGeofenceCandidate {
   final double? longitude;
   final double? accuracyMeters;
   final int? errorCode;
+
+  /// Android's GEOFENCE_NOT_AVAILABLE is an OS recovery signal, not a
+  /// transition that the authenticated candidate API can submit. Native code
+  /// records a canonical re-sync marker and waits for the normal auth restore.
+  bool get requiresCanonicalResync =>
+      transition == NativeGeofenceTransition.error &&
+      errorCode == nativeGeofenceNotAvailableErrorCode;
 
   factory NativeGeofenceCandidate.fromMap(Map<Object?, Object?> map) {
     final transition = switch (map['transition']) {
