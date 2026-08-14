@@ -263,8 +263,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byType(VectorMap), findsOneWidget);
-      expect(find.text('ONLINE'), findsOneWidget);
-      expect(find.text('OFFLINE'), findsOneWidget);
+      expect(find.text('Online'), findsOneWidget);
+      expect(find.text('Offline'), findsOneWidget);
+      expect(find.text('Sam'), findsWidgets);
     },
   );
 

@@ -47,7 +47,33 @@ void main() {
     );
 
     expect(find.text("You're all caught up"), findsOneWidget);
-    expect(find.text('New safe-zone alerts will appear here.'), findsOneWidget);
+    expect(
+      find.text(
+        'Safe-zone alerts will appear here as soon as a family member enters or leaves a place.',
+      ),
+      findsOneWidget,
+    );
     expect(find.bySemanticsLabel('Notification settings'), findsOneWidget);
+  });
+
+  testWidgets('shows a helpful feed error state with retry', (tester) async {
+    var retried = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NotificationsScreen(
+          state: const RoutineNotificationsState(
+            error:
+                'Notifications are not available from the running backend. Restart the SafePath API and try again.',
+          ),
+          onRetry: () => retried = true,
+        ),
+      ),
+    );
+
+    expect(find.text("Notifications aren't available"), findsOneWidget);
+    expect(find.text('Try again'), findsOneWidget);
+
+    await tester.tap(find.text('Try again'));
+    expect(retried, isTrue);
   });
 }

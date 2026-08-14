@@ -57,10 +57,7 @@ void main() {
     final switchWidget = tester.widget<Switch>(switchFinder);
     expect(switchWidget.value, isTrue);
     expect(switchWidget.onChanged, isNull);
-    expect(
-      find.text('Location permission needed to activate'),
-      findsOneWidget,
-    );
+    expect(find.text('Location permission needed to activate'), findsOneWidget);
     expect(find.text('View activity'), findsNWidgets(2));
   });
 
@@ -193,10 +190,11 @@ void main() {
       ),
     );
 
-    expect(find.text('Manage safe zones'), findsOneWidget);
+    expect(find.text('Manage zones'), findsOneWidget);
+    expect(find.bySemanticsLabel('Manage safe zones'), findsOneWidget);
     final size = tester.getSize(find.byType(ManageSafeZonesButton));
     expect(size.height, greaterThanOrEqualTo(48));
-    await tester.tap(find.text('Manage safe zones'));
+    await tester.tap(find.text('Manage zones'));
     expect(opened, isTrue);
   });
 }

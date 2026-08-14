@@ -136,7 +136,7 @@ class NotificationsScreen extends StatelessWidget {
   Widget _body(BuildContext context) {
     if (state.isLoading) return const _FeedSkeleton();
     if (state.error != null && state.items.isEmpty) {
-      return _FeedError(onRetry: onRetry);
+      return _FeedError(message: state.error!, onRetry: onRetry);
     }
     if (state.items.isEmpty) return const _FeedEmpty();
     return RefreshIndicator(
@@ -170,9 +170,9 @@ class _FeedRow extends StatelessWidget {
       excludeSemantics: true,
       child: Material(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           onTap: onOpen == null ? null : () => onOpen!(item),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -180,6 +180,8 @@ class _FeedRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
+                  backgroundColor: AppColors.primaryTintBg,
+                  foregroundColor: AppColors.primaryTeal,
                   child: Text(item.memberName.characters.first.toUpperCase()),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -194,7 +196,12 @@ class _FeedRow extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: AppTypography.body),
+                      Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.body,
+                      ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         _timestamp(item.occurredAtUtc.toLocal()),
@@ -232,7 +239,13 @@ class _UnreadStatus extends StatelessWidget {
           child: SizedBox(width: 8, height: 8),
         ),
         SizedBox(width: AppSpacing.xs),
-        Text('New'),
+        Text(
+          'New',
+          style: AppTypography.caption.copyWith(
+            color: AppColors.primaryTeal,
+            letterSpacing: 0,
+          ),
+        ),
       ],
     ),
   );
@@ -241,37 +254,120 @@ class _UnreadStatus extends StatelessWidget {
 class _FeedEmpty extends StatelessWidget {
   const _FeedEmpty();
   @override
-  Widget build(BuildContext context) => const Center(
-    child: Padding(
-      padding: EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.notifications_none, size: 48),
-          SizedBox(height: AppSpacing.md),
-          Text("You're all caught up"),
-          SizedBox(height: AppSpacing.sm),
-          Text('New safe-zone alerts will appear here.'),
-        ],
+  Widget build(BuildContext context) => _FeedStateScaffold(
+    icon: Icons.notifications_none,
+    title: "You're all caught up",
+    body:
+        'Safe-zone alerts will appear here as soon as a family member enters or leaves a place.',
+  );
+}
+
+class _FeedError extends StatelessWidget {
+  const _FeedError({required this.message, this.onRetry});
+
+  final String message;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) => _FeedStateScaffold(
+    icon: Icons.cloud_off_outlined,
+    title: "Notifications aren't available",
+    body: message,
+    action: FilledButton.icon(
+      onPressed: onRetry,
+      icon: const Icon(Icons.refresh, size: 20),
+      label: const Text('Try again'),
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(48),
+        backgroundColor: AppColors.primaryTeal,
+        foregroundColor: AppColors.surface,
+        textStyle: AppTypography.ctaLabel,
       ),
     ),
   );
 }
 
-class _FeedError extends StatelessWidget {
-  const _FeedError({this.onRetry});
-  final VoidCallback? onRetry;
+class _FeedStateScaffold extends StatelessWidget {
+  const _FeedStateScaffold({
+    required this.icon,
+    required this.title,
+    required this.body,
+    this.action,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final Widget? action;
+
   @override
-  Widget build(BuildContext context) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Text(
-          "Couldn't load notifications. Check your connection and try again.",
-        ),
-        const SizedBox(height: AppSpacing.md),
-        OutlinedButton(onPressed: onRetry, child: const Text('Try again')),
-      ],
+  Widget build(BuildContext context) => SafeArea(
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final topPadding = constraints.maxHeight < 560
+            ? AppSpacing.lg
+            : AppSpacing.xl * 2;
+        return SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            topPadding,
+            AppSpacing.lg,
+            AppSpacing.lg,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight - topPadding - AppSpacing.lg,
+            ),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Material(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(16),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.hairline),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryTintBg,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(AppSpacing.sm),
+                              child: Icon(
+                                icon,
+                                color: AppColors.primaryTeal,
+                                size: 28,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        Text(title, style: AppTypography.title),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(body, style: AppTypography.bodySecondary),
+                        if (action != null) ...[
+                          const SizedBox(height: AppSpacing.lg),
+                          action!,
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     ),
   );
 }
@@ -283,7 +379,55 @@ class _FeedSkeleton extends StatelessWidget {
     padding: const EdgeInsets.all(AppSpacing.lg),
     itemCount: 3,
     separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-    itemBuilder: (_, _) => const SizedBox(height: 88, child: Card()),
+    itemBuilder: (_, _) => const _FeedSkeletonRow(),
+  );
+}
+
+class _FeedSkeletonRow extends StatelessWidget {
+  const _FeedSkeletonRow();
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: AppColors.surface,
+    borderRadius: BorderRadius.circular(14),
+    child: Padding(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        children: [
+          const CircleAvatar(backgroundColor: AppColors.hairlineSoft),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                _SkeletonBar(widthFactor: .72),
+                SizedBox(height: AppSpacing.sm),
+                _SkeletonBar(widthFactor: .42),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _SkeletonBar extends StatelessWidget {
+  const _SkeletonBar({required this.widthFactor});
+
+  final double widthFactor;
+
+  @override
+  Widget build(BuildContext context) => FractionallySizedBox(
+    widthFactor: widthFactor,
+    alignment: Alignment.centerLeft,
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.hairlineSoft,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: const SizedBox(height: 14),
+    ),
   );
 }
 

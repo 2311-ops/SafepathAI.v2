@@ -17,7 +17,6 @@ import '../application/location_controller.dart';
 import '../application/map_geometry.dart';
 import '../application/staleness.dart';
 import '../data/location_models.dart';
-import 'battery_indicator.dart';
 import 'low_battery_banner.dart';
 import 'member_detail_sheet.dart';
 import 'vector_map.dart';
@@ -213,8 +212,8 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
           // declared box must contain the whole Column[avatar, labels]
           // (research §5). Height raised 88->108 to also fit the battery
           // readout row (LOC-04) without a RenderFlex overflow.
-          width: 104,
-          height: 108,
+          width: 86,
+          height: 72,
           child: LiveMemberMarker(
             location: location,
             name: _memberName(location, state),
@@ -355,55 +354,34 @@ class LiveMemberMarker extends StatelessWidget {
             DateTime.now().toUtc().difference(location.recordedAtUtc),
           ).opacity;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Semantics(
-        button: true,
-        label: '$name, ${isOnline ? 'online' : 'offline'}, open details',
-        child: Opacity(
-          opacity: opacity,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        textScaler: MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.1),
+      ),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Semantics(
+          button: true,
+          label: '$name, ${isOnline ? 'online' : 'offline'}, open details',
+          child: Opacity(
+            opacity: opacity,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _MapAvatarPin(
+                  hasAvatar: _hasAvatar,
+                  imageUrl: location.profileImageUrl,
+                  cacheKey:
+                      '${location.userId}-${location.profileUpdatedAt?.toIso8601String()}',
                   color: isSelf ? AppColors.primaryTeal : color,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.surface, width: 3),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x220C3A3F),
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
+                  isOnline: isOnline,
+                  initials: _initials(),
                 ),
-                child: _hasAvatar
-                    ? ClipOval(
-                        child: CachedNetworkImage(
-                          imageUrl: location.profileImageUrl!,
-                          cacheKey:
-                              '${location.userId}-${location.profileUpdatedAt?.toIso8601String()}',
-                          width: 36,
-                          height: 36,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => _initials(),
-                          errorWidget: (context, url, error) => _initials(),
-                        ),
-                      )
-                    : _initials(),
-              ),
-              const SizedBox(height: 2),
-              _MarkerNameLabel(name: name),
-              const SizedBox(height: 2),
-              _MarkerPresenceLabel(isOnline: isOnline),
-              const SizedBox(height: 2),
-              BatteryIndicator(percent: location.batteryPercent),
-            ],
+                const SizedBox(height: 3),
+                _MarkerNameLabel(name: name),
+              ],
+            ),
           ),
         ),
       ),
@@ -418,6 +396,68 @@ class LiveMemberMarker extends StatelessWidget {
         fontWeight: FontWeight.w800,
         letterSpacing: 0,
       ),
+    );
+  }
+}
+
+class _MapAvatarPin extends StatelessWidget {
+  const _MapAvatarPin({
+    required this.hasAvatar,
+    required this.imageUrl,
+    required this.cacheKey,
+    required this.color,
+    required this.isOnline,
+    required this.initials,
+  });
+
+  final bool hasAvatar;
+  final String? imageUrl;
+  final String cacheKey;
+  final Color color;
+  final bool isOnline;
+  final Widget initials;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.surface, width: 3),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x260C3A3F),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: hasAvatar
+              ? ClipOval(
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl!,
+                    cacheKey: cacheKey,
+                    width: 38,
+                    height: 38,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => initials,
+                    errorWidget: (context, url, error) => initials,
+                  ),
+                )
+              : initials,
+        ),
+        Positioned(
+          right: -1,
+          bottom: -1,
+          child: _PresenceDot(isOnline: isOnline, size: 12),
+        ),
+      ],
     );
   }
 }
@@ -459,85 +499,104 @@ class _LiveMapOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) => Opacity(
-        opacity: value,
-        child: Transform.translate(
-          offset: Offset(0, 10 * (1 - value)),
-          child: child,
+    final clampedMedia = MediaQuery.of(context).copyWith(
+      textScaler: MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.15),
+    );
+
+    return MediaQuery(
+      data: clampedMedia,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, child) => Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 8 * (1 - value)),
+            child: child,
+          ),
         ),
-      ),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.surface.withValues(alpha: 0.96),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.hairline),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x1C0C3A3F),
-              blurRadius: 22,
-              offset: Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              MemberMapPin(
-                label: 'You',
-                identityColor: AppColors.primaryTeal,
-                isSelf: true,
-                size: 40,
-                userId: self?.userId,
-                profileImageUrl: self?.profileImageUrl,
-                profileUpdatedAt: self?.profileUpdatedAt,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Your family, live', style: AppTypography.title),
-                    const SizedBox(height: AppSpacing.xs),
-                    Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.xs,
-                      children: [
-                        _StatusCountChip(
-                          icon: Icons.wifi_tethering,
-                          label: '$onlineCount online',
-                          isOnline: true,
-                        ),
-                        _StatusCountChip(
-                          icon: Icons.wifi_off,
-                          label: '$offlineCount offline',
-                          isOnline: false,
-                        ),
-                      ],
-                    ),
-                    if (onManageSafeZones != null) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      ManageSafeZonesButton(onPressed: onManageSafeZones),
-                    ],
-                    const SizedBox(height: AppSpacing.sm),
-                    ViewNotificationsButton(onPressed: onNotifications),
-                  ],
+        child: Material(
+          color: AppColors.surface.withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(18),
+          elevation: 0,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.hairline),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x180C3A3F),
+                  blurRadius: 18,
+                  offset: Offset(0, 8),
                 ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      MemberMapPin(
+                        label: 'You',
+                        identityColor: AppColors.primaryTeal,
+                        isSelf: true,
+                        size: 36,
+                        userId: self?.userId,
+                        profileImageUrl: self?.profileImageUrl,
+                        profileUpdatedAt: self?.profileUpdatedAt,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Family map',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.title,
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Wrap(
+                              spacing: AppSpacing.xs,
+                              runSpacing: AppSpacing.xs,
+                              children: [
+                                _StatusCountChip(
+                                  icon: Icons.wifi_tethering,
+                                  label: '$onlineCount online',
+                                  isOnline: true,
+                                ),
+                                _StatusCountChip(
+                                  icon: Icons.wifi_off,
+                                  label: '$offlineCount offline',
+                                  isOnline: false,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      ViewNotificationsButton(onPressed: onNotifications),
+                      _MapIconAction(
+                        tooltip: 'Profile',
+                        icon: Icons.person_outline,
+                        onPressed: onProfile,
+                      ),
+                      const LogoutAction(),
+                    ],
+                  ),
+                  if (onManageSafeZones != null) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    ManageSafeZonesButton(onPressed: onManageSafeZones),
+                  ],
+                ],
               ),
-              const SizedBox(width: AppSpacing.sm),
-              IconButton.filledTonal(
-                tooltip: 'Profile',
-                icon: const Icon(Icons.person_outline),
-                onPressed: onProfile,
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              const LogoutAction(),
-            ],
+            ),
           ),
         ),
       ),
@@ -551,11 +610,21 @@ class ManageSafeZonesButton extends StatelessWidget {
   final VoidCallback? onPressed;
 
   @override
-  Widget build(BuildContext context) => OutlinedButton.icon(
-    onPressed: onPressed,
-    icon: const Icon(Icons.add_location_alt_outlined),
-    label: const Text('Manage safe zones'),
-    style: OutlinedButton.styleFrom(minimumSize: const Size(48, 48)),
+  Widget build(BuildContext context) => Semantics(
+    label: 'Manage safe zones',
+    button: true,
+    child: FilledButton.icon(
+      onPressed: onPressed,
+      icon: const Icon(Icons.add_location_alt_outlined, size: 20),
+      label: const Text('Manage zones'),
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(46),
+        backgroundColor: AppColors.primaryTeal,
+        foregroundColor: AppColors.surface,
+        textStyle: AppTypography.ctaLabel,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    ),
   );
 }
 
@@ -568,11 +637,36 @@ class ViewNotificationsButton extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     label: 'View notifications',
     button: true,
-    child: OutlinedButton.icon(
+    child: _MapIconAction(
       onPressed: onPressed,
-      icon: const Icon(Icons.notifications_none),
-      label: const Text('Notifications'),
-      style: OutlinedButton.styleFrom(minimumSize: const Size(48, 48)),
+      tooltip: 'Notifications',
+      icon: Icons.notifications_none,
+    ),
+  );
+}
+
+class _MapIconAction extends StatelessWidget {
+  const _MapIconAction({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => IconButton.filledTonal(
+    tooltip: tooltip,
+    onPressed: onPressed,
+    icon: Icon(icon, size: 21),
+    style: IconButton.styleFrom(
+      minimumSize: const Size.square(44),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      backgroundColor: AppColors.primaryTintBg,
+      foregroundColor: AppColors.ink,
+      disabledBackgroundColor: AppColors.hairlineSoft,
     ),
   );
 }
@@ -600,11 +694,11 @@ class _StatusCountChip extends StatelessWidget {
         border: Border.all(color: border),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 13, color: foreground),
+            Icon(icon, size: 12, color: foreground),
             const SizedBox(width: AppSpacing.xs),
             Text(
               label,
@@ -612,6 +706,7 @@ class _StatusCountChip extends StatelessWidget {
                 color: foreground,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0,
+                fontSize: 11,
               ),
             ),
           ],
@@ -844,6 +939,7 @@ class _PresenceDot extends StatelessWidget {
 /// Explicit always-visible status badge for map markers. The member detail
 /// sheet already shows this state on tap; keeping it here prevents the map
 /// surface from relying on color-only interpretation.
+// ignore: unused_element
 class _MarkerPresenceLabel extends StatelessWidget {
   const _MarkerPresenceLabel({required this.isOnline});
 
@@ -907,7 +1003,7 @@ class _MarkerNameLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surface.withValues(alpha: 0.94),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: AppColors.hairline),
         boxShadow: const [
@@ -928,7 +1024,7 @@ class _MarkerNameLabel extends StatelessWidget {
           // uppercase status badges, not a person's name) at a compact size
           // so the pill stays small on the map.
           style: AppTypography.title.copyWith(
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: FontWeight.w700,
             color: AppColors.ink,
             height: 1.2,

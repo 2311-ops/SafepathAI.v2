@@ -102,7 +102,16 @@ class DioRoutineNotificationsApi implements RoutineNotificationsApi {
           .map((json) => _notification(Map<String, dynamic>.from(json)))
           .toList(growable: false);
     } on DioException catch (error) {
-      throw RoutineNotificationsException(_message(error));
+      throw RoutineNotificationsException(
+        _message(
+          error,
+          unavailable:
+              'Notifications are not available from the running backend. Restart the SafePath API and try again.',
+          network:
+              "Couldn't load notifications. Check your connection and try again.",
+          fallback: "Couldn't load notifications. Try again in a moment.",
+        ),
+      );
     }
   }
 
@@ -111,7 +120,16 @@ class DioRoutineNotificationsApi implements RoutineNotificationsApi {
     try {
       await _dio.post<void>('/notifications/$id/read');
     } on DioException catch (error) {
-      throw RoutineNotificationsException(_message(error));
+      throw RoutineNotificationsException(
+        _message(
+          error,
+          unavailable:
+              'Notifications are not available from the running backend. Restart the SafePath API and try again.',
+          network:
+              "Couldn't update notifications. Check your connection and try again.",
+          fallback: "Couldn't update notifications. Try again in a moment.",
+        ),
+      );
     }
   }
 
@@ -123,7 +141,17 @@ class DioRoutineNotificationsApi implements RoutineNotificationsApi {
       );
       return _quietHours(response.data ?? const {});
     } on DioException catch (error) {
-      throw RoutineNotificationsException(_message(error));
+      throw RoutineNotificationsException(
+        _message(
+          error,
+          unavailable:
+              'Notification settings are not available from the running backend. Restart the SafePath API and try again.',
+          network:
+              "Couldn't load notification settings. Check your connection and try again.",
+          fallback:
+              "Couldn't load notification settings. Try again in a moment.",
+        ),
+      );
     }
   }
 
@@ -141,7 +169,16 @@ class DioRoutineNotificationsApi implements RoutineNotificationsApi {
       );
       return _quietHours(response.data ?? const {});
     } on DioException catch (error) {
-      throw RoutineNotificationsException(_message(error));
+      throw RoutineNotificationsException(
+        _message(
+          error,
+          unavailable:
+              'Notification settings are not available from the running backend. Restart the SafePath API and try again.',
+          network:
+              "Couldn't update notifications. Check your connection and try again.",
+          fallback: "Couldn't update notifications. Try again in a moment.",
+        ),
+      );
     }
   }
 
@@ -168,10 +205,29 @@ class DioRoutineNotificationsApi implements RoutineNotificationsApi {
     timeZoneId: json['timeZoneId'] as String? ?? 'Etc/UTC',
   );
 
-  String _message(DioException error) {
+  String _message(
+    DioException error, {
+    required String unavailable,
+    required String network,
+    required String fallback,
+  }) {
     final data = error.response?.data;
     if (data is Map && data['error'] is String) return data['error'] as String;
-    return 'Couldn\'t update notifications. Check your connection and try again.';
+    final status = error.response?.statusCode;
+    if (status == 401 || status == 403) {
+      return 'Your session expired. Please log in again.';
+    }
+    if (status == 404) return unavailable;
+    if (status != null && status >= 500) {
+      return fallback;
+    }
+    if (error.type == DioExceptionType.connectionError ||
+        error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.sendTimeout) {
+      return network;
+    }
+    return fallback;
   }
 }
 

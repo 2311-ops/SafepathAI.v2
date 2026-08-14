@@ -88,38 +88,50 @@ class SafeZonesScreen extends StatelessWidget {
   final String? errorMessage;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppColors.appBg,
-    appBar: AppBar(
-      title: const Text('Places & zones'),
-      actions: [
-        // Single add affordance (mockup): circular teal button in the header.
-        Padding(
-          padding: const EdgeInsets.only(right: AppSpacing.md),
-          child: Semantics(
-            label: 'Add safe zone',
-            button: true,
-            child: InkWell(
-              onTap: onAdd,
-              customBorder: const CircleBorder(),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: onAdd == null
-                      ? AppColors.toggleOffTrack
-                      : AppColors.primaryTeal,
-                  shape: BoxShape.circle,
+  Widget build(BuildContext context) {
+    final clampedMedia = MediaQuery.of(context).copyWith(
+      textScaler: MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.15),
+    );
+
+    return MediaQuery(
+      data: clampedMedia,
+      child: Scaffold(
+        backgroundColor: AppColors.appBg,
+        appBar: AppBar(
+          title: Text(
+            'Places & zones',
+            style: AppTypography.heading.copyWith(fontSize: 24),
+          ),
+          actions: [
+            // Single add affordance (mockup): circular teal button in the header.
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.md),
+              child: Semantics(
+                label: 'Add safe zone',
+                button: true,
+                child: InkWell(
+                  onTap: onAdd,
+                  customBorder: const CircleBorder(),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: onAdd == null
+                          ? AppColors.toggleOffTrack
+                          : AppColors.primaryTeal,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.add, color: Colors.white, size: 22),
+                  ),
                 ),
-                child: const Icon(Icons.add, color: Colors.white, size: 22),
               ),
             ),
-          ),
+          ],
         ),
-      ],
-    ),
-    body: SafeArea(child: _body(context)),
-  );
+        body: SafeArea(child: _body(context)),
+      ),
+    );
+  }
 
   Widget _body(BuildContext context) {
     if (isLoading) {
@@ -191,7 +203,7 @@ class _ZonesOverviewMap extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
       child: SizedBox(
-        height: 150,
+        height: 128,
         width: double.infinity,
         child: Semantics(
           label: 'Map showing ${zones.length} safe zones',
@@ -261,11 +273,12 @@ class _SafeZoneCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.hairline),
           ),
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.all(AppSpacing.xsMd),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _CategoryTile(category: zone.category),
                   const SizedBox(width: AppSpacing.xsMd),
@@ -273,10 +286,17 @@ class _SafeZoneCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(zone.name, style: AppTypography.title),
+                        Text(
+                          zone.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.title.copyWith(fontSize: 16),
+                        ),
                         const SizedBox(height: 2),
                         Text(
                           '${zone.radiusMeters} m · $memberName',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: AppTypography.bodySecondary,
                         ),
                       ],
@@ -339,6 +359,7 @@ class _SafeZoneCard extends StatelessWidget {
                     style: TextButton.styleFrom(
                       minimumSize: const Size(48, 48),
                       foregroundColor: AppColors.primaryTeal,
+                      textStyle: AppTypography.body.copyWith(fontSize: 15),
                     ),
                   ),
                 ),
