@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: geofencing
 status: executing
-stopped_at: Completed 04-16-PLAN.md
-last_updated: "2026-08-14T02:12:51.367Z"
+stopped_at: Completed 04-11-PLAN.md (source-complete; 04-05 physical tracer remains incomplete)
+last_updated: "2026-08-14T02:34:34.623Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 61
-  completed_plans: 58
+  completed_plans: 59
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 04 (geofencing) — EXECUTING
-Plan: 7 of 17
+Plan: 8 of 17
 Status: Ready to execute
 Last activity: 2026-08-13 — Phase 04 execution started
 
-Progress: [██████████] 95%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -107,6 +107,7 @@ Progress: [██████████] 95%
 | Phase 04-geofencing P10 | 7min | 2 tasks | 7 files |
 | Phase 04-geofencing P15 | 18min | 2 tasks | 9 files |
 | Phase 04-geofencing P16 | 7min | 2 tasks | 4 files |
+| Phase 04 P11 | 75min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -219,6 +220,8 @@ Recent decisions affecting current work:
 - [Phase ?]: Routine feed responses include memberDisplayName and safeZoneId so the client can render truthful rows and request family-scoped zone activity without coordinates.
 - [Phase ?]: Routine push routing uses a separate normal local channel/service, leaving SOS PushService critical semantics unchanged.
 - [Phase ?]: Routine tap routes validate UUID activity/zone IDs and remain in memory until authentication, without persisting tokens.
+- [Phase ?]: 04-11: Boot/package/GEOFENCE_NOT_AVAILABLE recovery is bounded and credential-free; authenticated canonical registration remains the only sync path.
+- [Phase ?]: 04-11: iOS uses Core Location plus an app-private outbox; 04-17 still requires Xcode and physical-device evidence.
 
 ### Pending Todos
 
@@ -279,6 +282,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-14T02:12:51.331Z
-Stopped at: Completed 04-16-PLAN.md
+Last session: 2026-08-14T02:34:34.592Z
+Stopped at: Completed 04-11-PLAN.md (source-complete; 04-05 physical tracer remains incomplete)
 Resume file: None

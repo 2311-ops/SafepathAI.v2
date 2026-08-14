@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 6
+open_count: 7
 waived_count: 0
 fixed_count: 0
-total_count: 6
-last_updated: 2026-08-14T02:12:26.323Z
+total_count: 7
+last_updated: 2026-08-14T02:34:25.032Z
 ---
 
 # Broken Windows Ledger
@@ -21,6 +21,7 @@ last_updated: 2026-08-14T02:12:26.323Z
 | 4 | 04 | deviation | mobile/lib/features/geofencing/application/geofence_controller.dart |  | Hydrated safe-zone draft validation fix recorded in 04-12 summary. | open |  | 2026-08-14T00:37:40.376Z |  |
 | 5 | 04 | deviation | backend/src/SafePath.Application/Geofencing/GetRoutineNotificationsQuery.cs |  | Corrected EF Core ordering before DTO projection for recipient feed query. | open |  | 2026-08-14T01:26:25.281Z |  |
 | 6 | 04 | deviation | mobile/test/features/privacy/privacy_center_screen_test.dart |  | Full Flutter suite fails four unrelated PrivacyCenterScreen tests; focused routine/SOS tests pass. | open |  | 2026-08-14T02:12:26.323Z |  |
+| 7 | 04 | deviation | mobile/ios/Runner.xcodeproj/project.pbxproj |  | Registered GeofenceRegionManager.swift in Runner because this Xcode project statically enumerates sources. | open |  | 2026-08-14T02:34:25.032Z |  |
 
 ````json
 [
@@ -94,6 +95,18 @@ last_updated: 2026-08-14T02:12:26.323Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-08-14T02:12:26.323Z",
+    "resolved_at": null
+  },
+  {
+    "id": 7,
+    "kind": "deviation",
+    "phase": "04",
+    "file": "mobile/ios/Runner.xcodeproj/project.pbxproj",
+    "line": null,
+    "description": "Registered GeofenceRegionManager.swift in Runner because this Xcode project statically enumerates sources.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-08-14T02:34:25.032Z",
     "resolved_at": null
   }
 ]
