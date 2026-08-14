@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using SafePath.Application.Common.Interfaces;
+using SafePath.Infrastructure.Geofencing;
 using SafePath.Infrastructure.Identity;
 using SafePath.Infrastructure.Persistence;
 using SafePath.Infrastructure.Push;
@@ -48,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<ILocationBroadcastService, LocationBroadcastService>();
         services.AddScoped<IAlertBroadcastService, AlertBroadcastService>();
         services.AddHostedService<SharingPreferenceSweepService>();
+        services.AddHostedService<GeofenceRetentionService>();
         services.AddSingleton<IProfileImageValidator, ImageSharpProfileImageValidator>();
 
         var profileStorageSupabaseUrl = configuration["Supabase:Url"];
