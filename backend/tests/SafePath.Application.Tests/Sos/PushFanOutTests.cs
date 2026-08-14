@@ -64,6 +64,17 @@ public class PushFanOutTests : IDisposable
     }
 
     [Fact]
+    public void FirebaseSosSender_RetainsHighPriorityEmergencyTransportSettings()
+    {
+        var sourcePath = FindRepositoryFile("backend", "src", "SafePath.Infrastructure", "Push", "FirebasePushSender.cs");
+        var source = File.ReadAllText(sourcePath);
+
+        Assert.Contains("Priority = Priority.High", source, StringComparison.Ordinal);
+        Assert.Contains("ChannelId = \"safepath_sos\"", source, StringComparison.Ordinal);
+        Assert.Contains("[\"apns-priority\"] = \"10\"", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Dispatch_MarksFcmQueuedNotDelivered()
     {
         await using var db = _factory.CreateContext();
@@ -327,4 +338,21 @@ public class PushFanOutTests : IDisposable
     }
 
     public void Dispose() => _factory.Dispose();
+
+    private static string FindRepositoryFile(params string[] parts)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            var candidate = Path.Combine(directory.FullName, Path.Combine(parts));
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException("Could not locate repository file.", Path.Combine(parts));
+    }
 }
