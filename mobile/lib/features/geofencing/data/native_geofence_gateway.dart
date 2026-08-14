@@ -16,6 +16,16 @@ enum NativeGeofenceCapability {
 
 enum NativeGeofenceTransition { enter, exit, error }
 
+NativeGeofenceCapability nativeGeofenceCapabilityFromStatus(Object? value) =>
+    switch (value) {
+      'ready' || 'authorizedAlways' => NativeGeofenceCapability.ready,
+      'needsLocationPermission' || 'notDetermined' =>
+        NativeGeofenceCapability.needsLocationPermission,
+      'needsBackgroundPermission' || 'authorizedWhenInUse' =>
+        NativeGeofenceCapability.needsBackgroundPermission,
+      _ => NativeGeofenceCapability.unavailable,
+    };
+
 class GeofenceRegistrationException implements Exception {
   const GeofenceRegistrationException(this.message);
   final String message;
@@ -140,7 +150,7 @@ class MethodChannelNativeGeofencePlatform implements NativeGeofencePlatform {
 
   Future<NativeGeofenceCapability> _capability(String method) async {
     final raw = await _channel.invokeMethod<Map<Object?, Object?>>(method);
-    return _parseCapability(raw?['status']);
+    return nativeGeofenceCapabilityFromStatus(raw?['status']);
   }
 
   @override
@@ -149,14 +159,6 @@ class MethodChannelNativeGeofencePlatform implements NativeGeofencePlatform {
         'zones': zones.map((zone) => zone.toMap()).toList(growable: false),
       });
 
-  NativeGeofenceCapability _parseCapability(Object? value) => switch (value) {
-    'ready' => NativeGeofenceCapability.ready,
-    'needsLocationPermission' =>
-      NativeGeofenceCapability.needsLocationPermission,
-    'needsBackgroundPermission' =>
-      NativeGeofenceCapability.needsBackgroundPermission,
-    _ => NativeGeofenceCapability.unavailable,
-  };
 }
 
 final nativeGeofencePlatformProvider = Provider<NativeGeofencePlatform>(
