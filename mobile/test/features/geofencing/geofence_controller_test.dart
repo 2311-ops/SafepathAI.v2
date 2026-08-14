@@ -142,6 +142,12 @@ class _FakeGeofenceApi implements GeofenceApi {
   );
 
   @override
+  Future<List<GeofenceActivity>> activity(
+    String familyId,
+    GeofenceActivityFilters filters,
+  ) async => const [];
+
+  @override
   Future<SafeZone> create(SafeZoneDraft draft) async {
     createCalls++;
     if (throwsOnCreate) throw const GeofenceApiException('Save failed');
