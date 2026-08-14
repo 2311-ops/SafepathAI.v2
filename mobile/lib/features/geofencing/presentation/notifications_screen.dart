@@ -7,7 +7,11 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../family/application/family_controller.dart';
+import '../application/geofence_activity_controller.dart';
 import '../application/routine_notifications_controller.dart';
+import '../data/geofence_api.dart';
+import 'zone_activity_screen.dart';
 
 class NotificationsPage extends ConsumerWidget {
   const NotificationsPage({super.key});
@@ -24,7 +28,7 @@ class NotificationsPage extends ConsumerWidget {
           ref.read(routineNotificationsControllerProvider.notifier).open(item),
         );
         context.push(
-          '/zone-activity?activityId=${Uri.encodeComponent(item.activityId)}',
+          '/zone-activity?zoneId=${Uri.encodeComponent(item.safeZoneId ?? '')}',
         );
       },
       onSettings: () => context.push('/notifications/quiet-hours'),
@@ -32,6 +36,62 @@ class NotificationsPage extends ConsumerWidget {
           ref.read(routineNotificationsControllerProvider.notifier).refresh(),
     );
   }
+}
+
+class RoutineActivityPage extends ConsumerWidget {
+  const RoutineActivityPage({super.key, required this.zoneId});
+
+  final String? zoneId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final family = ref.watch(familyControllerProvider).value?.family;
+    if (family == null || zoneId == null || zoneId!.isEmpty) {
+      return const ZoneActivityScreen.error();
+    }
+    return _RoutineActivityLoader(familyId: family.id, zoneId: zoneId!);
+  }
+}
+
+class _RoutineActivityLoader extends ConsumerStatefulWidget {
+  const _RoutineActivityLoader({required this.familyId, required this.zoneId});
+
+  final String familyId;
+  final String zoneId;
+
+  @override
+  ConsumerState<_RoutineActivityLoader> createState() =>
+      _RoutineActivityLoaderState();
+}
+
+class _RoutineActivityLoaderState
+    extends ConsumerState<_RoutineActivityLoader> {
+  late final GeofenceActivityController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = GeofenceActivityController(
+      ref.read(geofenceApiProvider),
+      () => DateTime.now().toUtc(),
+    );
+    _load();
+  }
+
+  Future<void> _load() async {
+    await _controller.load(
+      GeofenceActivityFilters(zoneId: widget.zoneId),
+      familyId: widget.familyId,
+    );
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) => ZoneActivityScreen(
+    state: _controller.state,
+    now: DateTime.now().toUtc(),
+    onRetry: _load,
+  );
 }
 
 class NotificationsScreen extends StatelessWidget {

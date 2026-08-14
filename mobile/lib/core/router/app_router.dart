@@ -24,7 +24,6 @@ import '../../features/geofencing/presentation/notifications_screen.dart';
 import '../../features/geofencing/presentation/quiet_hours_screen.dart';
 import '../../features/geofencing/presentation/safe_zone_detail_screen.dart';
 import '../../features/geofencing/presentation/safe_zones_screen.dart';
-import '../../features/geofencing/presentation/zone_activity_screen.dart';
 import '../../features/home/presentation/main_shell.dart';
 import '../../features/location/application/permission_controller.dart';
 import '../../features/location/presentation/battery_transparency_screen.dart';
@@ -287,7 +286,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/zone-activity',
         name: 'zone-activity',
-        builder: (context, state) => const ZoneActivityScreen.empty(),
+        builder: (context, state) =>
+            RoutineActivityPage(zoneId: state.uri.queryParameters['zoneId']),
       ),
       GoRoute(
         path: '/safe-zones/add',

@@ -11,6 +11,8 @@ public sealed record RoutineNotificationDto(
     Guid Id,
     Guid ActivityId,
     Guid MemberUserId,
+    string MemberDisplayName,
+    Guid? SafeZoneId,
     string ZoneName,
     GeofenceTransition Transition,
     DateTime OccurredAtUtc,
@@ -40,11 +42,18 @@ public sealed class GetRoutineNotificationsQueryHandler
                 item => item.ActivityId,
                 activity => activity.Id,
                 (item, activity) => new { item, activity })
+            .Join(
+                _db.Users.AsNoTracking(),
+                pair => pair.activity.MemberUserId,
+                member => member.Id,
+                (pair, member) => new { pair.item, pair.activity, MemberDisplayName = member.FullName })
             .OrderByDescending(item => item.activity.OccurredAtUtc)
             .Select(item => new RoutineNotificationDto(
                 item.item.Id,
                 item.item.ActivityId,
                 item.activity.MemberUserId,
+                item.MemberDisplayName,
+                item.activity.SafeZoneId,
                 item.activity.SafeZoneDisplayName,
                 item.activity.Transition,
                 item.activity.OccurredAtUtc,

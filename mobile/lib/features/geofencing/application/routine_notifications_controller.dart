@@ -11,6 +11,7 @@ class RoutineNotification {
     required this.activityId,
     required this.memberUserId,
     required this.memberName,
+    this.safeZoneId,
     required this.zoneName,
     required this.transition,
     required this.occurredAtUtc,
@@ -21,6 +22,7 @@ class RoutineNotification {
   final String activityId;
   final String memberUserId;
   final String memberName;
+  final String? safeZoneId;
   final String zoneName;
   final RoutineNotificationTransition transition;
   final DateTime occurredAtUtc;
@@ -31,6 +33,7 @@ class RoutineNotification {
     activityId: activityId,
     memberUserId: memberUserId,
     memberName: memberName,
+    safeZoneId: safeZoneId,
     zoneName: zoneName,
     transition: transition,
     occurredAtUtc: occurredAtUtc,
@@ -147,10 +150,8 @@ class DioRoutineNotificationsApi implements RoutineNotificationsApi {
         id: json['id'] as String,
         activityId: json['activityId'] as String,
         memberUserId: json['memberUserId'] as String,
-        // The current API does not yet include a display name. Retain the
-        // caller-owned id for an avatar and use a truthful generic label until
-        // the endpoint supplies one.
         memberName: json['memberDisplayName'] as String? ?? 'Family member',
+        safeZoneId: json['safeZoneId'] as String?,
         zoneName: json['zoneName'] as String? ?? 'Safe zone',
         transition:
             (json['transition'] as String? ?? '').toLowerCase() == 'exit'
