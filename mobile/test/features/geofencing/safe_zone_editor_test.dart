@@ -47,6 +47,37 @@ void main() {
     expect(find.text('Review zone'), findsOneWidget);
   });
 
+  testWidgets(
+    'editor starts with usable defaults and validates bad review taps',
+    (tester) async {
+      var reviewed = false;
+      await tester.pumpWidget(
+        app(
+          SafeZoneEditorScreen(
+            familyId: 'family-1',
+            members: [member, guardian],
+            mapOverride: const ColoredBox(color: Colors.white),
+            onReview: () => reviewed = true,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final reviewButton = tester.widget<ElevatedButton>(
+        find.widgetWithText(ElevatedButton, 'Review zone'),
+      );
+      expect(reviewButton.onPressed, isNotNull);
+
+      await tester.tap(find.text('Custom'));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Review zone'));
+      await tester.pump();
+
+      expect(reviewed, isFalse);
+      expect(find.text('Enter a zone name.'), findsWidgets);
+    },
+  );
+
   testWidgets('review presents all saved decision fields and edit targets', (
     tester,
   ) async {

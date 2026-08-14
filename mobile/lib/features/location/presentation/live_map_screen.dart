@@ -102,7 +102,14 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
     final state = asyncState.value;
     final familyState = ref.watch(familyControllerProvider).value;
     final profile = ref.watch(profileControllerProvider).value?.profile;
-    final showSafeZones = profile?.role == Role.guardian;
+    final currentUserId = profile?.userId;
+    final familyRole = currentUserId == null
+        ? null
+        : familyState?.members
+              .where((member) => member.userId == currentUserId)
+              .firstOrNull
+              ?.role;
+    final showSafeZones = (familyRole ?? profile?.role) == Role.guardian;
 
     if (asyncState.isLoading ||
         (state?.isLoading ?? false) ||

@@ -80,6 +80,23 @@ class GeofenceController extends Notifier<GeofenceEditorState> {
   /// invalid review/save appear valid.
   void loadDraftForEdit(SafeZoneDraft value) => _replace(value);
 
+  /// Starts a clean create flow. The editor provider intentionally outlives
+  /// routes so review/edit can share one draft, but a new add route must not
+  /// inherit an abandoned custom name or member selection from an older try.
+  void startNewDraft({
+    required String familyId,
+    required Set<String> activeGuardianIds,
+    String? defaultAssignedMemberId,
+  }) {
+    _replace(
+      SafeZoneDraft(
+        familyId: familyId,
+        assignedMemberId: defaultAssignedMemberId,
+        guardianRecipientIds: activeGuardianIds,
+      ),
+    );
+  }
+
   /// Sets [familyId] unconditionally, but only seeds [guardianRecipientIds]
   /// from [activeGuardianIds] when the current draft has no recipients yet.
   /// Both the editor and the review screen call this on mount, so without

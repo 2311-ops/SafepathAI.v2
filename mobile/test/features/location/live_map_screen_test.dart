@@ -42,7 +42,27 @@ class _EmptyLocationController extends LocationController {
 /// reach the populated-map branch instead of the "No circle yet" branch.
 class _PopulatedFamilyController extends FamilyController {
   @override
-  FamilyState build() => const FamilyState(family: Family(id: 'family-1'));
+  FamilyState build() => FamilyState(
+    family: const Family(id: 'family-1'),
+    members: [
+      FamilyMemberView(
+        memberId: 'membership-self',
+        userId: 'self-user',
+        displayName: 'You',
+        role: Role.guardian,
+        permission: PermissionLevel.fullLocation,
+        joinedAt: DateTime.utc(2026),
+      ),
+      FamilyMemberView(
+        memberId: 'membership-other',
+        userId: 'other-user',
+        displayName: 'Sam',
+        role: Role.member,
+        permission: PermissionLevel.fullLocation,
+        joinedAt: DateTime.utc(2026),
+      ),
+    ],
+  );
 }
 
 /// A self position plus one other family member, so `LiveMapScreen` builds
@@ -266,6 +286,35 @@ void main() {
       expect(find.text('Online'), findsOneWidget);
       expect(find.text('Offline'), findsOneWidget);
       expect(find.text('Sam'), findsWidgets);
+    },
+  );
+
+  testWidgets(
+    'family Guardian membership shows Manage zones even if profile role is stale',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            familyControllerProvider.overrideWith(
+              _PopulatedFamilyController.new,
+            ),
+            locationControllerProvider.overrideWith(
+              _PopulatedLocationController.new,
+            ),
+            profileControllerProvider.overrideWith(
+              () => _SeededProfileController(Role.member),
+            ),
+          ],
+          child: const MaterialApp(
+            home: LiveMapScreen(
+              mapPlatformViewBuilder: _fakePlatformViewBuilder,
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.bySemanticsLabel('Manage safe zones'), findsOneWidget);
     },
   );
 

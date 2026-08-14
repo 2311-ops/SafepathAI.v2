@@ -53,9 +53,10 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
           SafeZoneDraft.fromZone(initialZone, familyId: widget.familyId),
         );
       } else {
-        controller.loadFamily(
+        controller.startNewDraft(
           familyId: widget.familyId,
           activeGuardianIds: guardians,
+          defaultAssignedMemberId: _defaultAssignedMemberId,
         );
       }
       _nameController.text = controller.draft.name;
@@ -73,182 +74,217 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
     final editor = ref.watch(geofenceControllerProvider);
     final controller = ref.read(geofenceControllerProvider.notifier);
     final draft = editor.draft;
-    return Scaffold(
-      backgroundColor: AppColors.appBg,
-      appBar: AppBar(
-        title: Text(
-          widget.initialZone != null ? 'Edit safe zone' : 'Add safe zone',
-        ),
+    final media = MediaQuery.of(context);
+
+    return MediaQuery(
+      data: media.copyWith(
+        textScaler: MediaQuery.textScalerOf(
+          context,
+        ).clamp(maxScaleFactor: 1.15),
       ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.all(16),
-        child: SizedBox(
-          height: 52,
-          child: ElevatedButton(
-            onPressed: editor.isSaving || !controller.isReadyForReview
-                ? null
-                : widget.onReview,
-            child: Text(editor.isSaving ? 'Saving…' : 'Review zone'),
+      child: Scaffold(
+        backgroundColor: AppColors.appBg,
+        appBar: AppBar(
+          title: Text(
+            widget.initialZone != null ? 'Edit safe zone' : 'Add safe zone',
+          ),
+        ),
+        bottomNavigationBar: SafeArea(
+          minimum: const EdgeInsets.all(16),
+          child: SizedBox(
+            height: 54,
+            child: ElevatedButton(
+              onPressed: editor.isSaving ? null : _handleReview,
+              child: Text(editor.isSaving ? 'Saving...' : 'Review zone'),
+            ),
+          ),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 144),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Position on map', style: AppTypography.title),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 220,
+                child: Stack(
+                  children: [
+                    Positioned.fill(child: widget.mapOverride ?? _map(draft)),
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: FilledButton.icon(
+                          onPressed: () =>
+                              setState(() => _showNudges = !_showNudges),
+                          icon: const Icon(Icons.open_with),
+                          label: const Text('Move pin'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (_showNudges)
+                _NudgeControls(
+                  onNudge: (lat, lng) => controller.setCenter(
+                    SafeZoneCenter(
+                      latitude: draft.center.latitude + lat,
+                      longitude: draft.center.longitude + lng,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.my_location_outlined),
+                label: const Text('Use current location'),
+              ),
+              const SizedBox(height: 24),
+              Text('ZONE TYPE AND NAME', style: AppTypography.caption),
+              Wrap(
+                spacing: 8,
+                children: [
+                  for (final category in SafeZoneCategory.values)
+                    ChoiceChip(
+                      label: Text(category.wireValue),
+                      selected: draft.category == category,
+                      onSelected: (_) {
+                        controller.selectCategory(category);
+                        _nameController.text = controller.draft.name;
+                      },
+                    ),
+                ],
+              ),
+              TextField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: 'ZONE NAME',
+                  errorText: editor.validation.name,
+                ),
+                onChanged: controller.setName,
+              ),
+              const SizedBox(height: 24),
+              DropdownButtonFormField<String>(
+                key: ValueKey('assigned-${draft.assignedMemberId ?? 'none'}'),
+                initialValue: draft.assignedMemberId,
+                decoration: InputDecoration(
+                  labelText: 'Family member',
+                  errorText: editor.validation.member,
+                ),
+                items: widget.members
+                    .map(
+                      (member) => DropdownMenuItem(
+                        value: member.userId,
+                        child: Text(member.displayName ?? 'Family member'),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: widget.members.isEmpty
+                    ? null
+                    : controller.setAssignedMember,
+              ),
+              const SizedBox(height: 24),
+              Text('Radius', style: AppTypography.title),
+              Wrap(
+                spacing: 8,
+                children: [
+                  for (final preset in SafeZoneDraft.radiusPresets)
+                    ChoiceChip(
+                      label: Text(preset == 1000 ? '1 km' : '$preset m'),
+                      selected: draft.radiusMeters == preset,
+                      onSelected: (_) => controller.selectRadiusPreset(preset),
+                    ),
+                ],
+              ),
+              Semantics(
+                label: 'Safe-zone radius ${draft.radiusMeters} metres',
+                child: Slider(
+                  value: draft.radiusMeters.toDouble(),
+                  min: 100,
+                  max: 2000,
+                  divisions: 76,
+                  label: '${draft.radiusMeters} m',
+                  onChanged: (value) =>
+                      controller.setRadiusMeters(value.round()),
+                ),
+              ),
+              Text('${draft.radiusMeters} m', style: AppTypography.body),
+              if (editor.validation.radius != null)
+                _ValidationText(editor.validation.radius!),
+              const SizedBox(height: 24),
+              Text('Sensitivity', style: AppTypography.title),
+              RadioGroup<SafeZoneSensitivity>(
+                groupValue: draft.sensitivity,
+                onChanged: (value) => controller.setSensitivity(value!),
+                child: Column(
+                  children: [
+                    for (final sensitivity in SafeZoneSensitivity.values)
+                      RadioListTile<SafeZoneSensitivity>(
+                        value: sensitivity,
+                        title: Text(sensitivity.wireValue),
+                        subtitle: Text(sensitivity.description),
+                      ),
+                  ],
+                ),
+              ),
+              Text('Notifications', style: AppTypography.title),
+              for (final guardian in widget.members.where(
+                (m) => m.role.name == 'guardian',
+              ))
+                CheckboxListTile(
+                  value: draft.guardianRecipientIds.contains(guardian.userId),
+                  onChanged: (selected) {
+                    final recipients = {...draft.guardianRecipientIds};
+                    selected == true
+                        ? recipients.add(guardian.userId)
+                        : recipients.remove(guardian.userId);
+                    controller.setGuardianRecipients(recipients);
+                  },
+                  title: Text(guardian.displayName ?? 'Guardian'),
+                ),
+              if (editor.validation.recipients != null)
+                _ValidationText(editor.validation.recipients!),
+              SwitchListTile(
+                value: draft.notifyAssignedMember,
+                onChanged: controller.setNotifyAssignedMember,
+                title: const Text('Also notify assigned member'),
+                subtitle: const Text(
+                  'Let them know when they enter or leave this zone.',
+                ),
+              ),
+            ],
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 96),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Position on map', style: AppTypography.title),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 280,
-              child: Stack(
-                children: [
-                  Positioned.fill(child: widget.mapOverride ?? _map(draft)),
-                  Align(
-                    alignment: Alignment.bottomRight,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: FilledButton.icon(
-                        onPressed: () =>
-                            setState(() => _showNudges = !_showNudges),
-                        icon: const Icon(Icons.open_with),
-                        label: const Text('Move pin'),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (_showNudges)
-              _NudgeControls(
-                onNudge: (lat, lng) => controller.setCenter(
-                  SafeZoneCenter(
-                    latitude: draft.center.latitude + lat,
-                    longitude: draft.center.longitude + lng,
-                  ),
-                ),
-              ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.my_location_outlined),
-              label: const Text('Use current location'),
-            ),
-            const SizedBox(height: 24),
-            Text('ZONE TYPE AND NAME', style: AppTypography.caption),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final category in SafeZoneCategory.values)
-                  ChoiceChip(
-                    label: Text(category.wireValue),
-                    selected: draft.category == category,
-                    onSelected: (_) {
-                      controller.selectCategory(category);
-                      _nameController.text = controller.draft.name;
-                    },
-                  ),
-              ],
-            ),
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: 'ZONE NAME',
-                errorText: editor.validation.name,
-              ),
-              onChanged: controller.setName,
-            ),
-            const SizedBox(height: 24),
-            DropdownButtonFormField<String>(
-              initialValue: draft.assignedMemberId,
-              decoration: InputDecoration(
-                labelText: 'Family member',
-                errorText: editor.validation.member,
-              ),
-              items: widget.members
-                  .map(
-                    (member) => DropdownMenuItem(
-                      value: member.userId,
-                      child: Text(member.displayName ?? 'Family member'),
-                    ),
-                  )
-                  .toList(growable: false),
-              onChanged: widget.members.isEmpty
-                  ? null
-                  : controller.setAssignedMember,
-            ),
-            const SizedBox(height: 24),
-            Text('Radius', style: AppTypography.title),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final preset in SafeZoneDraft.radiusPresets)
-                  ChoiceChip(
-                    label: Text(preset == 1000 ? '1 km' : '$preset m'),
-                    selected: draft.radiusMeters == preset,
-                    onSelected: (_) => controller.selectRadiusPreset(preset),
-                  ),
-              ],
-            ),
-            Semantics(
-              label: 'Safe-zone radius ${draft.radiusMeters} metres',
-              child: Slider(
-                value: draft.radiusMeters.toDouble(),
-                min: 100,
-                max: 2000,
-                divisions: 76,
-                label: '${draft.radiusMeters} m',
-                onChanged: (value) => controller.setRadiusMeters(value.round()),
-              ),
-            ),
-            Text('${draft.radiusMeters} m', style: AppTypography.body),
-            if (editor.validation.radius != null)
-              _ValidationText(editor.validation.radius!),
-            const SizedBox(height: 24),
-            Text('Sensitivity', style: AppTypography.title),
-            RadioGroup<SafeZoneSensitivity>(
-              groupValue: draft.sensitivity,
-              onChanged: (value) => controller.setSensitivity(value!),
-              child: Column(
-                children: [
-                  for (final sensitivity in SafeZoneSensitivity.values)
-                    RadioListTile<SafeZoneSensitivity>(
-                      value: sensitivity,
-                      title: Text(sensitivity.wireValue),
-                      subtitle: Text(sensitivity.description),
-                    ),
-                ],
-              ),
-            ),
-            Text('Notifications', style: AppTypography.title),
-            for (final guardian in widget.members.where(
-              (m) => m.role.name == 'guardian',
-            ))
-              CheckboxListTile(
-                value: draft.guardianRecipientIds.contains(guardian.userId),
-                onChanged: (selected) {
-                  final recipients = {...draft.guardianRecipientIds};
-                  selected == true
-                      ? recipients.add(guardian.userId)
-                      : recipients.remove(guardian.userId);
-                  controller.setGuardianRecipients(recipients);
-                },
-                title: Text(guardian.displayName ?? 'Guardian'),
-              ),
-            if (editor.validation.recipients != null)
-              _ValidationText(editor.validation.recipients!),
-            SwitchListTile(
-              value: draft.notifyAssignedMember,
-              onChanged: controller.setNotifyAssignedMember,
-              title: const Text('Also notify assigned member'),
-              subtitle: const Text(
-                'Let them know when they enter or leave this zone.',
-              ),
-            ),
-          ],
-        ),
-      ),
     );
+  }
+
+  String? get _defaultAssignedMemberId =>
+      widget.members
+          .where((member) => member.role.name != 'guardian')
+          .firstOrNull
+          ?.userId ??
+      widget.members.firstOrNull?.userId;
+
+  void _handleReview() {
+    final controller = ref.read(geofenceControllerProvider.notifier);
+    if (controller.validateForReview()) {
+      widget.onReview?.call();
+      return;
+    }
+
+    final validation = ref.read(geofenceControllerProvider).validation;
+    final message =
+        validation.name ??
+        validation.member ??
+        validation.recipients ??
+        validation.radius ??
+        'Finish the highlighted fields.';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _map(SafeZoneDraft draft) => VectorMap(

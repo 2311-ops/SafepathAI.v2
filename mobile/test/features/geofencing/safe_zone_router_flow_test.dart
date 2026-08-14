@@ -128,9 +128,7 @@ ProviderContainer _buildContainer(
       geofenceSavePermissionCoordinatorProvider.overrideWithValue(
         _FakeSavePermissionCoordinator(),
       ),
-      safeZoneMapOverrideProvider.overrideWithValue(
-        const SizedBox.expand(),
-      ),
+      safeZoneMapOverrideProvider.overrideWithValue(const SizedBox.expand()),
     ],
   );
   return container;
@@ -190,18 +188,12 @@ void main() {
       expect(find.text('Add safe zone'), findsWidgets); // AppBar title + CTA
       expect(find.text('Review zone'), findsOneWidget);
 
-      // Initially disabled: no assigned member yet, exactly the regression
-      // this task fixes (the add route used to construct the editor with an
-      // empty member list, leaving this button permanently disabled).
-      final disabledReview = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, 'Review zone'),
-      );
-      expect(disabledReview.onPressed, isNull);
-
-      container
-          .read(geofenceControllerProvider.notifier)
-          .setAssignedMember('member-1');
-      await tester.pump();
+      // Add opens as a fresh, usable draft: standard name, first non-guardian
+      // member selected, and guardian notifications seeded.
+      final draft = container.read(geofenceControllerProvider).draft;
+      expect(draft.name, 'Home');
+      expect(draft.assignedMemberId, 'member-1');
+      expect(draft.guardianRecipientIds, {'guardian-1'});
 
       final enabledReview = tester.widget<ElevatedButton>(
         find.widgetWithText(ElevatedButton, 'Review zone'),
