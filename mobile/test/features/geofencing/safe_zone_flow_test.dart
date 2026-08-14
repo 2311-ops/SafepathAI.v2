@@ -46,15 +46,116 @@ void main() {
             ),
           ],
           memberNames: const {'member-1': 'Maya'},
+          mapOverride: const SizedBox.expand(),
         ),
       ),
     );
     expect(find.text('Home'), findsNWidgets(2));
-    expect(find.text('Maya'), findsNWidgets(2));
-    expect(find.text('250 m'), findsNWidgets(2));
-    expect(find.text('Active'), findsOneWidget);
-    expect(find.text('Location permission needed'), findsOneWidget);
+    expect(find.text('250 m · Maya'), findsNWidgets(2));
+    final switchFinder = find.byType(Switch);
+    expect(switchFinder, findsOneWidget);
+    final switchWidget = tester.widget<Switch>(switchFinder);
+    expect(switchWidget.value, isTrue);
+    expect(switchWidget.onChanged, isNull);
+    expect(
+      find.text('Location permission needed to activate'),
+      findsOneWidget,
+    );
     expect(find.text('View activity'), findsNWidgets(2));
+  });
+
+  testWidgets('safe zones list map header renders through mapOverride', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      app(
+        SafeZonesScreen(
+          zones: [activeZone],
+          memberNames: const {'member-1': 'Maya'},
+          mapOverride: const SizedBox.expand(key: Key('zones-map')),
+        ),
+      ),
+    );
+    expect(find.byKey(const Key('zones-map')), findsOneWidget);
+  });
+
+  testWidgets('safe zones list shows a category-specific icon tile per zone', (
+    tester,
+  ) async {
+    const schoolZone = SafeZone(
+      id: 'zone-2',
+      name: 'School',
+      category: SafeZoneCategory.school,
+      center: SafeZoneCenter(latitude: 30.0444, longitude: 31.2357),
+      radiusMeters: 250,
+      assignedMemberId: 'member-1',
+      sensitivity: SafeZoneSensitivity.reliable,
+      guardianRecipientIds: {'guardian-1'},
+      notifyAssignedMember: false,
+    );
+    const workplaceZone = SafeZone(
+      id: 'zone-3',
+      name: 'Workplace',
+      category: SafeZoneCategory.workplace,
+      center: SafeZoneCenter(latitude: 30.0444, longitude: 31.2357),
+      radiusMeters: 250,
+      assignedMemberId: 'member-1',
+      sensitivity: SafeZoneSensitivity.reliable,
+      guardianRecipientIds: {'guardian-1'},
+      notifyAssignedMember: false,
+    );
+    await tester.pumpWidget(
+      app(
+        SafeZonesScreen(
+          zones: [activeZone, schoolZone, workplaceZone],
+          memberNames: const {'member-1': 'Maya'},
+          mapOverride: const SizedBox.expand(),
+        ),
+      ),
+    );
+    expect(find.byIcon(Icons.home_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.school_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.work_outline), findsOneWidget);
+  });
+
+  testWidgets('safe zones list wires onToggle to the tapped zone', (
+    tester,
+  ) async {
+    SafeZone? toggledZone;
+    bool? toggledValue;
+    await tester.pumpWidget(
+      app(
+        SafeZonesScreen(
+          zones: [activeZone],
+          memberNames: const {'member-1': 'Maya'},
+          mapOverride: const SizedBox.expand(),
+          onToggle: (zone, enabled) {
+            toggledZone = zone;
+            toggledValue = enabled;
+          },
+        ),
+      ),
+    );
+    await tester.tap(find.byType(Switch));
+    await tester.pump();
+    expect(toggledZone?.id, activeZone.id);
+    expect(toggledValue, isFalse);
+  });
+
+  testWidgets('safe zones list shows exactly one add affordance', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      app(
+        SafeZonesScreen(
+          zones: [activeZone],
+          memberNames: const {'member-1': 'Maya'},
+          mapOverride: const SizedBox.expand(),
+        ),
+      ),
+    );
+    expect(find.byType(FloatingActionButton), findsNothing);
+    expect(find.byIcon(Icons.add), findsOneWidget);
   });
 
   testWidgets('detail exposes permission settings and confirmed delete', (

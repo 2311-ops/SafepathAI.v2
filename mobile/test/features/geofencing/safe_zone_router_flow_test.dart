@@ -167,8 +167,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(geofenceApi.listCalls, 1);
-      expect(find.text('Distinctive Maya'), findsOneWidget);
-      expect(find.text('Family member'), findsNothing);
+      expect(find.text('100 m · Distinctive Maya'), findsOneWidget);
+      expect(find.textContaining('Family member'), findsNothing);
     },
   );
 
@@ -184,7 +184,7 @@ void main() {
       await tester.pumpWidget(_app(container, router));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Add safe zone'));
+      await tester.tap(find.byIcon(Icons.add));
       await tester.pumpAndSettle();
 
       expect(find.text('Add safe zone'), findsWidgets); // AppBar title + CTA
