@@ -80,6 +80,13 @@ class GeofenceController extends Notifier<GeofenceEditorState> {
   /// invalid review/save appear valid.
   void loadDraftForEdit(SafeZoneDraft value) => _replace(value);
 
+  /// Sets [familyId] unconditionally, but only seeds [guardianRecipientIds]
+  /// from [activeGuardianIds] when the current draft has no recipients yet.
+  /// Both the editor and the review screen call this on mount, so without
+  /// this guard reaching review after deliberately narrowing the recipient
+  /// set would silently reset it back to every active guardian — for a
+  /// safety product that means notifying people the guardian just
+  /// deselected.
   void loadFamily({
     required String familyId,
     required Set<String> activeGuardianIds,
@@ -87,7 +94,9 @@ class GeofenceController extends Notifier<GeofenceEditorState> {
     _replace(
       draft.copyWith(
         familyId: familyId,
-        guardianRecipientIds: activeGuardianIds,
+        guardianRecipientIds: draft.guardianRecipientIds.isEmpty
+            ? activeGuardianIds
+            : draft.guardianRecipientIds,
       ),
     );
   }

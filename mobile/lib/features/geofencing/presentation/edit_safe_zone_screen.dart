@@ -16,11 +16,18 @@ class SafeZoneEditorScreen extends ConsumerStatefulWidget {
     required this.members,
     this.mapOverride,
     this.onReview,
+    this.initialZone,
   });
   final String familyId;
   final List<FamilyMemberView> members;
   final Widget? mapOverride;
   final VoidCallback? onReview;
+
+  /// When supplied, this screen is in edit mode: the draft is hydrated from
+  /// this existing zone (carrying its id) instead of a fresh
+  /// `loadFamily(...)` call, so saving issues an update rather than a
+  /// create.
+  final SafeZone? initialZone;
   @override
   ConsumerState<SafeZoneEditorScreen> createState() =>
       _SafeZoneEditorScreenState();
@@ -40,10 +47,17 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final controller = ref.read(geofenceControllerProvider.notifier);
-      controller.loadFamily(
-        familyId: widget.familyId,
-        activeGuardianIds: guardians,
-      );
+      final initialZone = widget.initialZone;
+      if (initialZone != null) {
+        controller.loadDraftForEdit(
+          SafeZoneDraft.fromZone(initialZone, familyId: widget.familyId),
+        );
+      } else {
+        controller.loadFamily(
+          familyId: widget.familyId,
+          activeGuardianIds: guardians,
+        );
+      }
       _nameController.text = controller.draft.name;
     });
   }
@@ -61,7 +75,11 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
     final draft = editor.draft;
     return Scaffold(
       backgroundColor: AppColors.appBg,
-      appBar: AppBar(title: const Text('Add safe zone')),
+      appBar: AppBar(
+        title: Text(
+          widget.initialZone != null ? 'Edit safe zone' : 'Add safe zone',
+        ),
+      ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.all(16),
         child: SizedBox(

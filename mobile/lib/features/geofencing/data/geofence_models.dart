@@ -115,6 +115,24 @@ class SafeZoneDraft {
     notifyAssignedMember: notifyAssignedMember ?? this.notifyAssignedMember,
   );
 
+  /// Builds an editable draft from an existing [zone] so the edit journey
+  /// reuses the same review/save path as create. Carrying [zone.id] into
+  /// [zoneId] is what makes [GeofenceController.save] choose
+  /// `GeofenceApi.update` over `GeofenceApi.create`.
+  factory SafeZoneDraft.fromZone(SafeZone zone, {String? familyId}) =>
+      SafeZoneDraft(
+        zoneId: zone.id,
+        familyId: familyId,
+        category: zone.category,
+        name: zone.name,
+        center: zone.center,
+        radiusMeters: zone.radiusMeters,
+        assignedMemberId: zone.assignedMemberId,
+        sensitivity: zone.sensitivity,
+        guardianRecipientIds: zone.guardianRecipientIds,
+        notifyAssignedMember: zone.notifyAssignedMember,
+      );
+
   Map<String, Object?> toRequest() => {
     'category': category.wireValue,
     // The server uses null for an untouched standard category, but a guardian
