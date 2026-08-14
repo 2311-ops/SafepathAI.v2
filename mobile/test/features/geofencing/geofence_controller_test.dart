@@ -21,74 +21,92 @@ void main() {
       expect(controller.draft.name, 'Maya school');
     });
 
-    test('validates name, member, radius, and guardian recipients before review', () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-      final controller = container.read(geofenceControllerProvider.notifier);
+    test(
+      'validates name, member, radius, and guardian recipients before review',
+      () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final controller = container.read(geofenceControllerProvider.notifier);
 
-      controller.setName('');
-      controller.setRadiusMeters(99);
+        controller.setName('');
+        controller.loadDraftForEdit(
+          controller.draft.copyWith(radiusMeters: 99),
+        );
 
-      expect(controller.validateForReview(), isFalse);
-      expect(controller.state.value!.validation.name, isNotNull);
-      expect(controller.state.value!.validation.member, isNotNull);
-      expect(controller.state.value!.validation.radius, isNotNull);
-      expect(controller.state.value!.validation.recipients, isNotNull);
-    });
+        expect(controller.validateForReview(), isFalse);
+        expect(controller.state.validation.name, isNotNull);
+        expect(controller.state.validation.member, isNotNull);
+        expect(controller.state.validation.radius, isNotNull);
+        expect(controller.state.validation.recipients, isNotNull);
+      },
+    );
 
-    test('maps presets and fine slider values while rejecting invalid radii', () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-      final controller = container.read(geofenceControllerProvider.notifier);
+    test(
+      'maps presets and fine slider values while rejecting invalid radii',
+      () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final controller = container.read(geofenceControllerProvider.notifier);
 
-      controller.selectRadiusPreset(1000);
-      expect(controller.draft.radiusMeters, 1000);
-      controller.setRadiusMeters(1125);
-      expect(controller.draft.radiusMeters, 1125);
-      controller.setRadiusMeters(1111);
-      expect(controller.draft.radiusMeters, 1125);
-    });
+        controller.selectRadiusPreset(1000);
+        expect(controller.draft.radiusMeters, 1000);
+        controller.setRadiusMeters(1125);
+        expect(controller.draft.radiusMeters, 1125);
+        controller.setRadiusMeters(1111);
+        expect(controller.draft.radiusMeters, 1125);
+      },
+    );
 
-    test('saves first, then retains a needs-permission inactive zone on denial', () async {
-      final api = _FakeGeofenceApi();
-      final permission = _FakeSavePermissionCoordinator(
-        SafeZoneActivation.needsLocationPermission,
-      );
-      final container = ProviderContainer(
-        overrides: [
-          geofenceApiProvider.overrideWithValue(api),
-          geofenceSavePermissionCoordinatorProvider.overrideWithValue(permission),
-        ],
-      );
-      addTearDown(container.dispose);
-      final controller = container.read(geofenceControllerProvider.notifier);
-      _makeValid(controller);
+    test(
+      'saves first, then retains a needs-permission inactive zone on denial',
+      () async {
+        final api = _FakeGeofenceApi();
+        final permission = _FakeSavePermissionCoordinator(
+          SafeZoneActivation.needsLocationPermission,
+        );
+        final container = ProviderContainer(
+          overrides: [
+            geofenceApiProvider.overrideWithValue(api),
+            geofenceSavePermissionCoordinatorProvider.overrideWithValue(
+              permission,
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final controller = container.read(geofenceControllerProvider.notifier);
+        _makeValid(controller);
 
-      final result = await controller.save();
+        final result = await controller.save();
 
-      expect(result, isTrue);
-      expect(api.createCalls, 1);
-      expect(permission.calls, 1);
-      expect(controller.state.value!.savedZone!.activation,
-          SafeZoneActivation.needsLocationPermission);
-      expect(controller.state.value!.savedZone!.isActive, isFalse);
-    });
+        expect(result, isTrue);
+        expect(api.createCalls, 1);
+        expect(permission.calls, 1);
+        expect(
+          controller.state.savedZone!.activation,
+          SafeZoneActivation.needsLocationPermission,
+        );
+        expect(controller.state.savedZone!.isActive, isFalse);
+      },
+    );
 
-    test('keeps the entered draft when the authoritative API rejects a save', () async {
-      final api = _FakeGeofenceApi(throwsOnCreate: true);
-      final container = ProviderContainer(
-        overrides: [geofenceApiProvider.overrideWithValue(api)],
-      );
-      addTearDown(container.dispose);
-      final controller = container.read(geofenceControllerProvider.notifier);
-      _makeValid(controller);
+    test(
+      'keeps the entered draft when the authoritative API rejects a save',
+      () async {
+        final api = _FakeGeofenceApi(throwsOnCreate: true);
+        final container = ProviderContainer(
+          overrides: [geofenceApiProvider.overrideWithValue(api)],
+        );
+        addTearDown(container.dispose);
+        final controller = container.read(geofenceControllerProvider.notifier);
+        _makeValid(controller);
 
-      final result = await controller.save();
+        final result = await controller.save();
 
-      expect(result, isFalse);
-      expect(controller.draft.name, 'Home');
-      expect(controller.state.value!.saveError, isNotNull);
-    });
+        expect(result, isFalse);
+        expect(controller.draft.name, 'Home');
+        expect(controller.state.saveError, isNotNull);
+      },
+    );
   });
 }
 
@@ -128,7 +146,8 @@ class _FakeGeofenceApi implements GeofenceApi {
   Future<SafeZone> update(String zoneId, SafeZoneDraft draft) => create(draft);
 }
 
-class _FakeSavePermissionCoordinator implements GeofenceSavePermissionCoordinator {
+class _FakeSavePermissionCoordinator
+    implements GeofenceSavePermissionCoordinator {
   _FakeSavePermissionCoordinator(this.result);
 
   final SafeZoneActivation result;

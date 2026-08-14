@@ -69,8 +69,27 @@ class GeofenceController extends Notifier<GeofenceEditorState> {
 
   SafeZoneDraft get draft => state.draft;
 
-  void loadFamily({required String familyId, required Set<String> activeGuardianIds}) {
-    _replace(draft.copyWith(familyId: familyId, guardianRecipientIds: activeGuardianIds));
+  bool get isReadyForReview =>
+      draft.name.trim().isNotEmpty &&
+      draft.assignedMemberId != null &&
+      draft.hasValidRadius &&
+      draft.guardianRecipientIds.isNotEmpty;
+
+  /// Used by the edit route to hydrate an existing draft. Validation remains
+  /// authoritative here because a stale server payload must never make an
+  /// invalid review/save appear valid.
+  void loadDraftForEdit(SafeZoneDraft value) => _replace(value);
+
+  void loadFamily({
+    required String familyId,
+    required Set<String> activeGuardianIds,
+  }) {
+    _replace(
+      draft.copyWith(
+        familyId: familyId,
+        guardianRecipientIds: activeGuardianIds,
+      ),
+    );
   }
 
   void selectCategory(SafeZoneCategory category) {
@@ -86,7 +105,8 @@ class GeofenceController extends Notifier<GeofenceEditorState> {
   }
 
   void setName(String name) => _replace(draft.copyWith(name: name));
-  void setCenter(SafeZoneCenter center) => _replace(draft.copyWith(center: center));
+  void setCenter(SafeZoneCenter center) =>
+      _replace(draft.copyWith(center: center));
   void setAssignedMember(String? memberId) => _replace(
     memberId == null
         ? draft.copyWith(clearAssignedMember: true)
@@ -99,8 +119,10 @@ class GeofenceController extends Notifier<GeofenceEditorState> {
   void setNotifyAssignedMember(bool value) =>
       _replace(draft.copyWith(notifyAssignedMember: value));
   void selectRadiusPreset(int radiusMeters) {
-    if (SafeZoneDraft.radiusPresets.contains(radiusMeters)) setRadiusMeters(radiusMeters);
+    if (SafeZoneDraft.radiusPresets.contains(radiusMeters))
+      setRadiusMeters(radiusMeters);
   }
+
   void setRadiusMeters(int radiusMeters) {
     if (radiusMeters >= SafeZoneDraft.minRadiusMeters &&
         radiusMeters <= SafeZoneDraft.maxRadiusMeters &&
@@ -113,7 +135,9 @@ class GeofenceController extends Notifier<GeofenceEditorState> {
     final validation = SafeZoneValidation(
       name: draft.name.trim().isEmpty ? 'Enter a zone name.' : null,
       member: draft.assignedMemberId == null ? 'Choose a family member.' : null,
-      radius: draft.hasValidRadius ? null : 'Choose a radius from 100 m to 2 km.',
+      radius: draft.hasValidRadius
+          ? null
+          : 'Choose a radius from 100 m to 2 km.',
       recipients: draft.guardianRecipientIds.isEmpty
           ? 'Select at least one Guardian to receive alerts.'
           : null,
@@ -147,7 +171,8 @@ class GeofenceController extends Notifier<GeofenceEditorState> {
     } catch (_) {
       state = state.copyWith(
         isSaving: false,
-        saveError: "We couldn't save this safe zone. Your changes are still here — try again.",
+        saveError:
+            "We couldn't save this safe zone. Your changes are still here — try again.",
       );
       return false;
     }
