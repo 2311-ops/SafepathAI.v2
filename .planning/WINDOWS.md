@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 4
+open_count: 5
 waived_count: 0
 fixed_count: 0
-total_count: 4
-last_updated: 2026-08-14T00:37:40.376Z
+total_count: 5
+last_updated: 2026-08-14T01:26:25.281Z
 ---
 
 # Broken Windows Ledger
@@ -19,6 +19,7 @@ last_updated: 2026-08-14T00:37:40.376Z
 | 2 | 04 | unrun-verify | backend/tests/SafePath.Application.Tests/Geofencing/GeofenceTracerTests.cs |  | Focused application test blocked by unconfigured SixLabors ImageSharp license. | open |  | 2026-08-11T15:45:03.484Z |  |
 | 3 | 04 | unrun-verify | backend/tests/SafePath.Api.IntegrationTests/GeofencesControllerTests.cs |  | Focused integration suite was blocked by an existing SafePath.Api output-DLL lock. | open |  | 2026-08-14T00:05:43.212Z |  |
 | 4 | 04 | deviation | mobile/lib/features/geofencing/application/geofence_controller.dart |  | Hydrated safe-zone draft validation fix recorded in 04-12 summary. | open |  | 2026-08-14T00:37:40.376Z |  |
+| 5 | 04 | deviation | backend/src/SafePath.Application/Geofencing/GetRoutineNotificationsQuery.cs |  | Corrected EF Core ordering before DTO projection for recipient feed query. | open |  | 2026-08-14T01:26:25.281Z |  |
 
 ````json
 [
@@ -68,6 +69,18 @@ last_updated: 2026-08-14T00:37:40.376Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-08-14T00:37:40.376Z",
+    "resolved_at": null
+  },
+  {
+    "id": 5,
+    "kind": "deviation",
+    "phase": "04",
+    "file": "backend/src/SafePath.Application/Geofencing/GetRoutineNotificationsQuery.cs",
+    "line": null,
+    "description": "Corrected EF Core ordering before DTO projection for recipient feed query.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-08-14T01:26:25.281Z",
     "resolved_at": null
   }
 ]
