@@ -1,0 +1,168 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../data/geofence_api.dart';
+import '../data/geofence_models.dart';
+import 'geofence_registration_controller.dart';
+
+abstract class GeofenceSavePermissionCoordinator {
+  Future<SafeZoneActivation> requestAfterSave();
+}
+
+class RegistrationSavePermissionCoordinator
+    implements GeofenceSavePermissionCoordinator {
+  RegistrationSavePermissionCoordinator(this._ref);
+  final Ref _ref;
+
+  @override
+  Future<SafeZoneActivation> requestAfterSave() async {
+    await _ref
+        .read(geofenceRegistrationControllerProvider.notifier)
+        .requestBackgroundPermissionForSave();
+    return switch (_ref.read(geofenceRegistrationControllerProvider)) {
+      GeofenceRegistrationReady() => SafeZoneActivation.active,
+      GeofenceRegistrationNeedsLocationPermission() =>
+        SafeZoneActivation.needsLocationPermission,
+      _ => SafeZoneActivation.inactive,
+    };
+  }
+}
+
+final geofenceSavePermissionCoordinatorProvider =
+    Provider<GeofenceSavePermissionCoordinator>(
+      (ref) => RegistrationSavePermissionCoordinator(ref),
+    );
+
+class GeofenceEditorState {
+  const GeofenceEditorState({
+    this.draft = const SafeZoneDraft(),
+    this.validation = const SafeZoneValidation(),
+    this.isSaving = false,
+    this.saveError,
+    this.savedZone,
+  });
+
+  final SafeZoneDraft draft;
+  final SafeZoneValidation validation;
+  final bool isSaving;
+  final String? saveError;
+  final SafeZone? savedZone;
+
+  GeofenceEditorState copyWith({
+    SafeZoneDraft? draft,
+    SafeZoneValidation? validation,
+    bool? isSaving,
+    String? saveError,
+    bool clearSaveError = false,
+    SafeZone? savedZone,
+  }) => GeofenceEditorState(
+    draft: draft ?? this.draft,
+    validation: validation ?? this.validation,
+    isSaving: isSaving ?? this.isSaving,
+    saveError: clearSaveError ? null : (saveError ?? this.saveError),
+    savedZone: savedZone ?? this.savedZone,
+  );
+}
+
+class GeofenceController extends Notifier<GeofenceEditorState> {
+  @override
+  GeofenceEditorState build() => const GeofenceEditorState();
+
+  SafeZoneDraft get draft => state.draft;
+
+  void loadFamily({required String familyId, required Set<String> activeGuardianIds}) {
+    _replace(draft.copyWith(familyId: familyId, guardianRecipientIds: activeGuardianIds));
+  }
+
+  void selectCategory(SafeZoneCategory category) {
+    final defaultName = category.defaultName;
+    _replace(
+      draft.copyWith(
+        category: category,
+        name: draft.name.isEmpty || draft.name == draft.category.defaultName
+            ? defaultName
+            : draft.name,
+      ),
+    );
+  }
+
+  void setName(String name) => _replace(draft.copyWith(name: name));
+  void setCenter(SafeZoneCenter center) => _replace(draft.copyWith(center: center));
+  void setAssignedMember(String? memberId) => _replace(
+    memberId == null
+        ? draft.copyWith(clearAssignedMember: true)
+        : draft.copyWith(assignedMemberId: memberId),
+  );
+  void setGuardianRecipients(Set<String> recipients) =>
+      _replace(draft.copyWith(guardianRecipientIds: recipients));
+  void setSensitivity(SafeZoneSensitivity sensitivity) =>
+      _replace(draft.copyWith(sensitivity: sensitivity));
+  void setNotifyAssignedMember(bool value) =>
+      _replace(draft.copyWith(notifyAssignedMember: value));
+  void selectRadiusPreset(int radiusMeters) {
+    if (SafeZoneDraft.radiusPresets.contains(radiusMeters)) setRadiusMeters(radiusMeters);
+  }
+  void setRadiusMeters(int radiusMeters) {
+    if (radiusMeters >= SafeZoneDraft.minRadiusMeters &&
+        radiusMeters <= SafeZoneDraft.maxRadiusMeters &&
+        radiusMeters % SafeZoneDraft.radiusStepMeters == 0) {
+      _replace(draft.copyWith(radiusMeters: radiusMeters));
+    }
+  }
+
+  bool validateForReview() {
+    final validation = SafeZoneValidation(
+      name: draft.name.trim().isEmpty ? 'Enter a zone name.' : null,
+      member: draft.assignedMemberId == null ? 'Choose a family member.' : null,
+      radius: draft.hasValidRadius ? null : 'Choose a radius from 100 m to 2 km.',
+      recipients: draft.guardianRecipientIds.isEmpty
+          ? 'Select at least one Guardian to receive alerts.'
+          : null,
+    );
+    state = state.copyWith(validation: validation, clearSaveError: true);
+    return validation.isValid;
+  }
+
+  Future<bool> save() async {
+    if (!validateForReview()) return false;
+    state = state.copyWith(isSaving: true, clearSaveError: true);
+    try {
+      final api = ref.read(geofenceApiProvider);
+      final zone = draft.zoneId == null
+          ? await api.create(draft)
+          : await api.update(draft.zoneId!, draft);
+      // This is intentionally post-API: opening a form or using the map must
+      // never prompt for location; only the explicit save gesture may do so.
+      final activation = await ref
+          .read(geofenceSavePermissionCoordinatorProvider)
+          .requestAfterSave();
+      state = state.copyWith(
+        isSaving: false,
+        savedZone: zone.copyWith(activation: activation),
+        clearSaveError: true,
+      );
+      return true;
+    } on GeofenceApiException catch (error) {
+      state = state.copyWith(isSaving: false, saveError: error.message);
+      return false;
+    } catch (_) {
+      state = state.copyWith(
+        isSaving: false,
+        saveError: "We couldn't save this safe zone. Your changes are still here — try again.",
+      );
+      return false;
+    }
+  }
+
+  void _replace(SafeZoneDraft next) {
+    state = state.copyWith(
+      draft: next,
+      validation: const SafeZoneValidation(),
+      clearSaveError: true,
+    );
+  }
+}
+
+final geofenceControllerProvider =
+    NotifierProvider<GeofenceController, GeofenceEditorState>(
+      GeofenceController.new,
+    );
