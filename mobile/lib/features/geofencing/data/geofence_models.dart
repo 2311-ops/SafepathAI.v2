@@ -46,6 +46,11 @@ class SafeZoneCenter {
     'latitude': latitude,
     'longitude': longitude,
   };
+
+  factory SafeZoneCenter.fromJson(Map<String, dynamic> json) => SafeZoneCenter(
+    latitude: (json['latitude'] as num).toDouble(),
+    longitude: (json['longitude'] as num).toDouble(),
+  );
 }
 
 class SafeZoneDraft {
@@ -102,8 +107,9 @@ class SafeZoneDraft {
     name: name ?? this.name,
     center: center ?? this.center,
     radiusMeters: radiusMeters ?? this.radiusMeters,
-    assignedMemberId:
-        clearAssignedMember ? null : (assignedMemberId ?? this.assignedMemberId),
+    assignedMemberId: clearAssignedMember
+        ? null
+        : (assignedMemberId ?? this.assignedMemberId),
     sensitivity: sensitivity ?? this.sensitivity,
     guardianRecipientIds: guardianRecipientIds ?? this.guardianRecipientIds,
     notifyAssignedMember: notifyAssignedMember ?? this.notifyAssignedMember,
@@ -136,7 +142,8 @@ class SafeZoneValidation {
   final String? radius;
   final String? recipients;
 
-  bool get isValid => name == null && member == null && radius == null && recipients == null;
+  bool get isValid =>
+      name == null && member == null && radius == null && recipients == null;
 }
 
 class SafeZone {
@@ -178,4 +185,49 @@ class SafeZone {
     notifyAssignedMember: notifyAssignedMember,
     activation: activation ?? this.activation,
   );
+
+  factory SafeZone.fromJson(Map<String, dynamic> json) {
+    final category = _enumFromWire(
+      SafeZoneCategory.values,
+      json['category'] as String? ?? 'Home',
+      (value) => value.wireValue,
+    );
+    return SafeZone(
+      id: (json['zoneId'] ?? json['id']) as String,
+      name: (json['customName'] as String?)?.trim().isNotEmpty == true
+          ? (json['customName'] as String).trim()
+          : category.defaultName,
+      category: category,
+      center: SafeZoneCenter(
+        latitude: (json['latitude'] as num).toDouble(),
+        longitude: (json['longitude'] as num).toDouble(),
+      ),
+      radiusMeters: (json['radiusMeters'] as num).round(),
+      assignedMemberId: json['assignedMemberUserId'] as String,
+      sensitivity: _enumFromWire(
+        SafeZoneSensitivity.values,
+        json['sensitivity'] as String? ?? 'Balanced',
+        (value) => value.wireValue,
+      ),
+      guardianRecipientIds:
+          ((json['recipientUserIds'] as List<dynamic>?) ?? const [])
+              .whereType<String>()
+              .toSet(),
+      notifyAssignedMember: json['notifyAssignedMember'] as bool? ?? false,
+      activation: json['needsLocationPermission'] == true
+          ? SafeZoneActivation.needsLocationPermission
+          : (json['active'] as bool? ?? true)
+          ? SafeZoneActivation.active
+          : SafeZoneActivation.inactive,
+    );
+  }
 }
+
+T _enumFromWire<T>(
+  Iterable<T> values,
+  String wireValue,
+  String Function(T value) selector,
+) => values.firstWhere(
+  (value) => selector(value).toLowerCase() == wireValue.toLowerCase(),
+  orElse: () => throw ArgumentError('Unknown wire value: $wireValue'),
+);

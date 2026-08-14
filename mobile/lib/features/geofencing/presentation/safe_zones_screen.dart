@@ -17,27 +17,24 @@ class SafeZonesScreen extends StatelessWidget {
   }) : isLoading = false,
        errorMessage = null;
 
-  const SafeZonesScreen.empty({
-    super.key,
-    this.onAdd,
-  }) : zones = const [],
-       memberNames = const {},
-       onOpen = null,
-       onActivity = null,
-       onRetry = null,
-       isLoading = false,
-       errorMessage = null;
+  const SafeZonesScreen.empty({super.key, this.onAdd})
+    : zones = const [],
+      memberNames = const {},
+      onOpen = null,
+      onActivity = null,
+      onRetry = null,
+      isLoading = false,
+      errorMessage = null;
 
-  const SafeZonesScreen.error({
-    super.key,
-    this.onRetry,
-  }) : zones = const [],
-       memberNames = const {},
-       onAdd = null,
-       onOpen = null,
-       onActivity = null,
-       isLoading = false,
-       errorMessage = "Couldn't load safe zones. Check your connection and try again.";
+  const SafeZonesScreen.error({super.key, this.onRetry})
+    : zones = const [],
+      memberNames = const {},
+      onAdd = null,
+      onOpen = null,
+      onActivity = null,
+      isLoading = false,
+      errorMessage =
+          "Couldn't load safe zones. Check your connection and try again.";
 
   const SafeZonesScreen.loading({super.key})
     : zones = const [],
@@ -100,7 +97,8 @@ class SafeZonesScreen extends StatelessWidget {
       return _StateMessage(
         icon: Icons.add_location_alt_outlined,
         title: 'No safe zones yet',
-        body: 'Create a place alert for home, school, work, or anywhere your family cares about.',
+        body:
+            'Create a place alert for home, school, work, or anywhere your family cares about.',
         action: ElevatedButton(
           onPressed: onAdd,
           child: const Text('Add safe zone'),
@@ -150,7 +148,10 @@ class _SafeZoneCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.location_on_outlined, color: AppColors.primaryTeal),
+                const Icon(
+                  Icons.location_on_outlined,
+                  color: AppColors.primaryTeal,
+                ),
                 const SizedBox(width: 12),
                 Expanded(child: Text(zone.name, style: AppTypography.title)),
                 _ActivationChip(activation: zone.activation),
@@ -162,8 +163,14 @@ class _SafeZoneCard extends StatelessWidget {
             Wrap(
               spacing: 8,
               children: [
-                Text('Type: ${zone.category.wireValue}', style: AppTypography.bodySecondary),
-                Text('${zone.radiusMeters} m', style: AppTypography.bodySecondary),
+                Text(
+                  'Type: ${zone.category.wireValue}',
+                  style: AppTypography.bodySecondary,
+                ),
+                Text(
+                  '${zone.radiusMeters} m',
+                  style: AppTypography.bodySecondary,
+                ),
               ],
             ),
             Align(
@@ -195,7 +202,8 @@ class _ActivationChip extends StatelessWidget {
     final label = switch (activation) {
       SafeZoneActivation.active => 'Active',
       SafeZoneActivation.inactive => 'Inactive',
-      SafeZoneActivation.needsLocationPermission => 'Location permission needed',
+      SafeZoneActivation.needsLocationPermission =>
+        'Location permission needed',
     };
     return Chip(label: Text(label));
   }
@@ -225,11 +233,12 @@ class _StateMessage extends StatelessWidget {
           const SizedBox(height: 16),
           Text(title, style: AppTypography.title, textAlign: TextAlign.center),
           const SizedBox(height: 8),
-          Text(body, style: AppTypography.bodySecondary, textAlign: TextAlign.center),
-          if (action != null) ...[
-            const SizedBox(height: 16),
-            action!,
-          ],
+          Text(
+            body,
+            style: AppTypography.bodySecondary,
+            textAlign: TextAlign.center,
+          ),
+          if (action != null) ...[const SizedBox(height: 16), action!],
         ],
       ),
     ),

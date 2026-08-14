@@ -74,7 +74,10 @@ class SafeZoneDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Location permission needed', style: AppTypography.title),
+                      Text(
+                        'Location permission needed',
+                        style: AppTypography.title,
+                      ),
                       const SizedBox(height: 8),
                       Text(
                         'Open Settings and allow background location so SafePath can activate this zone.',
@@ -155,11 +158,13 @@ class SafeZoneDetailScreen extends StatelessWidget {
     }
   }
 
-  static String _activationLabel(SafeZoneActivation activation) => switch (activation) {
-    SafeZoneActivation.active => 'Active',
-    SafeZoneActivation.inactive => 'Inactive',
-    SafeZoneActivation.needsLocationPermission => 'Location permission needed',
-  };
+  static String _activationLabel(SafeZoneActivation activation) =>
+      switch (activation) {
+        SafeZoneActivation.active => 'Active',
+        SafeZoneActivation.inactive => 'Inactive',
+        SafeZoneActivation.needsLocationPermission =>
+          'Location permission needed',
+      };
 }
 
 class _InfoRow extends StatelessWidget {

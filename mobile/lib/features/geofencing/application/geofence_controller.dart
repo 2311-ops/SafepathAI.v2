@@ -192,3 +192,73 @@ final geofenceControllerProvider =
     NotifierProvider<GeofenceController, GeofenceEditorState>(
       GeofenceController.new,
     );
+
+class GeofenceListState {
+  const GeofenceListState({
+    this.familyId,
+    this.zones = const [],
+    this.isLoading = false,
+    this.error,
+  });
+
+  final String? familyId;
+  final List<SafeZone> zones;
+  final bool isLoading;
+  final String? error;
+
+  GeofenceListState copyWith({
+    String? familyId,
+    List<SafeZone>? zones,
+    bool? isLoading,
+    String? error,
+    bool clearError = false,
+  }) => GeofenceListState(
+    familyId: familyId ?? this.familyId,
+    zones: zones ?? this.zones,
+    isLoading: isLoading ?? this.isLoading,
+    error: clearError ? null : (error ?? this.error),
+  );
+}
+
+class GeofenceListController extends Notifier<GeofenceListState> {
+  @override
+  GeofenceListState build() => const GeofenceListState();
+
+  Future<void> load(String familyId) async {
+    state = state.copyWith(
+      familyId: familyId,
+      isLoading: true,
+      clearError: true,
+    );
+    try {
+      final zones = await ref.read(geofenceApiProvider).list(familyId);
+      state = GeofenceListState(familyId: familyId, zones: zones);
+    } on GeofenceApiException catch (error) {
+      state = state.copyWith(isLoading: false, error: error.message);
+    } catch (_) {
+      state = state.copyWith(
+        isLoading: false,
+        error: "Couldn't load safe zones. Check your connection and try again.",
+      );
+    }
+  }
+
+  Future<void> deleteZone(SafeZone zone) async {
+    final familyId = state.familyId;
+    if (familyId == null) return;
+    try {
+      await ref.read(geofenceApiProvider).delete(familyId, zone.id);
+      state = state.copyWith(
+        zones: state.zones.where((item) => item.id != zone.id).toList(),
+        clearError: true,
+      );
+    } on GeofenceApiException catch (error) {
+      state = state.copyWith(error: error.message);
+    }
+  }
+}
+
+final geofenceListControllerProvider =
+    NotifierProvider<GeofenceListController, GeofenceListState>(
+      GeofenceListController.new,
+    );

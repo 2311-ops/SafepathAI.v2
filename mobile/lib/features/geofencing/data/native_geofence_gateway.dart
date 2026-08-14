@@ -37,6 +37,8 @@ class NativeGeofenceZone {
   final double longitude;
   final double radiusMeters;
 
+  String get requestId => '$zoneId:$generation';
+
   Map<String, Object> toMap() => {
     'zoneId': zoneId,
     'generation': generation,
@@ -112,12 +114,17 @@ class MethodChannelNativeGeofencePlatform implements NativeGeofencePlatform {
     );
     return (raw ?? const [])
         .whereType<Map>()
-        .map((entry) => NativeGeofenceCandidate.fromMap(Map<Object?, Object?>.from(entry)))
+        .map(
+          (entry) => NativeGeofenceCandidate.fromMap(
+            Map<Object?, Object?>.from(entry),
+          ),
+        )
         .toList(growable: false);
   }
 
   @override
-  Future<NativeGeofenceCapability> getCapability() => _capability('getCapability');
+  Future<NativeGeofenceCapability> getCapability() =>
+      _capability('getCapability');
 
   @override
   Future<NativeGeofenceCapability> requestBackgroundCapability() =>
@@ -130,14 +137,14 @@ class MethodChannelNativeGeofencePlatform implements NativeGeofencePlatform {
 
   @override
   Future<void> replaceMonitoredZones(List<NativeGeofenceZone> zones) =>
-      _channel.invokeMethod<void>(
-        'replaceMonitoredZones',
-        {'zones': zones.map((zone) => zone.toMap()).toList(growable: false)},
-      );
+      _channel.invokeMethod<void>('replaceMonitoredZones', {
+        'zones': zones.map((zone) => zone.toMap()).toList(growable: false),
+      });
 
   NativeGeofenceCapability _parseCapability(Object? value) => switch (value) {
     'ready' => NativeGeofenceCapability.ready,
-    'needsLocationPermission' => NativeGeofenceCapability.needsLocationPermission,
+    'needsLocationPermission' =>
+      NativeGeofenceCapability.needsLocationPermission,
     'needsBackgroundPermission' =>
       NativeGeofenceCapability.needsBackgroundPermission,
     _ => NativeGeofenceCapability.unavailable,

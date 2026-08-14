@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/geofencing/data/geofence_models.dart';
 import 'package:mobile/features/geofencing/presentation/safe_zone_detail_screen.dart';
 import 'package:mobile/features/geofencing/presentation/safe_zones_screen.dart';
+import 'package:mobile/features/location/presentation/live_map_screen.dart';
 
 void main() {
   const activeZone = SafeZone(
@@ -28,7 +29,9 @@ void main() {
 
     await tester.pumpWidget(const MaterialApp(home: SafeZonesScreen.error()));
     expect(
-      find.text("Couldn't load safe zones. Check your connection and try again."),
+      find.text(
+        "Couldn't load safe zones. Check your connection and try again.",
+      ),
       findsOneWidget,
     );
     expect(find.text('Try again'), findsOneWidget);
@@ -75,5 +78,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Delete Home?'), findsOneWidget);
     expect(find.text('Keep safe zone'), findsOneWidget);
+  });
+
+  testWidgets('live map safe-zone entry keeps a 48px guardian action', (
+    tester,
+  ) async {
+    var opened = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ManageSafeZonesButton(onPressed: () => opened = true),
+        ),
+      ),
+    );
+
+    expect(find.text('Manage safe zones'), findsOneWidget);
+    final size = tester.getSize(find.byType(ManageSafeZonesButton));
+    expect(size.height, greaterThanOrEqualTo(48));
+    await tester.tap(find.text('Manage safe zones'));
+    expect(opened, isTrue);
   });
 }

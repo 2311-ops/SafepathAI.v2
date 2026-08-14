@@ -126,6 +126,22 @@ class _FakeGeofenceApi implements GeofenceApi {
   int createCalls = 0;
 
   @override
+  Future<List<SafeZone>> list(String familyId) async => const [];
+
+  @override
+  Future<SafeZone> get(String familyId, String zoneId) async => SafeZone(
+    id: zoneId,
+    name: 'Home',
+    category: SafeZoneCategory.home,
+    center: const SafeZoneCenter(latitude: 30.0444, longitude: 31.2357),
+    radiusMeters: 100,
+    assignedMemberId: 'member-1',
+    sensitivity: SafeZoneSensitivity.reliable,
+    guardianRecipientIds: const {'guardian-1'},
+    notifyAssignedMember: false,
+  );
+
+  @override
   Future<SafeZone> create(SafeZoneDraft draft) async {
     createCalls++;
     if (throwsOnCreate) throw const GeofenceApiException('Save failed');
@@ -144,6 +160,9 @@ class _FakeGeofenceApi implements GeofenceApi {
 
   @override
   Future<SafeZone> update(String zoneId, SafeZoneDraft draft) => create(draft);
+
+  @override
+  Future<void> delete(String familyId, String zoneId) async {}
 }
 
 class _FakeSavePermissionCoordinator

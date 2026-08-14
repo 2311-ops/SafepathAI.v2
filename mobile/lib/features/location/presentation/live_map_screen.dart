@@ -11,6 +11,8 @@ import '../../../shared_widgets/member_map_pin.dart';
 import '../../../shared_widgets/no_circle_cta.dart';
 import '../../../shared_widgets/primary_button.dart';
 import '../../family/application/family_controller.dart';
+import '../../profile/application/profile_controller.dart';
+import '../../auth/data/auth_models.dart';
 import '../application/location_controller.dart';
 import '../application/map_geometry.dart';
 import '../application/staleness.dart';
@@ -100,6 +102,8 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
     final asyncState = ref.watch(locationControllerProvider);
     final state = asyncState.value;
     final familyState = ref.watch(familyControllerProvider).value;
+    final profile = ref.watch(profileControllerProvider).value?.profile;
+    final showSafeZones = profile?.role == Role.guardian;
 
     if (asyncState.isLoading ||
         (state?.isLoading ?? false) ||
@@ -264,6 +268,9 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
                     onlineCount: onlineCount,
                     offlineCount: offlineCount,
                     onProfile: () => context.push('/profile'),
+                    onManageSafeZones: showSafeZones
+                        ? () => context.push('/safe-zones')
+                        : null,
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   _MemberStatusRail(
@@ -438,12 +445,14 @@ class _LiveMapOverlay extends StatelessWidget {
     required this.onlineCount,
     required this.offlineCount,
     required this.onProfile,
+    this.onManageSafeZones,
   });
 
   final LiveLocation? self;
   final int onlineCount;
   final int offlineCount;
   final VoidCallback onProfile;
+  final VoidCallback? onManageSafeZones;
 
   @override
   Widget build(BuildContext context) {
@@ -508,6 +517,10 @@ class _LiveMapOverlay extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (onManageSafeZones != null) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      ManageSafeZonesButton(onPressed: onManageSafeZones),
+                    ],
                   ],
                 ),
               ),
@@ -525,6 +538,20 @@ class _LiveMapOverlay extends StatelessWidget {
       ),
     );
   }
+}
+
+class ManageSafeZonesButton extends StatelessWidget {
+  const ManageSafeZonesButton({super.key, this.onPressed});
+
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton.icon(
+    onPressed: onPressed,
+    icon: const Icon(Icons.add_location_alt_outlined),
+    label: const Text('Manage safe zones'),
+    style: OutlinedButton.styleFrom(minimumSize: const Size(48, 48)),
+  );
 }
 
 class _StatusCountChip extends StatelessWidget {
