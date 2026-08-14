@@ -13,7 +13,7 @@ affects: [04-07-geofence-confirmation, 04-08-geofence-activity, mobile-geofence-
 actuals:
   tokens: 15633
   tasks: 2
-  commits: 3
+  commits: 5
 tech-stack:
   added: []
   patterns: [canonical REST CRUD, family-scoped authorization, registration-generation invalidation]
@@ -45,9 +45,9 @@ coverage:
     verification:
       - kind: integration
         ref: dotnet test backend/tests/SafePath.Api.IntegrationTests --filter "FullyQualifiedName~GeofencesControllerTests"
-        status: unknown
+        status: pass
     human_judgment: true
-    rationale: "The existing SafePath.Api process (PID 17816) held output DLLs during the focused integration build; the process was not stopped because it was not owned by this plan."
+    rationale: "Root follow-up stopped the exact same-repo SafePath.Api process (PID 17816), then the focused HTTP integration suite passed outside the sandbox write boundary."
 duration: 47min
 completed: 2026-08-14
 status: complete
@@ -79,7 +79,7 @@ status: complete
 ## Verification
 
 - Passed: `F:\DevTools\dotnet\dotnet.exe test backend/tests/SafePath.Application.Tests --filter "FullyQualifiedName~ZoneCommandTests" --no-restore` — 4/4 tests.
-- Unrun after build: `F:\DevTools\dotnet\dotnet.exe test backend/tests/SafePath.Api.IntegrationTests --filter "FullyQualifiedName~GeofencesControllerTests" --no-restore` — pre-existing `SafePath.Api` PID 17816 locked `backend/src/SafePath.Api/bin/Debug/net9.0` dependency DLLs. The process was preserved.
+- Passed: `F:\DevTools\dotnet\dotnet.exe test F:\SafepathAI.v2\backend\tests\SafePath.Api.IntegrationTests --filter "FullyQualifiedName~GeofencesControllerTests"` — 4/4 tests. Root follow-up first stopped the exact same-repo `SafePath.Api` PID 17816 that was locking output DLLs, then reran the command outside the sandbox write boundary.
 
 ## Decisions Made
 
@@ -111,7 +111,7 @@ status: complete
 
 ## Issues Encountered
 
-- The focused integration suite could not build because a pre-existing `SafePath.Api` process (PID 17816) held output DLLs. No process was terminated and no unrelated build artifact was removed.
+- Initial focused integration attempts were blocked by the same-repo `SafePath.Api` process (PID 17816) and then by sandboxed F: build-temp writes. Root follow-up stopped that exact API process and reran the focused integration suite outside the sandbox write boundary; it passed 4/4.
 
 ## User Setup Required
 
@@ -120,12 +120,13 @@ None - no external service configuration is required.
 ## Next Phase Readiness
 
 - Confirmation/activity work can rely on canonical current-generation device configuration and retention-safe zone deactivation.
-- Re-run the focused integration command after the existing API process exits to complete the HTTP verification record.
+- HTTP CRUD contracts are verified by the focused `GeofencesControllerTests` integration suite.
 
 ## Self-Check: PASSED
 
 - Verified all eight planned/approved source and test files exist.
-- Verified commits `21a8775`, `96e780b`, and `84879e4` exist in local history.
+- Verified commits `21a8775`, `96e780b`, `84879e4`, and `e170100` exist in local history.
+- Verified focused integration suite passed 4/4 after root follow-up.
 
 ---
 *Phase: 04-geofencing*
