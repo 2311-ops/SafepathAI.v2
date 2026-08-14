@@ -86,27 +86,7 @@ class _SpyPrivacyController extends PrivacyController {
   PrivacyState build() => PrivacyState(
     matrix: SharingMatrix(
       entries: [
-        const SharingCell(
-          recipientId: 'mem-first-recipient',
-          recipientName: 'First Recipient',
-          dataType: SharedDataType.liveLocation,
-          isEnabled: true,
-        ),
-        const SharingCell(
-          recipientId: 'mem-first-recipient',
-          recipientName: 'First Recipient',
-          dataType: SharedDataType.history,
-          isEnabled: false,
-        ),
-        const SharingCell(
-          recipientId: 'mem-first-recipient',
-          recipientName: 'First Recipient',
-          dataType: SharedDataType.wellness,
-          isEnabled: true,
-        ),
         SharingCell(
-          recipientId: 'mem-second-recipient',
-          recipientName: 'Second Recipient',
           dataType: SharedDataType.liveLocation,
           isEnabled: true,
           // A 4-hour session (10:00 -> 14:00). At the fixed test clock of 10:30
@@ -114,18 +94,8 @@ class _SpyPrivacyController extends PrivacyController {
           startedAtUtc: DateTime.utc(2026, 7, 12, 10),
           expiresAtUtc: DateTime.utc(2026, 7, 12, 14),
         ),
-        const SharingCell(
-          recipientId: 'mem-second-recipient',
-          recipientName: 'Second Recipient',
-          dataType: SharedDataType.history,
-          isEnabled: false,
-        ),
-        const SharingCell(
-          recipientId: 'mem-second-recipient',
-          recipientName: 'Second Recipient',
-          dataType: SharedDataType.wellness,
-          isEnabled: true,
-        ),
+        const SharingCell(dataType: SharedDataType.history, isEnabled: false),
+        const SharingCell(dataType: SharedDataType.wellness, isEnabled: true),
       ],
     ),
   );
@@ -272,7 +242,7 @@ void main() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
-  testWidgets('renders toggle matrix and duration controls', (tester) async {
+  testWidgets('renders one personal privacy control surface', (tester) async {
     final controller = _SpyPrivacyController();
 
     await tester.pumpWidget(_app(controller));
@@ -285,19 +255,20 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('First Recipient'), findsOneWidget);
-    expect(find.text('Live location'), findsAtLeastNWidgets(1));
-    expect(find.text('History'), findsAtLeastNWidgets(1));
-    expect(find.text('Wellness'), findsAtLeastNWidgets(1));
-    await tester.scrollUntilVisible(
-      find.text('Second Recipient'),
-      300,
-      scrollable: find.byType(Scrollable),
+    expect(find.text('My sharing access'), findsOneWidget);
+    expect(
+      find.text(
+        'Choose what your family circle can see from your account. These controls affect only your data.',
+      ),
+      findsOneWidget,
     );
-    await tester.pumpAndSettle();
-    expect(find.text('Second Recipient'), findsOneWidget);
+    expect(find.text('First Recipient'), findsNothing);
+    expect(find.text('Second Recipient'), findsNothing);
+    expect(find.text('Live location access'), findsOneWidget);
+    expect(find.text('History access'), findsOneWidget);
+    expect(find.text('Wellness access'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('temporary-share-mem-second-recipient-custom')),
+      find.byKey(const ValueKey('temporary-share-circle-custom')),
       300,
       scrollable: find.byType(Scrollable),
     );
@@ -321,30 +292,28 @@ void main() {
     await tester.pump();
 
     expect(controller.toggleCallCount, 1);
-    expect(controller.lastRecipientId, 'mem-first-recipient');
+    expect(controller.lastRecipientId, isNull);
     expect(controller.lastDataType, SharedDataType.liveLocation);
     expect(controller.lastEnabled, isFalse);
   });
 
-  testWidgets('4-hour duration chip uses the selected recipient row', (
+  testWidgets('4-hour duration chip updates the current user default', (
     tester,
   ) async {
     final controller = _SpyPrivacyController();
 
     await tester.pumpWidget(_app(controller));
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('temporary-share-mem-second-recipient-4h')),
+      find.byKey(const ValueKey('temporary-share-circle-4h')),
       300,
       scrollable: find.byType(Scrollable),
     );
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('temporary-share-mem-second-recipient-4h')),
-    );
+    await tester.tap(find.byKey(const ValueKey('temporary-share-circle-4h')));
     await tester.pump();
 
     expect(controller.temporaryShareCallCount, 1);
-    expect(controller.lastRecipientId, 'mem-second-recipient');
+    expect(controller.lastRecipientId, isNull);
     expect(controller.lastDataType, SharedDataType.liveLocation);
     expect(controller.lastDuration, const Duration(hours: 4));
   });
@@ -354,13 +323,13 @@ void main() {
 
     await tester.pumpWidget(_app(controller));
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('temporary-share-mem-second-recipient-custom')),
+      find.byKey(const ValueKey('temporary-share-circle-custom')),
       300,
       scrollable: find.byType(Scrollable),
     );
     await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(const ValueKey('temporary-share-mem-second-recipient-custom')),
+      find.byKey(const ValueKey('temporary-share-circle-custom')),
     );
     await tester.pumpAndSettle();
 
@@ -372,7 +341,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(controller.temporaryShareCallCount, 1);
-    expect(controller.lastRecipientId, 'mem-second-recipient');
+    expect(controller.lastRecipientId, isNull);
     expect(controller.lastDataType, SharedDataType.liveLocation);
     expect(controller.lastDuration, const Duration(hours: 6));
   });
