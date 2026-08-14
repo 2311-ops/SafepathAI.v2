@@ -111,7 +111,10 @@ sb.Session _fakeSession() => sb.Session(
 /// seam this journey touches overridden, mirroring the established
 /// subclass-override convention (`live_map_screen_test.dart`) and fake-api
 /// convention (`auth_flow_navigation_test.dart`).
-ProviderContainer _buildContainer(FakeGeofenceApi geofenceApi) {
+ProviderContainer _buildContainer(
+  FakeGeofenceApi geofenceApi, {
+  FakeLocationPermissionService? locationPermissionService,
+}) {
   final authApi = FakeAuthApi(initialSession: _fakeSession());
   final container = ProviderContainer(
     overrides: [
@@ -119,7 +122,7 @@ ProviderContainer _buildContainer(FakeGeofenceApi geofenceApi) {
       profileControllerProvider.overrideWith(_SeededProfileController.new),
       authApiProvider.overrideWithValue(authApi),
       locationPermissionServiceProvider.overrideWithValue(
-        FakeLocationPermissionService(),
+        locationPermissionService ?? FakeLocationPermissionService(),
       ),
       geofenceApiProvider.overrideWithValue(geofenceApi),
       geofenceSavePermissionCoordinatorProvider.overrideWithValue(
@@ -251,6 +254,101 @@ void main() {
 
       expect(geofenceApi.updateCalls, 1);
       expect(geofenceApi.createCalls, 0);
+    },
+  );
+
+  testWidgets(
+    'confirming delete removes the zone through the fake API and returns '
+    'to /safe-zones',
+    (tester) async {
+      final zone = _seededZone();
+      final geofenceApi = FakeGeofenceApi()..zonesToReturn = [zone];
+      final container = _buildContainer(geofenceApi);
+      addTearDown(container.dispose);
+      final router = container.read(routerProvider);
+
+      router.go('/safe-zones');
+      await tester.pumpWidget(_app(container, router));
+      await tester.pumpAndSettle();
+
+      router.push('/safe-zones/${zone.id}', extra: zone);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Assigned member'), findsOneWidget);
+
+      // Disambiguate: the bottom-bar trigger is a TextButton, the dialog's
+      // confirm action is a FilledButton — both carry the same label.
+      await tester.tap(find.widgetWithText(TextButton, 'Delete zone'));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete zone'));
+      await tester.pumpAndSettle();
+
+      expect(geofenceApi.deleteCalls, 1);
+      expect(find.text('No safe zones yet'), findsOneWidget);
+      expect(find.text('Assigned member'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'cancelling the delete confirmation deletes nothing and stays on the '
+    'detail screen',
+    (tester) async {
+      final zone = _seededZone();
+      final geofenceApi = FakeGeofenceApi()..zonesToReturn = [zone];
+      final container = _buildContainer(geofenceApi);
+      addTearDown(container.dispose);
+      final router = container.read(routerProvider);
+
+      router.go('/safe-zones');
+      await tester.pumpWidget(_app(container, router));
+      await tester.pumpAndSettle();
+
+      router.push('/safe-zones/${zone.id}', extra: zone);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Delete zone'));
+      await tester.pump();
+      await tester.tap(find.text('Keep safe zone'));
+      await tester.pumpAndSettle();
+
+      expect(geofenceApi.deleteCalls, 0);
+      expect(find.text('Assigned member'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Open Settings on the permission card reaches the location permission '
+    'seam',
+    (tester) async {
+      final zone = _seededZone().copyWith(
+        activation: SafeZoneActivation.needsLocationPermission,
+      );
+      final geofenceApi = FakeGeofenceApi()..zonesToReturn = [zone];
+      final locationPermissionService = FakeLocationPermissionService();
+      final container = _buildContainer(
+        geofenceApi,
+        locationPermissionService: locationPermissionService,
+      );
+      addTearDown(container.dispose);
+      final router = container.read(routerProvider);
+
+      router.go('/safe-zones');
+      await tester.pumpWidget(_app(container, router));
+      await tester.pumpAndSettle();
+
+      router.push('/safe-zones/${zone.id}', extra: zone);
+      await tester.pumpAndSettle();
+
+      final openSettingsFinder = find.widgetWithText(
+        OutlinedButton,
+        'Open Settings',
+      );
+      await tester.ensureVisible(openSettingsFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(openSettingsFinder);
+      await tester.pumpAndSettle();
+
+      expect(locationPermissionService.openAppSettingsCalls, 1);
     },
   );
 }
