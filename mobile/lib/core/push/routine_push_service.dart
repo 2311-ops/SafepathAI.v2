@@ -1,3 +1,7 @@
+// RoutinePushService keeps public constructor argument names while assigning
+// them to private fields, matching PushService's testable composition seam.
+// ignore_for_file: prefer_initializing_formals
+
 import 'dart:async';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
