@@ -6,14 +6,15 @@ current_phase: 04
 current_phase_name: geofencing
 status: blocked
 stopped_at: 04-17 automated gates green; physical Android/iOS acceptance remains blocked, and 04-05 physical tracer evidence is still incomplete
-last_updated: "2026-08-14T03:04:34.989Z"
+last_updated: "2026-08-14T04:58:12.643Z"
 last_activity: 2026-08-14
-last_activity_desc: Phase 04 automated closeout completed; physical acceptance pending
+last_activity_desc: "Completed quick task 260814-aft: Wire up delete-zone and open-settings affordances on Safe Zone detail screen"
 progress:
-  total_phases: 5
+  total_phases: 8
   completed_phases: 4
   total_plans: 61
   completed_plans: 59
+  percent: 50
 ---
 
 # Project State
@@ -31,7 +32,7 @@ Phase: 04 (geofencing) — BLOCKED
 Plan: 17 of 17
 Status: Automated gates green; blocked on required Android/iOS physical acceptance evidence
 Current blocker: 2026-08-14 - physical Android/iOS acceptance evidence pending
-Last activity: 2026-08-14 - Completed quick task 260814-8r2: Wire up Phase 04 Safe Zones UI flow (list, add, review, edit routes)
+Last activity: 2026-08-14 - Completed quick task 260814-aft: Wire up delete-zone and open-settings affordances on Safe Zone detail screen
 
 Progress: [██████████] 97%
 
@@ -109,6 +110,7 @@ Progress: [██████████] 97%
 | Phase 04-geofencing P15 | 18min | 2 tasks | 9 files |
 | Phase 04-geofencing P16 | 7min | 2 tasks | 4 files |
 | Phase 04 P11 | 75min | 2 tasks | 9 files |
+| Phase quick-260814-aft P01 | 15min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -223,6 +225,7 @@ Recent decisions affecting current work:
 - [Phase ?]: Routine tap routes validate UUID activity/zone IDs and remain in memory until authentication, without persisting tokens.
 - [Phase ?]: 04-11: Boot/package/GEOFENCE_NOT_AVAILABLE recovery is bounded and credential-free; authenticated canonical registration remains the only sync path.
 - [Phase ?]: 04-11: iOS uses Core Location plus an app-private outbox; 04-17 still requires Xcode and physical-device evidence.
+- [Phase quick-260814-aft]: SafeZoneDetailScreen's confirm dialog stays owned by the screen; SafeZoneDetailPage supplies only the post-confirmation handler, and family id resolution prefers loaded GeofenceListController state, falling back to FamilyController with an explicit load() for the cold-deep-link case.
 
 ### Pending Todos
 
@@ -273,6 +276,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260812-wgl | Migrated the SOS fallback channel from TextBee to the WhatsApp Business Cloud API: new WhatsAppOptions/WhatsAppSmsGateway/WhatsAppWebhookSignatureValidator/WhatsAppDeliveryStatusParser behind the unchanged ISmsGateway seam, a real HMAC-signed delivery-status webhook + GET subscription handshake wired into SmsWebhookController/RecordSmsDeliveryStatusCommand (SMS channel can now reach Delivered), all TextBee references removed from backend/src and backend/tests, docs/EXTERNAL-SETUP.md and STATE.md updated; post-execution live-docs check fixed a stale pinned Graph API version (v22.0 -> v26.0) | 2026-08-12 | cd23241, 76103c8, 82e25f8, 7fbee65 | | [260812-wgl-migrate-sos-fallback-channel-from-textbe](./quick/260812-wgl-migrate-sos-fallback-channel-from-textbe/) |
 | 260813-09i | Fixed the WhatsApp SOS alert template parameter-count mismatch shipped in 260812-wgl: ISmsGateway.SendAsync's second parameter moved from a single composed string to an ordered IReadOnlyList<string>, SosAlertDispatcher.ComposeSmsTemplateParameters builds three ordered values (name, maps link or "Location unavailable" fallback, invariant-culture UTC timestamp), WhatsAppSmsGateway/LoggingSmsGateway/NoOpSmsGateway updated, tests pin the three-parameter arity/order/fallback/normalization, docs/EXTERNAL-SETUP.md records the confirmed three-placeholder template shape | 2026-08-13 | c84072f, 04a5b7b | | [260813-09i-fix-whatsapp-sos-alert-template-paramete](./quick/260813-09i-fix-whatsapp-sos-alert-template-paramete/) |
 | 260814-8r2 | Wired the Phase 04 Safe Zones UI flow, which existed as unconnected components: added SafeZonesPage/SafeZoneEditorPage/SafeZoneReviewPage/SafeZoneDetailPage Riverpod-connected wrappers, pointed /safe-zones, /safe-zones/add, the new /safe-zones/add/review, and the new /safe-zones/:zoneId/edit routes at them, added SafeZoneDraft.fromZone + editor prefill for the edit path, fixed a real bug where geofence_controller.dart's loadFamily reset a non-empty guardian-recipient selection on review, and added a router-level integration test (safe_zone_router_flow_test.dart) so this class of route-defined-but-unwired gap has automated coverage | 2026-08-14 | 69ecc5c, b90fada, 3e59e95 | | [260814-8r2-wire-up-phase-04-safe-zones-ui-flow-list](./quick/260814-8r2-wire-up-phase-04-safe-zones-ui-flow-list/) |
+| 260814-aft | Wired the two remaining dead affordances on SafeZoneDetailScreen left out of 260814-8r2: onDeleteConfirmed resolves a family id (preferring loaded GeofenceListController state, falling back to FamilyController with an explicit load() for a cold deep link) then calls the existing GeofenceListController.deleteZone, navigating back to /safe-zones only on success; onOpenSettings delegates to locationPermissionServiceProvider.openAppSettings() (it opens OS app settings for background-location permission, not the edit route). No second confirmation dialog added — the screen's existing AlertDialog stays the sole confirm gate. Added router-level test coverage for delete-confirm, delete-cancel, and open-settings | 2026-08-14 | 901b2db, 2c13fdf | | [260814-aft-wire-up-delete-zone-and-open-settings-af](./quick/260814-aft-wire-up-delete-zone-and-open-settings-af/) |
 
 ## Deferred Items
 
@@ -284,6 +288,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-14T02:34:34.592Z
+Last session: 2026-08-14T04:57:22.096Z
 Stopped at: Completed 04-11-PLAN.md (source-complete; 04-05 physical tracer remains incomplete)
 Resume file: None
