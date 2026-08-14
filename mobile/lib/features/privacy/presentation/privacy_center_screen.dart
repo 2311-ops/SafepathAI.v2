@@ -256,11 +256,18 @@ class PrivacyCenterScreen extends ConsumerWidget {
                     padding: EdgeInsets.only(bottom: AppSpacing.md),
                     child: _EmptySharingCard(),
                   ),
-                _SharedSharingControls(
-                  recipients: recipients,
-                  matrix: privacyState.matrix,
-                  onChanged: (dataType, enabled) {
-                    for (final recipient in recipients) {
+                Text('Your family', style: AppTypography.title),
+                const SizedBox(height: AppSpacing.sm),
+                for (final recipient in recipients) ...[
+                  _RecipientSharingControls(
+                    recipient: recipient,
+                    matrix: privacyState.matrix,
+                    activeShare: _activeShare(
+                      privacyState.matrix,
+                      recipient,
+                      now,
+                    ),
+                    onChanged: (dataType, enabled) {
                       ref
                           .read(privacyControllerProvider.notifier)
                           .toggle(
@@ -268,15 +275,8 @@ class PrivacyCenterScreen extends ConsumerWidget {
                             dataType: dataType,
                             enabled: enabled,
                           );
-                    }
-                  },
-                  activeShare: _activeShare(
-                    privacyState.matrix,
-                    recipients,
-                    now,
-                  ),
-                  onPresetSelected: (duration) {
-                    for (final recipient in recipients) {
+                    },
+                    onPresetSelected: (duration) {
                       ref
                           .read(privacyControllerProvider.notifier)
                           .startTemporaryShare(
@@ -284,14 +284,15 @@ class PrivacyCenterScreen extends ConsumerWidget {
                             dataType: SharedDataType.liveLocation,
                             duration: duration,
                           );
-                    }
-                  },
-                  onCustomSelected: () => _startCustomTemporaryShare(
-                    context,
-                    ref,
-                    recipients: recipients,
+                    },
+                    onCustomSelected: () => _startCustomTemporaryShare(
+                      context,
+                      ref,
+                      recipients: [recipient],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 const SizedBox(height: AppSpacing.lg),
               ],
               const SizedBox(height: AppSpacing.md),
@@ -316,17 +317,11 @@ class PrivacyCenterScreen extends ConsumerWidget {
 
   static ActiveShareView? _activeShare(
     SharingMatrix matrix,
-    List<FamilyMemberView> recipients,
+    FamilyMemberView recipient,
     DateTime now,
-  ) {
-    for (final recipient in recipients) {
-      final activeShare = matrix
-          .cellFor(recipient.memberId, SharedDataType.liveLocation)
-          ?.describeActiveShare(now: now);
-      if (activeShare != null) return activeShare;
-    }
-    return null;
-  }
+  ) => matrix
+      .cellFor(recipient.memberId, SharedDataType.liveLocation)
+      ?.describeActiveShare(now: now);
 }
 
 class _PrivacyActionsSection extends StatelessWidget {
@@ -392,9 +387,9 @@ class _PrivacyActionsSection extends StatelessWidget {
   }
 }
 
-class _SharedSharingControls extends StatelessWidget {
-  const _SharedSharingControls({
-    required this.recipients,
+class _RecipientSharingControls extends StatelessWidget {
+  const _RecipientSharingControls({
+    required this.recipient,
     required this.matrix,
     required this.onChanged,
     required this.activeShare,
@@ -402,7 +397,7 @@ class _SharedSharingControls extends StatelessWidget {
     required this.onCustomSelected,
   });
 
-  final List<FamilyMemberView> recipients;
+  final FamilyMemberView recipient;
   final SharingMatrix matrix;
   final void Function(SharedDataType dataType, bool enabled) onChanged;
   final ActiveShareView? activeShare;
@@ -411,29 +406,35 @@ class _SharedSharingControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Your family', style: AppTypography.title),
-        const SizedBox(height: AppSpacing.sm),
-        for (final dataType in SharedDataType.values) ...[
-          ToggleRow(
-            label: dataType.label,
-            subtitle: _subtitle(dataType),
-            value:
-                recipients.isNotEmpty &&
-                recipients.every((r) => matrix.isEnabled(r.memberId, dataType)),
-            onChanged: (enabled) => onChanged(dataType, enabled),
-          ),
+    final displayName =
+        matrix
+            .cellFor(recipient.memberId, SharedDataType.liveLocation)
+            ?.recipientName ??
+        recipient.userId;
+
+    return SafePathCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(displayName, style: AppTypography.title),
           const SizedBox(height: AppSpacing.sm),
+          for (final dataType in SharedDataType.values) ...[
+            ToggleRow(
+              label: dataType.label,
+              subtitle: _subtitle(dataType),
+              value: matrix.isEnabled(recipient.memberId, dataType),
+              onChanged: (enabled) => onChanged(dataType, enabled),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          _TemporarySharingSection(
+            recipientId: recipient.memberId,
+            activeShare: activeShare,
+            onPresetSelected: onPresetSelected,
+            onCustomSelected: onCustomSelected,
+          ),
         ],
-        _TemporarySharingSection(
-          recipientId: 'shared',
-          activeShare: activeShare,
-          onPresetSelected: onPresetSelected,
-          onCustomSelected: onCustomSelected,
-        ),
-      ],
+      ),
     );
   }
 
