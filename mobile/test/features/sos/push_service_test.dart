@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/push/push_service.dart';
+import 'package:mobile/core/push/routine_push_service.dart';
 
 import '../../helpers/fake_device_token_api.dart';
 
@@ -138,6 +139,28 @@ void main() {
         'session-xyz',
         'session-xyz',
       ]);
+    });
+
+    test('does not handle a routine push on the SOS critical path', () async {
+      await service.initialize();
+      await service.onAuthStateChanged(true);
+
+      const routineMessage = PushMessageData(
+        data: {
+          'type': routinePushMarker,
+          'activityId': '11111111-1111-4111-8111-111111111111',
+          'zoneId': '22222222-2222-4222-8222-222222222222',
+        },
+      );
+      messaging.emitMessage(routineMessage);
+      messaging.emitMessageOpenedApp(routineMessage);
+      await pumpEventQueue();
+
+      expect(sosPushMarker, isNot(routinePushMarker));
+      expect(sosAndroidChannelId, isNot(routineAndroidChannelId));
+      expect(notifier.shownCalls, isEmpty);
+      expect(deviceTokenApi.confirmPushReceiptCalls, isEmpty);
+      expect(navigateCalls, isEmpty);
     });
   });
 }
