@@ -22,16 +22,3 @@ abstract final class AppSpacing {
   /// Default screen horizontal gutter (24px per UI-SPEC phase default).
   static const double screenGutter = 24;
 }
-
-/// SafePath AI border-radius scale — the single source of truth for corner
-/// rounding across the theme.
-abstract final class AppRadius {
-  /// 16px — cards and input field borders.
-  static const double card = 16;
-
-  /// 12px — elevated and outlined buttons.
-  static const double button = 12;
-
-  /// 24px — modal bottom sheets (top corners only).
-  static const double bottomSheet = 24;
-}

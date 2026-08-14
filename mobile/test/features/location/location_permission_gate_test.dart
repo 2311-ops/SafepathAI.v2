@@ -16,7 +16,6 @@ import 'package:mobile/features/location/application/location_controller.dart';
 import 'package:mobile/features/location/application/permission_controller.dart';
 import 'package:mobile/features/location/data/location_api.dart';
 import 'package:mobile/features/location/data/location_hub_client.dart';
-import 'package:mobile/features/location/presentation/live_map_screen.dart';
 import 'package:mobile/features/privacy/data/privacy_api.dart';
 import 'package:mobile/features/profile/data/profile_api.dart';
 import 'package:mobile/features/sos/data/emergency_contact_api.dart';
@@ -76,7 +75,7 @@ void main() {
 
       expect(find.text('Let your family see you are safe'), findsOneWidget);
       expect(find.text('Map'), findsNothing);
-      expect(find.byType(LiveMapScreen), findsNothing);
+      expect(find.text('Your family, live'), findsNothing);
       expect(permissionService.requestCallCount, 0);
       expect(harness.hubClient.connectCallCount, 0);
       expect(harness.locationApi.getLiveLocationsCallCount, 0);
@@ -98,7 +97,7 @@ void main() {
 
       expect(find.text('Let your family see you are safe'), findsOneWidget);
       expect(find.text('Map'), findsNothing);
-      expect(find.byType(LiveMapScreen), findsNothing);
+      expect(find.text('Your family, live'), findsNothing);
       expect(permissionService.requestCallCount, 0);
       expect(harness.hubClient.connectCallCount, 0);
       expect(harness.locationApi.getLiveLocationsCallCount, 0);
@@ -120,7 +119,7 @@ void main() {
 
       expect(find.text('Let your family see you are safe'), findsOneWidget);
       expect(find.text('Map'), findsNothing);
-      expect(find.byType(LiveMapScreen), findsNothing);
+      expect(find.text('Your family, live'), findsNothing);
       expect(permissionService.requestCallCount, 0);
       expect(harness.hubClient.connectCallCount, 0);
       expect(harness.locationApi.getLiveLocationsCallCount, 0);

@@ -81,27 +81,26 @@ void main() {
   ) async {
     final theme = buildSafePathTheme();
 
-    expect(theme.colorScheme.primary, const Color(0xFF1B2A4A));
-    expect(theme.colorScheme.secondary, const Color(0xFF00875F));
-    expect(theme.scaffoldBackgroundColor, const Color(0xFFF5F7FA));
+    expect(theme.colorScheme.primary, const Color(0xFF1F3B57));
+    expect(theme.colorScheme.secondary, const Color(0xFF2E7D7B));
+    expect(theme.scaffoldBackgroundColor, const Color(0xFFF4F8FA));
 
     // SOS red must be reachable via AppColors, reserved for emergency states.
-    expect(AppColors.sosRed, const Color(0xFFE53935));
-    expect(AppColors.primaryNavy, const Color(0xFF1B2A4A));
-    expect(AppColors.primaryTeal, const Color(0xFF00875F));
-    expect(AppColors.appBg, const Color(0xFFF5F7FA));
+    expect(AppColors.sosRed, const Color(0xFFDE3B40));
+    expect(AppColors.primaryNavy, const Color(0xFF1F3B57));
+    expect(AppColors.primaryTeal, const Color(0xFF2E7D7B));
+    expect(AppColors.appBg, const Color(0xFFF4F8FA));
   });
 
-  testWidgets('buildSafePathTheme uses Inter for the whole type scale', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('buildSafePathTheme uses Manrope for headings and JetBrains Mono '
+      'for the mono style', (WidgetTester tester) async {
     final theme = buildSafePathTheme();
 
     final headingFamily = theme.textTheme.headlineMedium?.fontFamily ?? '';
     final captionFamily = theme.textTheme.labelSmall?.fontFamily ?? '';
 
-    expect(headingFamily.contains('Inter'), isTrue);
-    expect(captionFamily.contains('Inter'), isTrue);
+    expect(headingFamily.contains('Manrope'), isTrue);
+    expect(captionFamily.contains('JetBrainsMono'), isTrue);
   });
 
   testWidgets('SafePathApp builds and shows the themed placeholder route', (
