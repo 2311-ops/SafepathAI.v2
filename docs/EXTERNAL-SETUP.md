@@ -104,10 +104,13 @@ maps to the `Firebase:ProjectId` configuration value the code reads).
 | `WhatsApp__ApiVersion` | Optional; defaults to the Graph API version pinned in `WhatsAppOptions` when unset |
 
 Future geofence WhatsApp alerts should reserve a separate Utility-category template named
-`geofence_alert`. This is a placeholder for later Phase 04 work only: the current
+`geofence_alert`. This is the confirmed template name for now, but still later Phase 04 work only:
+the current
 `WhatsApp__TemplateName` key is SOS-only and should not be reused for routine geofence alerts.
 The intended `geofence_alert` body placeholders are, in order: `{{1}}` member name, `{{2}}`
 entered/exited, `{{3}}` zone name, and `{{4}}` time.
+The geofence webhook callback should be provided after deployment, once the app has a public HTTPS
+origin.
 
 `03-06-PLAN.md`'s `user_setup` block named these variables `FIREBASE_PROJECT_ID` and
 `GOOGLE_APPLICATION_CREDENTIALS`. Those names are superseded: the shipped
@@ -154,7 +157,8 @@ Graph API) when configured, and through `LoggingSmsGateway` (free, no account) w
    Future geofence notifications should use their own Utility-category template named
    `geofence_alert`; do not reuse the SOS `sos_alert` template or route routine geofence alerts
    through the SOS fallback channel. Its body placeholders should be `{{1}}` member name, `{{2}}`
-   entered/exited, `{{3}}` zone name, and `{{4}}` time.
+   entered/exited, `{{3}}` zone name, and `{{4}}` time. Provide the geofence webhook callback
+   after deployment, when the public HTTPS origin is known.
 5. Subscribe the webhook once the API is reachable over a public https origin: set the callback
    URL to that origin plus `/webhooks/sms/status`, set the verify token to match
    `WhatsApp__WebhookVerifyToken` exactly, and subscribe the WABA to the `messages` field — no

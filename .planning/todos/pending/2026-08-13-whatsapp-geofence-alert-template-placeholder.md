@@ -1,6 +1,6 @@
 ---
 created: 2026-08-12T21:58:40.078Z
-updated: 2026-08-12T21:58:40.078Z
+updated: 2026-08-14T22:44:54.6142330+03:00
 title: Reserve WhatsApp Utility template for future geofence alerts
 area: backend/geofencing
 files:
@@ -17,14 +17,17 @@ SafePath has moved the emergency fallback messaging path from TextBee to the Wha
 Cloud API. Future geofencing alert work will need a WhatsApp template name, but that name should
 not be guessed later or accidentally share the SOS template/configuration.
 
-User-provided placeholder: `geofence_alert`.
+User-confirmed template name for now: `geofence_alert`.
 
-User-provided placeholder shape:
+User-confirmed placeholder shape:
 
 - `{{1}}` = member name
 - `{{2}}` = entered / exited
 - `{{3}}` = zone name
 - `{{4}}` = time
+
+Webhook provisioning is intentionally deferred until after deployment, when the public HTTPS
+callback origin is available.
 
 ## Solution
 
@@ -41,6 +44,7 @@ fallback channel.
 
 - Meta template name for routine geofence alerts is `geofence_alert`.
 - Template body placeholders are ordered as member name, entered/exited, zone name, and time.
+- Geofence webhook setup waits until deployment provides the public callback URL.
 - SOS messaging continues to use its own `sos_alert` template and remains isolated from routine
   geofence notifications.
 - The future implementation tests the configured template name and parameter ordering instead of
