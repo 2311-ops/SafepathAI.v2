@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../deep_link/deep_link_service.dart';
+import '../push/push_service.dart';
+import '../push/routine_push_service.dart';
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/application/auth_state.dart';
 import '../../features/auth/data/auth_api.dart';
@@ -106,7 +110,7 @@ class _AuthRefreshListenable extends ChangeNotifier {
 final routerProvider = Provider<GoRouter>((ref) {
   final refreshListenable = _AuthRefreshListenable(ref);
 
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/splash',
     overridePlatformDefaultLocation: true,
     refreshListenable: refreshListenable,
@@ -348,4 +352,36 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  // Routine pushes have their own service and normal-priority local channel.
+  // Keeping this composition outside PushService prevents routine tap handling
+  // from changing the existing SOS critical route or notification semantics.
+  final routinePushService = RoutinePushService(
+    messaging: FirebaseMessagingClient(),
+    navigate: (zoneId) =>
+        router.goNamed('zone-activity', queryParameters: {'zoneId': zoneId}),
+    notifier: RoutineLocalNotificationPresenter(),
+  );
+  unawaited(
+    routinePushService.initialize().catchError((
+      Object error,
+      StackTrace stack,
+    ) {
+      debugPrint(
+        'RoutinePushService.initialize failed (Firebase not configured yet?): $error',
+      );
+    }),
+  );
+  ref.listen<AuthState>(authControllerProvider, (previous, next) {
+    unawaited(
+      routinePushService
+          .onAuthStateChanged(next is AuthAuthenticated)
+          .catchError((Object error, StackTrace stack) {
+            debugPrint('RoutinePushService.onAuthStateChanged failed: $error');
+          }),
+    );
+  }, fireImmediately: true);
+  ref.onDispose(routinePushService.dispose);
+
+  return router;
 });

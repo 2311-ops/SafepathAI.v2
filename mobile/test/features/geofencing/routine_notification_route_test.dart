@@ -27,63 +27,79 @@ void main() {
 
     tearDown(() => service.dispose());
 
-    test('shows a normal routine notification in foreground without navigating', () async {
-      await service.initialize();
-      await service.onAuthStateChanged(true);
+    test(
+      'shows a normal routine notification in foreground without navigating',
+      () async {
+        await service.initialize();
+        await service.onAuthStateChanged(true);
 
-      messaging.emitMessage(
-        const PushMessageData(
-          data: {
-            'type': routinePushMarker,
-            'activityId': activityId,
-            'zoneId': zoneId,
-            'latitude': '30.0444',
-            'longitude': '31.2357',
-          },
-          title: 'Maya entered Home',
-          body: 'Safe-zone activity',
-        ),
-      );
-      await pumpEventQueue();
+        messaging.emitMessage(
+          const PushMessageData(
+            data: {
+              'type': routinePushMarker,
+              'activityId': activityId,
+              'zoneId': zoneId,
+              'latitude': '30.0444',
+              'longitude': '31.2357',
+            },
+            title: 'Maya entered Home',
+            body: 'Safe-zone activity',
+          ),
+        );
+        await pumpEventQueue();
 
-      expect(notifier.shownCalls, [
-        (title: 'Maya entered Home', body: 'Safe-zone activity', payload: zoneId),
-      ]);
-      expect(navigatedZoneIds, isEmpty);
-    });
+        expect(notifier.shownCalls, [
+          (
+            title: 'Maya entered Home',
+            body: 'Safe-zone activity',
+            payload: '$activityId:$zoneId',
+          ),
+        ]);
+        expect(navigatedZoneIds, isEmpty);
+      },
+    );
 
-    test('replays a background tap only after authentication settles', () async {
-      await service.initialize();
+    test(
+      'replays a background tap only after authentication settles',
+      () async {
+        await service.initialize();
 
-      messaging.emitMessageOpenedApp(_routineMessage);
-      await pumpEventQueue();
-      expect(navigatedZoneIds, isEmpty);
+        messaging.emitMessageOpenedApp(_routineMessage);
+        await pumpEventQueue();
+        expect(navigatedZoneIds, isEmpty);
 
-      await service.onAuthStateChanged(true);
-      expect(navigatedZoneIds, [zoneId]);
-    });
+        await service.onAuthStateChanged(true);
+        expect(navigatedZoneIds, [zoneId]);
+      },
+    );
 
-    test('replays a cold-start local notification tap after authentication', () async {
-      messaging.initialMessage = _routineMessage;
-      await service.initialize();
-      await pumpEventQueue();
-      expect(navigatedZoneIds, isEmpty);
+    test(
+      'replays a cold-start local notification tap after authentication',
+      () async {
+        messaging.initialMessage = _routineMessage;
+        await service.initialize();
+        await pumpEventQueue();
+        expect(navigatedZoneIds, isEmpty);
 
-      await service.onAuthStateChanged(true);
-      expect(navigatedZoneIds, [zoneId]);
-    });
+        await service.onAuthStateChanged(true);
+        expect(navigatedZoneIds, [zoneId]);
+      },
+    );
 
-    test('replays a foreground local notification tap after authentication', () async {
-      await service.initialize();
-      messaging.emitMessage(_routineMessage);
-      await pumpEventQueue();
+    test(
+      'replays a foreground local notification tap after authentication',
+      () async {
+        await service.initialize();
+        messaging.emitMessage(_routineMessage);
+        await pumpEventQueue();
 
-      notifier.tapLast();
-      expect(navigatedZoneIds, isEmpty);
+        notifier.tapLast();
+        expect(navigatedZoneIds, isEmpty);
 
-      await service.onAuthStateChanged(true);
-      expect(navigatedZoneIds, [zoneId]);
-    });
+        await service.onAuthStateChanged(true);
+        expect(navigatedZoneIds, [zoneId]);
+      },
+    );
 
     test('ignores malformed and non-routine payloads', () async {
       await service.initialize();
@@ -165,7 +181,9 @@ class _FakeLocalNotificationPresenter implements LocalNotificationPresenter {
   final List<({String title, String body, String? payload})> shownCalls = [];
 
   @override
-  Future<void> initialize({required void Function(String payload) onTap}) async {
+  Future<void> initialize({
+    required void Function(String payload) onTap,
+  }) async {
     _onTap = onTap;
   }
 
@@ -179,7 +197,7 @@ class _FakeLocalNotificationPresenter implements LocalNotificationPresenter {
   }
 
   void tapLast() {
-    final payload = shownCalls.lastOrNull?.payload;
+    final payload = shownCalls.isEmpty ? null : shownCalls.last.payload;
     if (payload != null) _onTap?.call(payload);
   }
 }
