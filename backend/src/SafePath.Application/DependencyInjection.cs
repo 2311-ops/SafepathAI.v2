@@ -81,6 +81,9 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<GetGeofenceActivityQuery, IReadOnlyList<GeofenceActivityDto>>, GetGeofenceActivityQueryHandler>();
         services.AddScoped<ICommandHandler<GetRoutineNotificationsQuery, IReadOnlyList<RoutineNotificationDto>>, GetRoutineNotificationsQueryHandler>();
         services.AddScoped<ICommandHandler<MarkRoutineNotificationReadCommand, bool>, MarkRoutineNotificationReadCommandHandler>();
+        services.AddScoped<ICommandHandler<GetQuietHoursQuery, QuietHoursDto>, GetQuietHoursQueryHandler>();
+        services.AddScoped<ICommandHandler<UpdateQuietHoursCommand, QuietHoursDto>, UpdateQuietHoursCommandHandler>();
+        services.AddScoped<RoutineNotificationDispatcher>();
 
         return services;
     }
