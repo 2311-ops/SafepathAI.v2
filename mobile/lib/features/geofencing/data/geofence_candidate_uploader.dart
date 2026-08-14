@@ -15,12 +15,10 @@ class GeofenceCandidateDrainResult {
 /// Drains native routine-location candidates only after Supabase restores auth.
 class GeofenceCandidateUploader {
   GeofenceCandidateUploader({
-    required AuthApi authApi,
-    required Dio dio,
-    required NativeGeofencePlatform nativePlatform,
-  }) : _authApi = authApi,
-       _dio = dio,
-       _nativePlatform = nativePlatform;
+    required this._authApi,
+    required this._dio,
+    required this._nativePlatform,
+  });
 
   final AuthApi _authApi;
   final Dio _dio;
