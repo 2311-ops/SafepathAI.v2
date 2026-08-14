@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../family/application/family_controller.dart';
+import '../../location/application/permission_controller.dart';
 import '../application/geofence_controller.dart';
 import '../data/geofence_models.dart';
 import 'edit_safe_zone_screen.dart';
@@ -194,6 +195,55 @@ class SafeZoneDetailPage extends ConsumerWidget {
       onActivity: () => context.push(
         '/zone-activity?zoneId=${Uri.encodeComponent(resolvedZone.id)}',
       ),
+      onOpenSettings: () =>
+          ref.read(locationPermissionServiceProvider).openAppSettings(),
+      // SafeZoneDetailScreen already owns the delete confirmation dialog
+      // (its own AlertDialog gate); this handler only runs after the user
+      // has confirmed, so no second dialog belongs here.
+      onDeleteConfirmed: (target) => _handleDelete(context, ref, target),
     );
+  }
+
+  Future<void> _handleDelete(
+    BuildContext context,
+    WidgetRef ref,
+    SafeZone target,
+  ) async {
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    final listNotifier = ref.read(geofenceListControllerProvider.notifier);
+    var familyId = ref.read(geofenceListControllerProvider).familyId;
+    if (familyId == null) {
+      familyId = ref.read(familyControllerProvider).value?.family?.id;
+      if (familyId != null) {
+        // Cold deep-link case: the detail screen was reached with a zone in
+        // `extra` but the list controller was never loaded, so its familyId
+        // is still null. Without this, `deleteZone` would defeat itself via
+        // its own null-family early return.
+        await listNotifier.load(familyId);
+      }
+    }
+
+    if (familyId == null) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Couldn't delete this safe zone. Go back to the list and try again.",
+          ),
+        ),
+      );
+      return;
+    }
+
+    await listNotifier.deleteZone(target);
+
+    final error = ref.read(geofenceListControllerProvider).error;
+    if (error != null) {
+      messenger.showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+
+    router.go('/safe-zones');
   }
 }
