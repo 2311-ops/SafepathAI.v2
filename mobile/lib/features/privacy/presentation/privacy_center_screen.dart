@@ -217,8 +217,8 @@ class PrivacyCenterScreen extends ConsumerWidget {
             ),
           if (hasFamily && isGuardian)
             IconButton(
-              icon: const Icon(Icons.tune),
-              tooltip: 'Permissions',
+              icon: const Icon(Icons.groups_2_outlined),
+              tooltip: 'Circle members',
               onPressed: () => context.push('/circle/permissions'),
             ),
           const LogoutAction(),
@@ -236,10 +236,10 @@ class PrivacyCenterScreen extends ConsumerWidget {
               112,
             ),
             children: [
-              Text('Privacy Center', style: AppTypography.heading),
+              Text('Your privacy', style: AppTypography.heading),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                'Choose exactly what each family member can see.',
+                'You decide who can see your live location, history, and wellness. Guardians cannot change these controls for you.',
                 style: AppTypography.bodySecondary,
               ),
               const SizedBox(height: AppSpacing.lg),

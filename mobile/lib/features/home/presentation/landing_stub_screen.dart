@@ -87,8 +87,8 @@ class LandingStubScreen extends ConsumerWidget {
             ),
           if (hasFamily && isGuardian)
             IconButton(
-              icon: const Icon(Icons.tune),
-              tooltip: 'Permissions',
+              icon: const Icon(Icons.groups_2_outlined),
+              tooltip: 'Circle members',
               onPressed: () => context.push('/circle/permissions'),
             ),
           PopupMenuButton<String>(

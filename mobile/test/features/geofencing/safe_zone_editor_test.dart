@@ -5,6 +5,8 @@ import 'package:mobile/features/auth/data/auth_models.dart';
 import 'package:mobile/features/family/data/family_models.dart';
 import 'package:mobile/features/geofencing/presentation/edit_safe_zone_screen.dart';
 import 'package:mobile/features/geofencing/presentation/review_safe_zone_screen.dart';
+import 'package:mobile/features/location/application/location_controller.dart';
+import 'package:mobile/features/location/data/location_models.dart';
 
 void main() {
   final member = FamilyMemberView(
@@ -26,6 +28,43 @@ void main() {
 
   Widget app(Widget child) => ProviderScope(child: MaterialApp(home: child));
 
+  Widget appWithSeededLocation(Widget child) => ProviderScope(
+    overrides: [
+      locationControllerProvider.overrideWith(_SeededLocationController.new),
+    ],
+    child: MaterialApp(home: child),
+  );
+
+  testWidgets('editor lets users choose from the map or current location', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      appWithSeededLocation(
+        SafeZoneEditorScreen(
+          familyId: 'family-1',
+          members: [member, guardian],
+          mapOverride: const ColoredBox(color: Colors.white),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Choose location'), findsOneWidget);
+    expect(
+      find.text(
+        'Tap the map to place the zone center, or use your current location.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('0.0000, 0.0000'), findsOneWidget);
+    expect(find.text('Use current location'), findsOneWidget);
+
+    await tester.tap(find.text('Use current location'));
+    await tester.pump();
+
+    expect(find.textContaining('30.0444, 31.2357'), findsOneWidget);
+  });
+
   testWidgets('editor is map-first with accessible radius controls', (
     tester,
   ) async {
@@ -39,11 +78,12 @@ void main() {
       ),
     );
 
-    expect(find.text('Position on map'), findsOneWidget);
+    expect(find.text('Choose location'), findsOneWidget);
     expect(find.text('Use current location'), findsOneWidget);
     expect(find.text('100 m'), findsWidgets);
     expect(find.text('1 km'), findsOneWidget);
-    expect(find.bySemanticsLabel('Move pin'), findsOneWidget);
+    expect(find.text('Fine tune'), findsOneWidget);
+    expect(find.byIcon(Icons.open_with), findsOneWidget);
     expect(find.text('Review zone'), findsOneWidget);
   });
 
@@ -98,4 +138,17 @@ void main() {
     expect(find.text('Edit location'), findsOneWidget);
     expect(find.text('Save safe zone'), findsOneWidget);
   });
+}
+
+class _SeededLocationController extends LocationController {
+  @override
+  LocationState build() => LocationState(
+    selfPosition: LiveLocation(
+      userId: 'self-user',
+      lat: 30.0444,
+      lng: 31.2357,
+      accuracyMeters: 12,
+      recordedAtUtc: DateTime.utc(2026, 8, 14, 12),
+    ),
+  );
 }

@@ -104,7 +104,7 @@ public class FamiliesController : ControllerBase
         }
     }
 
-    /// <summary>Guardian-only: update a member's visibility permission level (FAM-04).</summary>
+    /// <summary>Guardian-only: update a member's legacy circle permission label (FAM-04).</summary>
     [HttpPatch("families/{familyId:guid}/members/{memberId:guid}/permissions")]
     public async Task<ActionResult<UpdateMemberPermissionsResult>> UpdatePermissions(
         Guid familyId, Guid memberId, [FromBody] UpdateMemberPermissionsRequest request, CancellationToken cancellationToken)

@@ -1,8 +1,9 @@
 import 'dart:math' as math;
 
-import 'package:flutter/rendering.dart' show Size;
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:mobile/features/location/application/map_geometry.dart';
 import 'package:mobile/features/location/presentation/vector_map.dart';
 
 /// Metres per pixel at the equator at zoom 0, for MapLibre's 512-pixel tile
@@ -183,5 +184,27 @@ void main() {
       expect(offset.dx, closeTo(150, 1e-9));
       expect(offset.dy, closeTo(180, 1e-9));
     });
+  });
+
+  testWidgets('exposes map tap callbacks for placement flows', (tester) async {
+    void handleTap(MapPoint _) {}
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          width: 200,
+          height: 200,
+          child: VectorMap(
+            initialTarget: const MapPoint(30.0444, 31.2357),
+            initialZoom: 15,
+            onTap: handleTap,
+            platformViewBuilder: (_) => const SizedBox.expand(),
+          ),
+        ),
+      ),
+    );
+
+    final map = tester.widget<VectorMap>(find.byType(VectorMap));
+    expect(map.onTap, same(handleTap));
   });
 }

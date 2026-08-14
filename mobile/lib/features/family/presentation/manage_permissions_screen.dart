@@ -10,10 +10,10 @@ import '../../auth/data/auth_api.dart';
 import '../application/family_controller.dart';
 import '../data/family_models.dart';
 
-/// Manage permissions (F1-7) — per-member permission toggles + a
-/// `#C42A30`-colored, confirmation-gated "Remove from circle" action. This
-/// is the single flagged exception to the system's red-reservation rule
-/// (see `01-UI-SPEC.md` Color section) — Remove never fires on a single tap.
+/// Circle member management: guardians can invite/remove members, while each
+/// member keeps ownership of live-location, history, and wellness sharing from
+/// their own Privacy Center. The `#C42A30` Remove action remains
+/// confirmation-gated and never fires on a single tap.
 class ManagePermissionsScreen extends ConsumerWidget {
   const ManagePermissionsScreen({super.key});
 
@@ -75,7 +75,7 @@ class ManagePermissionsScreen extends ConsumerWidget {
         .toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Permissions')),
+      appBar: AppBar(title: const Text('Circle members')),
       body: SafeArea(
         child: familyId == null
             ? Padding(
@@ -97,7 +97,7 @@ class ManagePermissionsScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
-                        'Managing permissions needs an active family circle.',
+                        'Member management needs an active family circle.',
                         textAlign: TextAlign.center,
                         style: AppTypography.bodySecondary,
                       ),
@@ -125,7 +125,7 @@ class ManagePermissionsScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
-                        'Invite a family member to manage their permissions here.',
+                        'Invite a family member to manage your circle here.',
                         textAlign: TextAlign.center,
                         style: AppTypography.bodySecondary,
                       ),
@@ -136,10 +136,10 @@ class ManagePermissionsScreen extends ConsumerWidget {
             : ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
-                  Text('Permissions', style: AppTypography.heading),
+                  Text('Circle members', style: AppTypography.heading),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Control what each family member can see and do',
+                    'Invite or remove members. Each person controls their own live location, history, and wellness sharing.',
                     style: AppTypography.bodySecondary,
                   ),
                   const SizedBox(height: AppSpacing.lg),
@@ -184,7 +184,7 @@ class ManagePermissionsScreen extends ConsumerWidget {
                                           ),
                                           const SizedBox(height: AppSpacing.xs),
                                           Text(
-                                            member.permission.label,
+                                            member.role.wireValue,
                                             style: AppTypography.bodySecondary,
                                           ),
                                         ],
@@ -209,29 +209,35 @@ class ManagePermissionsScreen extends ConsumerWidget {
                                       itemBuilder: (context) => [
                                         PopupMenuItem(
                                           value: 'remove',
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(
-                                                Icons.person_remove,
-                                                color: AppColors.sosRedDeep,
-                                                size: 18,
-                                              ),
-                                              const SizedBox(
-                                                width: AppSpacing.xs,
-                                              ),
-                                              Text(
-                                                'Remove from circle',
-                                                style: AppTypography
-                                                    .bodySecondary
-                                                    .copyWith(
-                                                      color:
-                                                          AppColors.sosRedDeep,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                              ),
-                                            ],
+                                          child: SizedBox(
+                                            width: 220,
+                                            child: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.person_remove,
+                                                  color: AppColors.sosRedDeep,
+                                                  size: 18,
+                                                ),
+                                                const SizedBox(
+                                                  width: AppSpacing.xs,
+                                                ),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Remove from circle',
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: AppTypography
+                                                        .bodySecondary
+                                                        .copyWith(
+                                                          color: AppColors
+                                                              .sosRedDeep,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -241,32 +247,7 @@ class ManagePermissionsScreen extends ConsumerWidget {
                               },
                             ),
                             const SizedBox(height: AppSpacing.xsMd),
-                            Column(
-                              children: [
-                                for (final level in PermissionLevel.values)
-                                  Padding(
-                                    padding: EdgeInsets.only(
-                                      bottom:
-                                          level == PermissionLevel.values.last
-                                          ? 0
-                                          : AppSpacing.sm,
-                                    ),
-                                    child: _PermissionLevelRow(
-                                      level: level,
-                                      selected: level == member.permission,
-                                      onTap: () => ref
-                                          .read(
-                                            familyControllerProvider.notifier,
-                                          )
-                                          .updatePermission(
-                                            familyId,
-                                            member.memberId,
-                                            level,
-                                          ),
-                                    ),
-                                  ),
-                              ],
-                            ),
+                            const _MemberOwnedPrivacyNotice(),
                           ],
                         ),
                       ),
@@ -278,69 +259,38 @@ class ManagePermissionsScreen extends ConsumerWidget {
   }
 }
 
-/// Icon glyph for each [PermissionLevel], used by [_PermissionLevelRow].
-IconData _iconForPermissionLevel(PermissionLevel level) {
-  switch (level) {
-    case PermissionLevel.viewOnly:
-      return Icons.visibility_outlined;
-    case PermissionLevel.fullLocation:
-      return Icons.location_on_outlined;
-    case PermissionLevel.notificationOnly:
-      return Icons.notifications_outlined;
-  }
-}
-
-/// A single, always-full-width, tappable permission-level row. Replaces the
-/// previous `SegmentedButton`, which truncated its labels under
-/// horizontal-scroll layout pressure.
-class _PermissionLevelRow extends StatelessWidget {
-  const _PermissionLevelRow({
-    required this.level,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final PermissionLevel level;
-  final bool selected;
-  final VoidCallback onTap;
+class _MemberOwnedPrivacyNotice extends StatelessWidget {
+  const _MemberOwnedPrivacyNotice();
 
   @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: AppColors.primaryTintBg,
       borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.xsMd,
-        ),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: selected ? AppColors.primaryTeal : AppColors.surface,
-          border: selected ? null : Border.all(color: AppColors.hairline),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              _iconForPermissionLevel(level),
-              size: 20,
-              color: selected ? AppColors.surface : AppColors.ink,
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                level.label,
-                style: AppTypography.body.copyWith(
-                  color: selected ? AppColors.surface : AppColors.ink,
+      border: Border.all(color: AppColors.hairline),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.lock_person_outlined, color: AppColors.primaryTeal),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Privacy controlled by member', style: AppTypography.body),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'They choose who can see live location, history, and wellness from their own Privacy Center.',
+                  style: AppTypography.bodySecondary,
                 ),
-              ),
+              ],
             ),
-            if (selected)
-              const Icon(Icons.check, color: AppColors.surface, size: 20),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }

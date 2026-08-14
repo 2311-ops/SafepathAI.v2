@@ -233,6 +233,7 @@ class VectorMap extends StatefulWidget {
     this.circles = const [],
     this.lines = const [],
     this.dots = const [],
+    this.onTap,
     @visibleForTesting this.platformViewBuilder,
   });
 
@@ -243,6 +244,7 @@ class VectorMap extends StatefulWidget {
   final List<MapCircle> circles;
   final List<MapLine> lines;
   final List<MapDot> dots;
+  final ValueChanged<MapPoint>? onTap;
 
   /// Test seam: when supplied, this builder replaces the native map view
   /// entirely so a widget test never mounts a real platform view (which has
@@ -457,6 +459,9 @@ class _VectorMapState extends State<VectorMap> {
           onMapCreated: _onMapCreated,
           onStyleLoadedCallback: _onStyleLoaded,
           onCameraIdle: _onCameraIdle,
+          onMapClick: (_, coordinates) => widget.onTap?.call(
+            MapPoint(coordinates.latitude, coordinates.longitude),
+          ),
         );
 
     // LayoutBuilder supplies the map's own logical size, which projectToScreen

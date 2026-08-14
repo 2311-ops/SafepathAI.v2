@@ -315,6 +315,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.bySemanticsLabel('Manage safe zones'), findsOneWidget);
+      expect(find.byTooltip('Manage zones'), findsOneWidget);
+      expect(find.text('Manage zones'), findsNothing);
     },
   );
 

@@ -524,83 +524,73 @@ class _LiveMapOverlay extends StatelessWidget {
           ),
         ),
         child: Material(
-          color: AppColors.surface.withValues(alpha: 0.94),
-          borderRadius: BorderRadius.circular(18),
+          color: AppColors.surface.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(22),
           elevation: 0,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(22),
               border: Border.all(color: AppColors.hairline),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x180C3A3F),
-                  blurRadius: 18,
-                  offset: Offset(0, 8),
+                  color: Color(0x140C3A3F),
+                  blurRadius: 14,
+                  offset: Offset(0, 6),
                 ),
               ],
             ),
             child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      MemberMapPin(
-                        label: 'You',
-                        identityColor: AppColors.primaryTeal,
-                        isSelf: true,
-                        size: 36,
-                        userId: self?.userId,
-                        profileImageUrl: self?.profileImageUrl,
-                        profileUpdatedAt: self?.profileUpdatedAt,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Family map',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTypography.title,
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            Wrap(
-                              spacing: AppSpacing.xs,
-                              runSpacing: AppSpacing.xs,
-                              children: [
-                                _StatusCountChip(
-                                  icon: Icons.wifi_tethering,
-                                  label: '$onlineCount online',
-                                  isOnline: true,
-                                ),
-                                _StatusCountChip(
-                                  icon: Icons.wifi_off,
-                                  label: '$offlineCount offline',
-                                  isOnline: false,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      ViewNotificationsButton(onPressed: onNotifications),
-                      _MapIconAction(
-                        tooltip: 'Profile',
-                        icon: Icons.person_outline,
-                        onPressed: onProfile,
-                      ),
-                      const LogoutAction(),
-                    ],
+                  MemberMapPin(
+                    label: 'You',
+                    identityColor: AppColors.primaryTeal,
+                    isSelf: true,
+                    size: 32,
+                    userId: self?.userId,
+                    profileImageUrl: self?.profileImageUrl,
+                    profileUpdatedAt: self?.profileUpdatedAt,
                   ),
-                  if (onManageSafeZones != null) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    ManageSafeZonesButton(onPressed: onManageSafeZones),
-                  ],
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Family map',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.body.copyWith(
+                            fontSize: 15,
+                            height: 1.05,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        _CompactStatusSummary(
+                          onlineCount: onlineCount,
+                          offlineCount: offlineCount,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  ViewNotificationsButton(onPressed: onNotifications),
+                  if (onManageSafeZones != null)
+                    _MapIconAction(
+                      tooltip: 'Manage zones',
+                      icon: Icons.add_location_alt_outlined,
+                      onPressed: onManageSafeZones,
+                      semanticsLabel: 'Manage safe zones',
+                    ),
+                  _MapIconAction(
+                    tooltip: 'Profile',
+                    icon: Icons.person_outline,
+                    onPressed: onProfile,
+                  ),
+                  const LogoutAction(),
                 ],
               ),
             ),
@@ -609,30 +599,6 @@ class _LiveMapOverlay extends StatelessWidget {
       ),
     );
   }
-}
-
-class ManageSafeZonesButton extends StatelessWidget {
-  const ManageSafeZonesButton({super.key, this.onPressed});
-
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    label: 'Manage safe zones',
-    button: true,
-    child: FilledButton.icon(
-      onPressed: onPressed,
-      icon: const Icon(Icons.add_location_alt_outlined, size: 20),
-      label: const Text('Manage zones'),
-      style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(46),
-        backgroundColor: AppColors.primaryTeal,
-        foregroundColor: AppColors.surface,
-        textStyle: AppTypography.ctaLabel,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-    ),
-  );
 }
 
 class ViewNotificationsButton extends StatelessWidget {
@@ -657,70 +623,74 @@ class _MapIconAction extends StatelessWidget {
     required this.tooltip,
     required this.icon,
     required this.onPressed,
+    this.semanticsLabel,
   });
 
   final String tooltip;
   final IconData icon;
   final VoidCallback? onPressed;
+  final String? semanticsLabel;
 
   @override
-  Widget build(BuildContext context) => IconButton.filledTonal(
-    tooltip: tooltip,
-    onPressed: onPressed,
-    icon: Icon(icon, size: 21),
-    style: IconButton.styleFrom(
-      minimumSize: const Size.square(44),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      backgroundColor: AppColors.primaryTintBg,
-      foregroundColor: AppColors.ink,
-      disabledBackgroundColor: AppColors.hairlineSoft,
+  Widget build(BuildContext context) => Semantics(
+    label: semanticsLabel,
+    button: semanticsLabel != null,
+    child: IconButton.filledTonal(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Icon(icon, size: 20),
+      style: IconButton.styleFrom(
+        minimumSize: const Size.square(40),
+        fixedSize: const Size.square(40),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        backgroundColor: AppColors.primaryTintBg,
+        foregroundColor: AppColors.ink,
+        disabledBackgroundColor: AppColors.hairlineSoft,
+      ),
     ),
   );
 }
 
-class _StatusCountChip extends StatelessWidget {
-  const _StatusCountChip({
-    required this.icon,
-    required this.label,
-    required this.isOnline,
+class _CompactStatusSummary extends StatelessWidget {
+  const _CompactStatusSummary({
+    required this.onlineCount,
+    required this.offlineCount,
   });
 
-  final IconData icon;
-  final String label;
-  final bool isOnline;
+  final int onlineCount;
+  final int offlineCount;
 
   @override
-  Widget build(BuildContext context) {
-    final foreground = isOnline ? AppColors.safe : AppColors.bodySecondary;
-    final background = isOnline ? AppColors.safeBg : AppColors.hairlineSoft;
-    final border = isOnline ? AppColors.safeBgBorder : AppColors.hairline;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 12, color: foreground),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              label,
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: AppColors.safeBg,
+      borderRadius: BorderRadius.circular(999),
+      border: Border.all(color: AppColors.safeBgBorder),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.wifi_tethering, size: 12, color: AppColors.safe),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              '$onlineCount on  $offlineCount off',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: AppTypography.caption.copyWith(
-                color: foreground,
+                color: AppColors.safe,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0,
-                fontSize: 11,
+                fontSize: 10.5,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _MemberStatusRail extends StatelessWidget {
@@ -732,7 +702,7 @@ class _MemberStatusRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 56,
+      height: 50,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: members.length,
@@ -776,8 +746,8 @@ class _MemberStatusCard extends StatelessWidget {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
-            width: 136,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            width: 124,
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
@@ -796,7 +766,7 @@ class _MemberStatusCard extends StatelessWidget {
             child: Row(
               children: [
                 _MemberAvatar(member: member, hasAvatar: _hasAvatar),
-                const SizedBox(width: 8),
+                const SizedBox(width: 7),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -807,7 +777,7 @@ class _MemberStatusCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.body.copyWith(
-                          fontSize: 14,
+                          fontSize: 13,
                           height: 1.1,
                           color: AppColors.ink,
                           fontWeight: FontWeight.w800,
@@ -839,8 +809,8 @@ class _MemberAvatar extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         Container(
-          width: 34,
-          height: 34,
+          width: 30,
+          height: 30,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: member.isSelf ? AppColors.primaryTeal : member.color,
@@ -852,8 +822,8 @@ class _MemberAvatar extends StatelessWidget {
                     imageUrl: member.location.profileImageUrl!,
                     cacheKey:
                         '${member.location.userId}-${member.location.profileUpdatedAt?.toIso8601String()}',
-                    width: 34,
-                    height: 34,
+                    width: 30,
+                    height: 30,
                     fit: BoxFit.cover,
                     placeholder: (context, url) => _AvatarInitial(member.name),
                     errorWidget: (context, url, error) =>
@@ -865,7 +835,7 @@ class _MemberAvatar extends StatelessWidget {
         Positioned(
           right: -1,
           bottom: -1,
-          child: _PresenceDot(isOnline: member.isOnline, size: 12),
+          child: _PresenceDot(isOnline: member.isOnline, size: 11),
         ),
       ],
     );

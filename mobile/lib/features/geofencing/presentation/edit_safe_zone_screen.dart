@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../family/data/family_models.dart';
+import '../../location/application/location_controller.dart';
 import '../../location/application/map_geometry.dart';
 import '../../location/presentation/vector_map.dart';
 import '../application/geofence_controller.dart';
@@ -35,6 +37,7 @@ class SafeZoneEditorScreen extends ConsumerStatefulWidget {
 
 class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
   final _nameController = TextEditingController();
+  final _mapController = VectorMapController();
   bool _showNudges = false;
 
   @override
@@ -66,6 +69,7 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -104,22 +108,35 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Position on map', style: AppTypography.title),
+              Text('Choose location', style: AppTypography.title),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Tap the map to place the zone center, or use your current location.',
+                style: AppTypography.bodySecondary,
+              ),
               const SizedBox(height: 8),
               SizedBox(
-                height: 220,
+                height: 236,
                 child: Stack(
                   children: [
                     Positioned.fill(child: widget.mapOverride ?? _map(draft)),
+                    Positioned(
+                      left: AppSpacing.sm,
+                      top: AppSpacing.sm,
+                      child: _MapInstructionChip(
+                        text:
+                            '${draft.center.latitude.toStringAsFixed(4)}, ${draft.center.longitude.toStringAsFixed(4)}',
+                      ),
+                    ),
                     Align(
                       alignment: Alignment.bottomRight,
                       child: Padding(
                         padding: const EdgeInsets.all(12),
-                        child: FilledButton.icon(
+                        child: FilledButton.tonalIcon(
                           onPressed: () =>
                               setState(() => _showNudges = !_showNudges),
                           icon: const Icon(Icons.open_with),
-                          label: const Text('Move pin'),
+                          label: const Text('Fine tune'),
                         ),
                       ),
                     ),
@@ -128,7 +145,7 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
               ),
               if (_showNudges)
                 _NudgeControls(
-                  onNudge: (lat, lng) => controller.setCenter(
+                  onNudge: (lat, lng) => _setCenter(
                     SafeZoneCenter(
                       latitude: draft.center.latitude + lat,
                       longitude: draft.center.longitude + lng,
@@ -137,7 +154,7 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
                 ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
-                onPressed: () {},
+                onPressed: _useCurrentLocation,
                 icon: const Icon(Icons.my_location_outlined),
                 label: const Text('Use current location'),
               ),
@@ -287,9 +304,44 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  void _setCenter(SafeZoneCenter center, {bool animate = false}) {
+    ref.read(geofenceControllerProvider.notifier).setCenter(center);
+    if (animate) {
+      _mapController.animateTo(
+        lat: center.latitude,
+        lng: center.longitude,
+        zoom: 16,
+      );
+    }
+  }
+
+  void _useCurrentLocation() {
+    final self = ref.read(locationControllerProvider).value?.selfPosition;
+    if (self == null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Current location is not ready yet. Tap the map instead.',
+            ),
+          ),
+        );
+      return;
+    }
+
+    _setCenter(
+      SafeZoneCenter(latitude: self.lat, longitude: self.lng),
+      animate: true,
+    );
+  }
+
   Widget _map(SafeZoneDraft draft) => VectorMap(
+    controller: _mapController,
     initialTarget: MapPoint(draft.center.latitude, draft.center.longitude),
     initialZoom: 15,
+    onTap: (point) =>
+        _setCenter(SafeZoneCenter(latitude: point.lat, longitude: point.lng)),
     circles: [
       MapCircle(
         id: 'safe-zone-radius',
@@ -307,7 +359,8 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
         width: 48,
         height: 48,
         child: Semantics(
-          label: 'Safe-zone center. Drag to change location.',
+          label:
+              'Safe-zone center. Tap the map or fine tune to change location.',
           child: Icon(
             Icons.location_pin,
             color: AppColors.primaryTeal,
@@ -347,6 +400,35 @@ class _NudgeControls extends StatelessWidget {
         tooltip: 'Move pin south',
       ),
     ],
+  );
+}
+
+class _MapInstructionChip extends StatelessWidget {
+  const _MapInstructionChip({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: AppColors.surface.withValues(alpha: 0.92),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: AppColors.hairline),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.touch_app_outlined, size: 16),
+          const SizedBox(width: AppSpacing.xs),
+          Text(text, style: AppTypography.bodySecondary),
+        ],
+      ),
+    ),
   );
 }
 
