@@ -41,7 +41,7 @@ dependencies:
   # Routing
   go_router: ^16.0.0
 
-  # SafePath design-system fonts (Manrope + JetBrains Mono)
+  # SafePath design-system font (Inter)
   google_fonts: ^8.1.0
 
   # Auth + backend client (Supabase manages session/token persistence internally)

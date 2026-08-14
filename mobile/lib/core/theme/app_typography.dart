@@ -3,14 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
-/// SafePath AI type scale — Manrope (primary UI) + JetBrains Mono (labels,
-/// codes, captions). Ported verbatim from `01-UI-SPEC.md` (Typography
-/// section). This system deliberately uses more than the generic "2 weight"
-/// default (500/600/700/800 Manrope + 600/800 mono) — required by DESIGN-01
-/// exact-recreation fidelity, not a gap to "fix."
+/// SafePath AI type scale — a single Inter family across every role.
+/// This system deliberately uses more than the generic "2 weight" default
+/// (500/600/700/800) — required by DESIGN-01 exact-recreation fidelity, not
+/// a gap to "fix."
 abstract final class AppTypography {
   /// 38px/800 — Welcome screen wordmark only.
-  static TextStyle get display => GoogleFonts.manrope(
+  static TextStyle get display => GoogleFonts.inter(
     fontSize: 38,
     fontWeight: FontWeight.w800,
     height: 1.05,
@@ -19,7 +18,7 @@ abstract final class AppTypography {
   );
 
   /// 28px/800 — screen-level headlines.
-  static TextStyle get heading => GoogleFonts.manrope(
+  static TextStyle get heading => GoogleFonts.inter(
     fontSize: 30,
     fontWeight: FontWeight.w800,
     height: 1.2,
@@ -28,7 +27,7 @@ abstract final class AppTypography {
   );
 
   /// 17px/700 — header bar titles, role-card titles, member-row names.
-  static TextStyle get title => GoogleFonts.manrope(
+  static TextStyle get title => GoogleFonts.inter(
     fontSize: 17,
     fontWeight: FontWeight.w700,
     height: 1.2,
@@ -37,7 +36,7 @@ abstract final class AppTypography {
 
   /// 15px/600 — button labels (base weight; primary CTA uses 700 via
   /// [ctaLabel]), input field text, permission-row labels.
-  static TextStyle get body => GoogleFonts.manrope(
+  static TextStyle get body => GoogleFonts.inter(
     fontSize: 16,
     fontWeight: FontWeight.w600,
     height: 1.4,
@@ -45,15 +44,15 @@ abstract final class AppTypography {
   );
 
   /// 13px/500 — subtitles, helper/reassurance text, role-card descriptions.
-  static TextStyle get bodySecondary => GoogleFonts.manrope(
+  static TextStyle get bodySecondary => GoogleFonts.inter(
     fontSize: 14,
     fontWeight: FontWeight.w500,
     height: 1.4,
     color: AppColors.bodySecondary,
   );
 
-  /// 20px/800 Manrope - route and activity stat values.
-  static TextStyle get statValue => GoogleFonts.manrope(
+  /// 20px/800 Inter - route and activity stat values.
+  static TextStyle get statValue => GoogleFonts.inter(
     fontSize: 20,
     fontWeight: FontWeight.w800,
     height: 1.1,
@@ -63,15 +62,15 @@ abstract final class AppTypography {
 
   /// Primary CTA button label — 700 weight/16px per UI-SPEC ("Primary CTA
   /// buttons specifically render at 700 weight, 16px").
-  static TextStyle get ctaLabel => GoogleFonts.manrope(
+  static TextStyle get ctaLabel => GoogleFonts.inter(
     fontSize: 16,
     fontWeight: FontWeight.w700,
     height: 1.2,
   );
 
-  /// 12px/600 JetBrains Mono, uppercase, letter-spaced — field labels, step
+  /// 12px/600 Inter, uppercase, letter-spaced — field labels, step
   /// indicators, status badges.
-  static TextStyle get caption => GoogleFonts.jetBrainsMono(
+  static TextStyle get caption => GoogleFonts.inter(
     fontSize: 12,
     fontWeight: FontWeight.w600,
     height: 1.3,
@@ -79,8 +78,8 @@ abstract final class AppTypography {
     color: AppColors.bodySecondary,
   );
 
-  /// 24px/800 JetBrains Mono — the invite share code display only.
-  static TextStyle get code => GoogleFonts.jetBrainsMono(
+  /// 24px/800 Inter — the invite share code display only.
+  static TextStyle get code => GoogleFonts.inter(
     fontSize: 24,
     fontWeight: FontWeight.w800,
     height: 1.0,
@@ -88,15 +87,14 @@ abstract final class AppTypography {
     color: AppColors.ink,
   );
 
-  /// 44px/800 JetBrains Mono, tabular figures — the SOS live-location
-  /// streaming window countdown (`mm:ss`) on both the sender's Live-active
-  /// state and the responder screen (03-08-PLAN.md, D-21). Tabular figures
-  /// are a correctness requirement, not a refinement: without them a
-  /// ticking countdown's rendered width can shift as digits change, which
-  /// reads as a broken screen during an emergency. Weight matches the
-  /// [heading] role's 800 so this phase introduces no third weight, just a
-  /// new size/font pairing.
-  static TextStyle get countdownLarge => GoogleFonts.jetBrainsMono(
+  /// 44px/800 Inter, tabular figures — the SOS live-location streaming
+  /// window countdown (`mm:ss`) on both the sender's Live-active state and
+  /// the responder screen (03-08-PLAN.md, D-21). Tabular figures are a
+  /// correctness requirement, not a refinement: without them a ticking
+  /// countdown's rendered width can shift as digits change, which reads as
+  /// a broken screen during an emergency. Inter ships `tnum`, so this holds
+  /// with the single-family switch.
+  static TextStyle get countdownLarge => GoogleFonts.inter(
     fontSize: 44,
     fontWeight: FontWeight.w800,
     height: 1.0,
