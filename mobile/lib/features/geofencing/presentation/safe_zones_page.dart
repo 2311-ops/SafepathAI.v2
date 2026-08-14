@@ -82,6 +82,7 @@ class _SafeZonesPageState extends ConsumerState<SafeZonesPage> {
         '/zone-activity?zoneId=${Uri.encodeComponent(zone.id)}',
       ),
       onRetry: () => _retry(family.id),
+      mapOverride: ref.watch(safeZoneMapOverrideProvider),
     );
   }
 
