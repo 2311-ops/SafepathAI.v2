@@ -230,9 +230,10 @@ public sealed class SubmitGeofenceCandidateCommandHandler : ICommandHandler<Subm
             throw new FamilyAuthorizationDeniedException("Only the assigned member may submit a zone candidate.");
         }
 
-        var registrationMatches = await _db.SafeZoneRegistrations.AnyAsync(
-            registration => registration.SafeZoneId == command.ZoneId && registration.MemberUserId == command.CallerUserId && registration.Generation == command.RegistrationGeneration,
-            cancellationToken);
+        var currentGeneration = await _db.SafeZoneRegistrations
+            .Where(registration => registration.SafeZoneId == command.ZoneId && registration.MemberUserId == command.CallerUserId)
+            .MaxAsync(registration => (int?)registration.Generation, cancellationToken);
+        var registrationMatches = currentGeneration == command.RegistrationGeneration;
         if (!registrationMatches)
         {
             throw new ArgumentException("Unknown registration generation.", nameof(command));

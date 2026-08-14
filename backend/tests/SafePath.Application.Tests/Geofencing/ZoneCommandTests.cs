@@ -64,6 +64,10 @@ public sealed class ZoneCommandTests : IDisposable
             fixture.GuardianUserId, fixture.FamilyId, created.ZoneId, SafeZoneCategory.Home, null,
             30.0445, 31.2358, 150, fixture.MemberUserId, SafeZoneSensitivity.Conservative,
             [fixture.GuardianUserId], true));
+        var candidate = new SubmitGeofenceCandidateCommandHandler(db, new FamilyAuthorizationService(db));
+        await Assert.ThrowsAsync<ArgumentException>(() => candidate.Handle(new SubmitGeofenceCandidateCommand(
+            fixture.MemberUserId, Guid.NewGuid(), created.ZoneId, 1, GeofenceTransition.Enter,
+            DateTime.UtcNow, 30.0444, 31.2357, 5)));
         var disable = new DisableZoneCommandHandler(db, new FamilyAuthorizationService(db));
         var disabled = await disable.Handle(new DisableZoneCommand(fixture.GuardianUserId, fixture.FamilyId, created.ZoneId));
         var delete = new DeleteZoneCommandHandler(db, new FamilyAuthorizationService(db));
