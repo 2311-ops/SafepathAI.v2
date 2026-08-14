@@ -212,10 +212,12 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
           // Widened from the 44x44 tap-target-only box so the always-visible
           // name and online/offline labels have room beneath the avatar; the
           // declared box must contain the whole Column[avatar, labels]
-          // (research §5). Height raised 88->108 to also fit the battery
-          // readout row (LOC-04) without a RenderFlex overflow.
+          // (research §5). Height raised 88->108 to fit the battery readout
+          // row (LOC-04) without a RenderFlex overflow, then 108->128 when
+          // the avatar's tap-target slot grew 36->56 to make room for the
+          // self pin's pulse ring (DESIGN-01 redesign).
           width: 104,
-          height: 108,
+          height: 128,
           child: LiveMemberMarker(
             location: location,
             name: _memberName(location, state),
@@ -384,13 +386,21 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
 /// widget overlay above the native renderer (see `vector_map.dart`), which
 /// carries no built-in `alpha`/`onTap` of its own, so both live here.
 ///
-/// Kept a self-contained `StatelessWidget` over a plain `List<OverlayMarker>`
-/// (no per-marker global state) so a future marker-clustering layer could
-/// wrap these without a rewrite (D-19 — compatibility only, no clustering
-/// dependency is added this phase; at MVP scale, screen-space widget pins
-/// reprojected via the native projection need no clustering package). Public
-/// (not underscore-private) so it can be exercised directly by widget tests.
-class LiveMemberMarker extends StatelessWidget {
+/// The avatar border colors by presence (safety green online / slate grey
+/// offline, DESIGN-01 redesign) and the self ("You") marker additionally
+/// draws an animated expanding pulse ring behind the avatar — other
+/// members' pins never animate.
+///
+/// A `StatefulWidget` (previously `StatelessWidget`) solely to own the pulse
+/// animation's `AnimationController`; the constructor signature stays
+/// byte-identical and this remains public (not underscore-private) so it can
+/// be exercised directly by widget tests. Kept over a plain
+/// `List<OverlayMarker>` (no per-marker global state beyond the pulse
+/// controller) so a future marker-clustering layer could still wrap these
+/// without a rewrite (D-19 — compatibility only, no clustering dependency is
+/// added this phase; at MVP scale, screen-space widget pins reprojected via
+/// the native projection need no clustering package).
+class LiveMemberMarker extends StatefulWidget {
   const LiveMemberMarker({
     super.key,
     required this.location,
@@ -408,64 +418,153 @@ class LiveMemberMarker extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  bool get _hasAvatar => (location.profileImageUrl?.trim().isNotEmpty ?? false);
+  @override
+  State<LiveMemberMarker> createState() => _LiveMemberMarkerState();
+}
+
+class _LiveMemberMarkerState extends State<LiveMemberMarker>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  );
+
+  bool get _hasAvatar =>
+      (widget.location.profileImageUrl?.trim().isNotEmpty ?? false);
+
+  // The controller is created above (in initState, implicitly via the
+  // `late final` field initializer) but intentionally not started there —
+  // start/stop depends on MediaQuery, which is unsafe to read before
+  // didChangeDependencies runs.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncPulseAnimation();
+  }
+
+  @override
+  void didUpdateWidget(covariant LiveMemberMarker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isSelf != widget.isSelf) {
+      _syncPulseAnimation();
+    }
+  }
+
+  void _syncPulseAnimation() {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final shouldAnimate = widget.isSelf && !reduceMotion;
+    if (shouldAnimate) {
+      if (!_pulseController.isAnimating) {
+        _pulseController.repeat();
+      }
+    } else {
+      _pulseController.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final opacity = isSelf
+    final opacity = widget.isSelf
         ? 1.0
         : stalenessFor(
-            DateTime.now().toUtc().difference(location.recordedAtUtc),
+            DateTime.now().toUtc().difference(widget.location.recordedAtUtc),
           ).opacity;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Semantics(
         button: true,
-        label: '$name, ${isOnline ? 'online' : 'offline'}, open details',
+        label:
+            '${widget.name}, ${widget.isOnline ? 'online' : 'offline'}, '
+            'open details',
         child: Opacity(
           opacity: opacity,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isSelf ? AppColors.primaryTeal : color,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.surface, width: 3),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x220C3A3F),
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
+              SizedBox(
+                width: 56,
+                height: 56,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (widget.isSelf)
+                      IgnorePointer(
+                        child: RepaintBoundary(
+                          child: AnimatedBuilder(
+                            animation: _pulseController,
+                            builder: (context, _) => CustomPaint(
+                              key: const ValueKey('self-pulse-ring'),
+                              size: const Size(56, 56),
+                              painter: _SelfPulseRingPainter(
+                                progress: _pulseController.value,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: widget.isSelf
+                            ? AppColors.primaryTeal
+                            : widget.color,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: widget.isOnline
+                              ? AppColors.safe
+                              : AppColors.bodySecondary,
+                          width: 3,
+                        ),
+                        boxShadow: const [
+                          // Crisp white halo separating the presence ring
+                          // from the basemap beneath it, at zero layout cost.
+                          BoxShadow(
+                            color: AppColors.surface,
+                            blurRadius: 0,
+                            spreadRadius: 1.5,
+                          ),
+                          BoxShadow(
+                            color: Color(0x220C3A3F),
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: _hasAvatar
+                          ? ClipOval(
+                              child: CachedNetworkImage(
+                                imageUrl: widget.location.profileImageUrl!,
+                                cacheKey:
+                                    '${widget.location.userId}-${widget.location.profileUpdatedAt?.toIso8601String()}',
+                                width: 36,
+                                height: 36,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => _initials(),
+                                errorWidget: (context, url, error) =>
+                                    _initials(),
+                              ),
+                            )
+                          : _initials(),
                     ),
                   ],
                 ),
-                child: _hasAvatar
-                    ? ClipOval(
-                        child: CachedNetworkImage(
-                          imageUrl: location.profileImageUrl!,
-                          cacheKey:
-                              '${location.userId}-${location.profileUpdatedAt?.toIso8601String()}',
-                          width: 36,
-                          height: 36,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => _initials(),
-                          errorWidget: (context, url, error) => _initials(),
-                        ),
-                      )
-                    : _initials(),
               ),
               const SizedBox(height: 2),
-              _MarkerNameLabel(name: name),
+              _MarkerNameLabel(name: widget.name),
               const SizedBox(height: 2),
-              _MarkerPresenceLabel(isOnline: isOnline),
+              _MarkerPresenceLabel(isOnline: widget.isOnline),
               const SizedBox(height: 2),
-              BatteryIndicator(percent: location.batteryPercent),
+              BatteryIndicator(percent: widget.location.batteryPercent),
             ],
           ),
         ),
@@ -475,7 +574,7 @@ class LiveMemberMarker extends StatelessWidget {
 
   Widget _initials() {
     return Text(
-      name.isEmpty ? '?' : name.substring(0, 1).toUpperCase(),
+      widget.name.isEmpty ? '?' : widget.name.substring(0, 1).toUpperCase(),
       style: AppTypography.body.copyWith(
         color: Colors.white,
         fontWeight: FontWeight.w800,
@@ -483,6 +582,34 @@ class LiveMemberMarker extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Animated expanding pulse ring drawn behind the self ("You") map pin only
+/// (DESIGN-01 redesign). Deliberately a standalone painter rather than
+/// reusing `SosPulseRing` from `sos_countdown.dart` — that widget is
+/// SOS-scoped emergency visual language and must not appear on a routine
+/// surface.
+class _SelfPulseRingPainter extends CustomPainter {
+  const _SelfPulseRingPainter({required this.progress});
+
+  /// 0.0 -> 1.0 animation progress, looping.
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = 20 + (28 - 20) * progress;
+    final opacity = 0.5 * (1 - progress);
+    final paint = Paint()
+      ..color = AppColors.primaryTeal.withValues(alpha: opacity)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawCircle(center, radius, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SelfPulseRingPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 class _VisibleMember {
