@@ -26,7 +26,10 @@ void main() {
     expect(find.text('07:00'), findsOneWidget);
 
     await tester.tap(find.byType(Switch));
-    await tester.enterText(find.byKey(const Key('time-zone-id')), 'Europe/London');
+    await tester.enterText(
+      find.byKey(const Key('time-zone-id')),
+      'Europe/London',
+    );
     await tester.tap(find.text('Save quiet hours'));
     await tester.pump();
 
@@ -43,6 +46,9 @@ void main() {
     await tester.tap(find.text('Save quiet hours'));
     await tester.pump();
 
-    expect(find.text('Enter an IANA time zone such as Africa/Cairo.'), findsOneWidget);
+    expect(
+      find.text('Enter an IANA time zone such as Africa/Cairo.'),
+      findsOneWidget,
+    );
   });
 }

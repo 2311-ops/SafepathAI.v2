@@ -21,6 +21,7 @@ import '../../features/family/presentation/manage_permissions_screen.dart';
 import '../../features/geofencing/data/geofence_models.dart';
 import '../../features/geofencing/presentation/edit_safe_zone_screen.dart';
 import '../../features/geofencing/presentation/notifications_screen.dart';
+import '../../features/geofencing/presentation/quiet_hours_screen.dart';
 import '../../features/geofencing/presentation/safe_zone_detail_screen.dart';
 import '../../features/geofencing/presentation/safe_zones_screen.dart';
 import '../../features/geofencing/presentation/zone_activity_screen.dart';
@@ -277,6 +278,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/notifications',
         name: 'notifications',
         builder: (context, state) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: '/notifications/quiet-hours',
+        name: 'quiet-hours',
+        builder: (context, state) => const QuietHoursPage(),
       ),
       GoRoute(
         path: '/zone-activity',
