@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<IAlertBroadcastService, AlertBroadcastService>();
         services.AddHostedService<SharingPreferenceSweepService>();
         services.AddHostedService<GeofenceRetentionService>();
+        services.AddHostedService<RoutinePushWorker>();
         services.AddSingleton<IProfileImageValidator, ImageSharpProfileImageValidator>();
 
         var profileStorageSupabaseUrl = configuration["Supabase:Url"];
@@ -146,10 +147,12 @@ public static class DependencyInjection
         if (firebaseOptions.IsConfigured)
         {
             services.AddScoped<IPushSender, FirebasePushSender>();
+            services.AddScoped<IRoutinePushSender, FirebaseRoutinePushSender>();
         }
         else
         {
             services.AddScoped<IPushSender, LoggingPushSender>();
+            services.AddScoped<IRoutinePushSender, LoggingRoutinePushSender>();
         }
 
         return services;
