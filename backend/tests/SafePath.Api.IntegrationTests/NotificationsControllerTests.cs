@@ -27,6 +27,8 @@ public sealed class NotificationsControllerTests : IClassFixture<FamilyApiFactor
         var item = Assert.Single(body.RootElement.EnumerateArray());
         Assert.Equal(fixture.OwnerFeedItemId, item.GetProperty("id").GetGuid());
         Assert.Equal(fixture.MemberUserId, item.GetProperty("memberUserId").GetGuid());
+        Assert.Equal("Member", item.GetProperty("memberDisplayName").GetString());
+        Assert.Equal(fixture.SafeZoneId, item.GetProperty("safeZoneId").GetGuid());
         Assert.Equal("Home", item.GetProperty("zoneName").GetString());
         Assert.Equal("Enter", item.GetProperty("transition").GetString());
         Assert.Equal(fixture.OccurredAtUtc, item.GetProperty("occurredAtUtc").GetDateTime());
@@ -58,7 +60,9 @@ public sealed class NotificationsControllerTests : IClassFixture<FamilyApiFactor
         var ownerUserId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
         var memberUserId = Guid.NewGuid();
+        var familyId = Guid.NewGuid();
         var activityId = Guid.NewGuid();
+        var safeZoneId = Guid.NewGuid();
         var ownerFeedItemId = Guid.NewGuid();
         var otherFeedItemId = Guid.NewGuid();
         using var scope = _factory.Services.CreateScope();
@@ -67,9 +71,30 @@ public sealed class NotificationsControllerTests : IClassFixture<FamilyApiFactor
             new User { Id = ownerUserId, Email = $"owner-{ownerUserId:N}@example.com", FullName = "Owner", Role = Role.Guardian, CreatedAt = now },
             new User { Id = otherUserId, Email = $"other-{otherUserId:N}@example.com", FullName = "Other", Role = Role.Guardian, CreatedAt = now },
             new User { Id = memberUserId, Email = $"member-{memberUserId:N}@example.com", FullName = "Member", Role = Role.Member, CreatedAt = now });
+        db.Families.Add(new Family
+        {
+            Id = familyId,
+            Name = "Test family",
+            CreatedByUserId = ownerUserId,
+            CreatedAt = now,
+        });
+        db.SafeZones.Add(new SafeZone
+        {
+            Id = safeZoneId,
+            FamilyId = familyId,
+            AssignedMemberUserId = memberUserId,
+            CreatedByUserId = ownerUserId,
+            Category = SafeZoneCategory.Home,
+            Latitude = 30.0444,
+            Longitude = 31.2357,
+            RadiusMeters = 250,
+            Sensitivity = SafeZoneSensitivity.Balanced,
+            CreatedAtUtc = now,
+        });
         db.GeofenceActivities.Add(new GeofenceActivity
         {
             Id = activityId,
+            SafeZoneId = safeZoneId,
             SafeZoneDisplayName = "Home",
             MemberUserId = memberUserId,
             Transition = GeofenceTransition.Enter,
@@ -81,8 +106,8 @@ public sealed class NotificationsControllerTests : IClassFixture<FamilyApiFactor
             new GeofenceFeedItem { Id = ownerFeedItemId, ActivityId = activityId, RecipientUserId = ownerUserId, CreatedAtUtc = now, ExpiresAtUtc = now.AddDays(7) },
             new GeofenceFeedItem { Id = otherFeedItemId, ActivityId = activityId, RecipientUserId = otherUserId, CreatedAtUtc = now, ExpiresAtUtc = now.AddDays(7) });
         await db.SaveChangesAsync();
-        return new Fixture(ownerUserId, otherUserId, memberUserId, ownerFeedItemId, otherFeedItemId, now);
+        return new Fixture(ownerUserId, otherUserId, memberUserId, safeZoneId, ownerFeedItemId, otherFeedItemId, now);
     }
 
-    private sealed record Fixture(Guid OwnerUserId, Guid OtherUserId, Guid MemberUserId, Guid OwnerFeedItemId, Guid OtherFeedItemId, DateTime OccurredAtUtc);
+    private sealed record Fixture(Guid OwnerUserId, Guid OtherUserId, Guid MemberUserId, Guid SafeZoneId, Guid OwnerFeedItemId, Guid OtherFeedItemId, DateTime OccurredAtUtc);
 }
