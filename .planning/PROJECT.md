@@ -80,10 +80,15 @@ guarantee; none of it may ever slow it down.
   Npgsql/EF Core, Python (Pandas/NumPy/Scikit-learn, Isolation Forest, XGBoost) for AI, Azure for
   backend/AI hosting — fixed by the brief, not open for re-litigation.
 - **No hardware**: Software-only positioning is a core competitive differentiator.
-- **Design fidelity**: The UI must faithfully recreate the existing 36-screen design system via
-  Flutter widgets/`ThemeData` — colors (including SOS red, reserved exclusively for
-  emergency/SOS), Manrope/JetBrains Mono type, spacing/radius/shadow/motion specs are fixed, not
-  to be redesigned.
+- **Design fidelity**: The UI is implemented via Flutter widgets/`ThemeData` against the locked
+  SafePath design system, which supersedes the original 36-screen mockup's palette and type
+  pairing (rebranded 2026-08-14). The system is Material 3 with a single Inter type family.
+  Palette: navy `#1B2A4A` (primary and primary text), safety green `#00875F` (accent — darkened
+  from the source spec's `#00C896` to clear WCAG AA 4.5:1 text/icon contrast on white; fill-only
+  accent uses stay full-strength), `#E53935` (danger / SOS red, reserved exclusively for
+  emergency/SOS surfaces), `#F5F7FA` (background), `#FFFFFF` (surface), `#6B7A99` (secondary
+  text). Radii: 16px cards, 12px buttons, 24px bottom sheets; subtle shadows only. This system is
+  fixed, not to be redesigned.
 - **SOS non-negotiable**: The SOS pipeline (visible button + Silent/Duress path) must bypass all
   routine/AI processing and deliver within seconds — every phase's architecture must preserve
   this priority path.
