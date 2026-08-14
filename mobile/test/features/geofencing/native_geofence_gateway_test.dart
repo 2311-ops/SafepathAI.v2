@@ -99,4 +99,16 @@ void main() {
 
     expect(zone.requestId, 'zone-1:7');
   });
+
+  test('identifies the recoverable platform failure that needs a canonical resync', () {
+    final unavailable = NativeGeofenceCandidate(
+      eventId: 'event-recovery',
+      requestId: '',
+      transition: NativeGeofenceTransition.error,
+      occurredAtUtc: DateTime.utc(2026, 8, 14),
+      errorCode: nativeGeofenceNotAvailableErrorCode,
+    );
+
+    expect(unavailable.requiresCanonicalResync, isTrue);
+  });
 }
