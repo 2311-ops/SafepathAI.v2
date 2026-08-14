@@ -23,11 +23,9 @@ import '../../features/family/presentation/create_circle_screen.dart';
 import '../../features/family/presentation/invite_member_screen.dart';
 import '../../features/family/presentation/manage_permissions_screen.dart';
 import '../../features/geofencing/data/geofence_models.dart';
-import '../../features/geofencing/presentation/edit_safe_zone_screen.dart';
 import '../../features/geofencing/presentation/notifications_screen.dart';
 import '../../features/geofencing/presentation/quiet_hours_screen.dart';
-import '../../features/geofencing/presentation/safe_zone_detail_screen.dart';
-import '../../features/geofencing/presentation/safe_zones_screen.dart';
+import '../../features/geofencing/presentation/safe_zones_page.dart';
 import '../../features/home/presentation/main_shell.dart';
 import '../../features/location/application/permission_controller.dart';
 import '../../features/location/presentation/battery_transparency_screen.dart';
@@ -71,6 +69,7 @@ const _authenticatedOnlyRoutes = {
   '/profile',
   '/safe-zones',
   '/safe-zones/add',
+  '/safe-zones/add/review',
   '/safe-zones/:zoneId',
   '/safe-zones/:zoneId/edit',
   '/notifications',
@@ -275,7 +274,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/safe-zones',
         name: 'safe-zones',
-        builder: (context, state) => const SafeZonesScreen.loading(),
+        builder: (context, state) => const SafeZonesPage(),
       ),
       GoRoute(
         path: '/notifications',
@@ -296,20 +295,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/safe-zones/add',
         name: 'safe-zones-add',
-        builder: (context, state) =>
-            const SafeZoneEditorScreen(familyId: '', members: []),
+        builder: (context, state) => const SafeZoneEditorPage(),
+      ),
+      GoRoute(
+        path: '/safe-zones/add/review',
+        name: 'safe-zones-review',
+        builder: (context, state) => const SafeZoneReviewPage(),
       ),
       GoRoute(
         path: '/safe-zones/:zoneId',
         name: 'safe-zones-detail',
-        builder: (context, state) {
-          final zone = state.extra as SafeZone?;
-          if (zone == null) return const SafeZonesScreen.loading();
-          return SafeZoneDetailScreen(
-            zone: zone,
-            assignedMemberName: 'Family member',
-          );
-        },
+        builder: (context, state) => SafeZoneDetailPage(
+          zoneId: state.pathParameters['zoneId']!,
+          zone: state.extra as SafeZone?,
+        ),
+      ),
+      GoRoute(
+        path: '/safe-zones/:zoneId/edit',
+        name: 'safe-zones-edit',
+        builder: (context, state) =>
+            SafeZoneEditorPage(initialZone: state.extra as SafeZone?),
       ),
       GoRoute(
         path: '/sos/session',
