@@ -12,13 +12,13 @@ public sealed class GeofenceCandidatesController : ControllerBase
 {
     private readonly ICommandHandler<GetMySafeZoneRegistrationQuery, SafeZoneRegistrationDto?> _getRegistration;
     private readonly ICommandHandler<AcknowledgeCurrentZoneRegistrationCommand, bool> _acknowledgeRegistration;
-    private readonly ICommandHandler<SubmitGeofenceCandidateCommand, SubmitGeofenceCandidateResult> _submitCandidate;
+    private readonly ICommandHandler<SubmitGeofenceEvidenceCommand, SubmitGeofenceEvidenceResult> _submitCandidate;
     private readonly ICurrentUserService _currentUser;
 
     public GeofenceCandidatesController(
         ICommandHandler<GetMySafeZoneRegistrationQuery, SafeZoneRegistrationDto?> getRegistration,
         ICommandHandler<AcknowledgeCurrentZoneRegistrationCommand, bool> acknowledgeRegistration,
-        ICommandHandler<SubmitGeofenceCandidateCommand, SubmitGeofenceCandidateResult> submitCandidate,
+        ICommandHandler<SubmitGeofenceEvidenceCommand, SubmitGeofenceEvidenceResult> submitCandidate,
         ICurrentUserService currentUser)
     {
         _getRegistration = getRegistration;
@@ -52,15 +52,15 @@ public sealed class GeofenceCandidatesController : ControllerBase
     }
 
     [HttpPost("geofences/candidates")]
-    public async Task<ActionResult<SubmitGeofenceCandidateResult>> SubmitCandidate(SubmitGeofenceCandidateRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<SubmitGeofenceEvidenceResult>> SubmitCandidate(SubmitGeofenceCandidateRequest request, CancellationToken cancellationToken)
     {
         if (_currentUser.UserId is not { } userId) return Unauthorized();
         try
         {
-            var result = await _submitCandidate.Handle(new SubmitGeofenceCandidateCommand(userId, request.EventId, request.ZoneId,
+            var result = await _submitCandidate.Handle(new SubmitGeofenceEvidenceCommand(userId, request.EventId, request.ZoneId,
                 request.RegistrationGeneration, request.Transition, request.OccurredAtUtc, request.Latitude, request.Longitude,
                 request.AccuracyMeters), cancellationToken);
-            return result.Outcome == GeofenceCandidateOutcome.Accepted ? Accepted(result) : Ok(result);
+            return result.Outcome == GeofenceEvidenceOutcome.Waiting ? Accepted(result) : Ok(result);
         }
         catch (FamilyAuthorizationDeniedException) { return Forbid(); }
         catch (ArgumentException exception) { return BadRequest(new { error = exception.Message }); }

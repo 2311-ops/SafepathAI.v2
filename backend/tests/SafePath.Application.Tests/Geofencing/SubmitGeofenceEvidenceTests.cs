@@ -1,4 +1,5 @@
 using SafePath.Application.Geofencing;
+using SafePath.Application.Common.Interfaces;
 using SafePath.Application.Tests.Common;
 using SafePath.Domain.Entities;
 using SafePath.Domain.Enums;
@@ -40,9 +41,11 @@ public sealed class SubmitGeofenceEvidenceTests : IDisposable
 
         var waiting = await handler.Handle(Command(fixture, Guid.NewGuid(), fixture.Now, latitude: 0.00075, accuracyMeters: 20));
         var reset = await handler.Handle(Command(fixture, Guid.NewGuid(), fixture.Now.AddSeconds(10), latitude: 0.002));
+        var restarted = await handler.Handle(Command(fixture, Guid.NewGuid(), fixture.Now.AddSeconds(60)));
 
         Assert.Equal(GeofenceEvidenceOutcome.Waiting, waiting.Outcome);
         Assert.Equal(GeofenceEvidenceOutcome.Reset, reset.Outcome);
+        Assert.Equal(GeofenceEvidenceOutcome.Waiting, restarted.Outcome);
         Assert.Empty(db.GeofenceActivities);
         Assert.Empty(db.GeofenceFeedItems);
         Assert.Empty(db.GeofenceRoutineJobs);

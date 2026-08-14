@@ -69,6 +69,7 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<GetMySafeZoneRegistrationQuery, SafeZoneRegistrationDto?>, GetMySafeZoneRegistrationQueryHandler>();
         services.AddScoped<ICommandHandler<AcknowledgeSafeZoneRegistrationCommand, bool>, AcknowledgeSafeZoneRegistrationCommandHandler>();
         services.AddScoped<ICommandHandler<SubmitGeofenceCandidateCommand, SubmitGeofenceCandidateResult>, SubmitGeofenceCandidateCommandHandler>();
+        services.AddScoped<ICommandHandler<SubmitGeofenceEvidenceCommand, SubmitGeofenceEvidenceResult>, SubmitGeofenceEvidenceCommandHandler>();
         services.AddScoped<ICommandHandler<CreateZoneCommand, ZoneMutationResult>, CreateZoneCommandHandler>();
         services.AddScoped<ICommandHandler<UpdateZoneCommand, ZoneMutationResult>, UpdateZoneCommandHandler>();
         services.AddScoped<ICommandHandler<DisableZoneCommand, ZoneMutationResult>, DisableZoneCommandHandler>();

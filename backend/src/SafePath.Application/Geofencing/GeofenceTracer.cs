@@ -44,7 +44,7 @@ public sealed record SubmitGeofenceCandidateCommand(
     double Longitude,
     double AccuracyMeters);
 
-public enum GeofenceCandidateOutcome { Accepted, Duplicate }
+public enum GeofenceCandidateOutcome { Accepted, Waiting, Reset, Confirmed, Duplicate }
 public sealed record SubmitGeofenceCandidateResult(GeofenceCandidateOutcome Outcome);
 
 public sealed class CreateSafeZoneCommandHandler : ICommandHandler<CreateSafeZoneCommand, CreateSafeZoneResult>
@@ -207,89 +207,19 @@ public sealed class AcknowledgeSafeZoneRegistrationCommandHandler : ICommandHand
 
 public sealed class SubmitGeofenceCandidateCommandHandler : ICommandHandler<SubmitGeofenceCandidateCommand, SubmitGeofenceCandidateResult>
 {
-    private readonly IApplicationDbContext _db;
-    private readonly IFamilyAuthorizationService _authorization;
+    private readonly SubmitGeofenceEvidenceCommandHandler _evidenceHandler;
 
     public SubmitGeofenceCandidateCommandHandler(IApplicationDbContext db, IFamilyAuthorizationService authorization)
     {
-        _db = db;
-        _authorization = authorization;
+        _evidenceHandler = new SubmitGeofenceEvidenceCommandHandler(db, authorization);
     }
 
     public async Task<SubmitGeofenceCandidateResult> Handle(SubmitGeofenceCandidateCommand command, CancellationToken cancellationToken = default)
     {
-        Validate(command);
-        var zone = await _db.SafeZones.SingleOrDefaultAsync(zone => zone.Id == command.ZoneId && zone.IsActive, cancellationToken);
-        if (zone is null)
-        {
-            throw new ArgumentException("Unknown or inactive zone.", nameof(command));
-        }
-        await _authorization.RequireMembership(command.CallerUserId, zone.FamilyId, cancellationToken);
-        if (zone.AssignedMemberUserId != command.CallerUserId)
-        {
-            throw new FamilyAuthorizationDeniedException("Only the assigned member may submit a zone candidate.");
-        }
-
-        var currentGeneration = await _db.SafeZoneRegistrations
-            .Where(registration => registration.SafeZoneId == command.ZoneId && registration.MemberUserId == command.CallerUserId)
-            .MaxAsync(registration => (int?)registration.Generation, cancellationToken);
-        var registrationMatches = currentGeneration == command.RegistrationGeneration;
-        if (!registrationMatches)
-        {
-            throw new ArgumentException("Unknown registration generation.", nameof(command));
-        }
-
-        var existing = await _db.GeofenceCandidates.SingleOrDefaultAsync(candidate => candidate.EventId == command.EventId, cancellationToken);
-        if (existing is not null)
-        {
-            if (existing.SafeZoneId == command.ZoneId && existing.MemberUserId == command.CallerUserId)
-            {
-                return new SubmitGeofenceCandidateResult(GeofenceCandidateOutcome.Duplicate);
-            }
-            throw new ArgumentException("Event id is already bound to another candidate.", nameof(command));
-        }
-
-        _db.GeofenceCandidates.Add(new GeofenceCandidate
-        {
-            Id = Guid.NewGuid(),
-            EventId = command.EventId,
-            SafeZoneId = command.ZoneId,
-            MemberUserId = command.CallerUserId,
-            RegistrationGeneration = command.RegistrationGeneration,
-            Transition = command.Transition,
-            OccurredAtUtc = command.OccurredAtUtc,
-            Latitude = command.Latitude,
-            Longitude = command.Longitude,
-            AccuracyMeters = command.AccuracyMeters,
-            ReceivedAtUtc = DateTime.UtcNow,
-        });
-        try
-        {
-            await _db.SaveChangesAsync(cancellationToken);
-            return new SubmitGeofenceCandidateResult(GeofenceCandidateOutcome.Accepted);
-        }
-        catch (DbUpdateException)
-        {
-            // The database unique constraint is the race-safe idempotency backstop. A second
-            // concurrent upload of this caller's own event is still a normal duplicate.
-            var persisted = await _db.GeofenceCandidates.AsNoTracking().SingleOrDefaultAsync(candidate => candidate.EventId == command.EventId, cancellationToken);
-            if (persisted is not null && persisted.SafeZoneId == command.ZoneId && persisted.MemberUserId == command.CallerUserId)
-            {
-                return new SubmitGeofenceCandidateResult(GeofenceCandidateOutcome.Duplicate);
-            }
-            throw;
-        }
-    }
-
-    private static void Validate(SubmitGeofenceCandidateCommand command)
-    {
-        if (command.EventId == Guid.Empty || command.ZoneId == Guid.Empty || command.RegistrationGeneration <= 0 ||
-            !double.IsFinite(command.Latitude) || command.Latitude is < -90 or > 90 ||
-            !double.IsFinite(command.Longitude) || command.Longitude is < -180 or > 180 ||
-            !double.IsFinite(command.AccuracyMeters) || command.AccuracyMeters < 0 ||
-            command.OccurredAtUtc > DateTime.UtcNow.AddMinutes(5))
-        {
-            throw new ArgumentException("Candidate fields are invalid.", nameof(command));
-        }
+        var result = await _evidenceHandler.Handle(new SubmitGeofenceEvidenceCommand(
+            command.CallerUserId, command.EventId, command.ZoneId, command.RegistrationGeneration,
+            command.Transition, command.OccurredAtUtc, command.Latitude, command.Longitude,
+            command.AccuracyMeters), cancellationToken);
+        return new SubmitGeofenceCandidateResult((GeofenceCandidateOutcome)result.Outcome);
     }
 }

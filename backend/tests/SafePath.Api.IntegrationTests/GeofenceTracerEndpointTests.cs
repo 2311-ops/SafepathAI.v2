@@ -23,7 +23,7 @@ public sealed class GeofenceTracerEndpointTests : IClassFixture<FamilyApiFactory
     }
 
     [Fact]
-    public async Task GuardianToAssignedMemberRoundTrip_AcceptsCandidateAndMakesReplayIdempotent()
+    public async Task GuardianToAssignedMemberRoundTrip_QueuesCandidateAndMakesReplayIdempotent()
     {
         var family = await SeedFamilyAsync();
         var guardian = CreateClientAs(family.GuardianUserId);
@@ -71,9 +71,9 @@ public sealed class GeofenceTracerEndpointTests : IClassFixture<FamilyApiFactory
             AccuracyMeters = 8.0,
         };
 
-        var accepted = await member.PostAsJsonAsync("/geofences/candidates", candidate);
-        Assert.Equal(HttpStatusCode.Accepted, accepted.StatusCode);
-        Assert.Equal("Accepted", (await accepted.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("outcome").GetString());
+        var waiting = await member.PostAsJsonAsync("/geofences/candidates", candidate);
+        Assert.Equal(HttpStatusCode.Accepted, waiting.StatusCode);
+        Assert.Equal("Waiting", (await waiting.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("outcome").GetString());
 
         var duplicate = await member.PostAsJsonAsync("/geofences/candidates", candidate);
         Assert.Equal(HttpStatusCode.OK, duplicate.StatusCode);
