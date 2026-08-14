@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: geofencing
 status: executing
-stopped_at: Completed 04-10-PLAN.md
-last_updated: "2026-08-14T01:45:25.904Z"
+stopped_at: Completed 04-15-PLAN.md
+last_updated: "2026-08-14T01:57:08.393Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 61
-  completed_plans: 56
+  completed_plans: 57
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 04 (geofencing) — EXECUTING
-Plan: 5 of 17
+Plan: 6 of 17
 Status: Ready to execute
 Last activity: 2026-08-13 — Phase 04 execution started
 
-Progress: [█████████░] 92%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -105,6 +105,7 @@ Progress: [█████████░] 92%
 | Phase 04 P12 | 44min | 2 tasks | 7 files |
 | Phase 04-geofencing P09 | 20min | 2 tasks | 8 files |
 | Phase 04-geofencing P10 | 7min | 2 tasks | 7 files |
+| Phase 04-geofencing P15 | 18min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -213,6 +214,8 @@ Recent decisions affecting current work:
 - [Phase ?]: RoutineNotificationDispatcher only re-evaluates durable routine job timing; it has no SOS or push-sender dependency.
 - [Phase ?]: Routine notifications use a separate IRoutinePushSender and named Firebase app, so normal-priority transport cannot change SOS high-priority sender settings.
 - [Phase ?]: Routine jobs re-evaluate quiet hours immediately before delivery and retry provider failures with bounded exponential backoff.
+- [Phase ?]: Routine feed read state updates locally before the idempotent caller-owned read request; ordinary navigation never depends on push delivery.
+- [Phase ?]: Routine feed responses include memberDisplayName and safeZoneId so the client can render truthful rows and request family-scoped zone activity without coordinates.
 
 ### Pending Todos
 
@@ -273,6 +276,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-14T01:45:25.867Z
-Stopped at: Completed 04-10-PLAN.md
+Last session: 2026-08-14T01:57:08.361Z
+Stopped at: Completed 04-15-PLAN.md
 Resume file: None
