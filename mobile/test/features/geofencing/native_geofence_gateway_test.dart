@@ -111,4 +111,27 @@ void main() {
 
     expect(unavailable.requiresCanonicalResync, isTrue);
   });
+
+  test('maps iOS location authorization states to the shared capability contract', () {
+    expect(
+      nativeGeofenceCapabilityFromStatus('authorizedAlways'),
+      NativeGeofenceCapability.ready,
+    );
+    expect(
+      nativeGeofenceCapabilityFromStatus('authorizedWhenInUse'),
+      NativeGeofenceCapability.needsBackgroundPermission,
+    );
+    expect(
+      nativeGeofenceCapabilityFromStatus('notDetermined'),
+      NativeGeofenceCapability.needsLocationPermission,
+    );
+    expect(
+      nativeGeofenceCapabilityFromStatus('denied'),
+      NativeGeofenceCapability.unavailable,
+    );
+    expect(
+      nativeGeofenceCapabilityFromStatus('restricted'),
+      NativeGeofenceCapability.unavailable,
+    );
+  });
 }
