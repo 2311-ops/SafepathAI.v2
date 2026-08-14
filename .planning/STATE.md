@@ -5,16 +5,15 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: geofencing
 status: executing
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-08-13T01:26:45.750Z"
+stopped_at: Completed 04-06-PLAN.md (04-05 tracer checkpoint remains incomplete by explicit override)
+last_updated: "2026-08-14T00:05:50.097Z"
 last_activity: 2026-08-13
 last_activity_desc: Phase 04 execution started
 progress:
-  total_phases: 8
+  total_phases: 5
   completed_phases: 4
   total_plans: 61
-  completed_plans: 48
-  percent: 50
+  completed_plans: 49
 ---
 
 # Project State
@@ -33,7 +32,7 @@ Plan: 1 of 17
 Status: Executing Phase 04
 Last activity: 2026-08-13 — Phase 04 execution started
 
-Progress: [████████░░] 79%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -101,6 +100,7 @@ Progress: [████████░░] 79%
 |------|----------|-------|-------|
 | Phase 04-geofencing P01 | 32min | 2 tasks | 13 files |
 | Phase 04 P04 | 68min | 2 tasks | 10 files |
+| Phase 04-geofencing P06 | 47min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -200,6 +200,7 @@ Recent decisions affecting current work:
 - [Quick 260813-09i]: `ISmsGateway.SendAsync`'s second parameter moved from a single composed `string` to an ordered `IReadOnlyList<string> templateParameters`, deliberately superseding the signature lock asserted in 260812-wgl's `<interface_contracts>`. Cause: the operator's actually-approved `sos_alert` template has three body placeholders while 260812-wgl assumed a single free-text one, so every real send would have failed on a Meta parameter-count mismatch. `SosAlertDispatcher` now builds three ordered values (sender display name, maps link with an explicit `Location unavailable` fallback when coordinates are absent, invariant-culture UTC timestamp) via `ComposeSmsTemplateParameters`, with its control flow and dependency set provably unchanged (`await`=18, `private readonly`=4, SOS-01 held). `WhatsAppSmsGateway` emits one normalized `WhatsAppTemplateParameter` per supplied value, in order, with an empty-value guard substituting a hyphen.
 - [Phase ?]: Geofence tracer persists only candidate callbacks; confirmation, push, activity, and SOS remain isolated.
 - [Phase ?]: Geofence process-death uploads use one credential-free WorkManager bridge and a shared Dart auth drain; native rows are acknowledged only after accepted or duplicate API success.
+- [Phase ?]: 04-06: Canonical geofence CRUD moved to GeofencesController; mutations issue a current-only registration generation.
 
 ### Pending Todos
 
@@ -260,6 +261,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-12T22:37:08.955Z
-Stopped at: Completed 04-04-PLAN.md
+Last session: 2026-08-14T00:05:50.065Z
+Stopped at: Completed 04-06-PLAN.md (04-05 tracer checkpoint remains incomplete by explicit override)
 Resume file: None
