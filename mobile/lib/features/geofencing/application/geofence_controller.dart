@@ -119,8 +119,9 @@ class GeofenceController extends Notifier<GeofenceEditorState> {
   void setNotifyAssignedMember(bool value) =>
       _replace(draft.copyWith(notifyAssignedMember: value));
   void selectRadiusPreset(int radiusMeters) {
-    if (SafeZoneDraft.radiusPresets.contains(radiusMeters))
+    if (SafeZoneDraft.radiusPresets.contains(radiusMeters)) {
       setRadiusMeters(radiusMeters);
+    }
   }
 
   void setRadiusMeters(int radiusMeters) {
