@@ -271,6 +271,7 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
                     onManageSafeZones: showSafeZones
                         ? () => context.push('/safe-zones')
                         : null,
+                    onNotifications: () => context.push('/notifications'),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   _MemberStatusRail(
@@ -446,6 +447,7 @@ class _LiveMapOverlay extends StatelessWidget {
     required this.offlineCount,
     required this.onProfile,
     this.onManageSafeZones,
+    required this.onNotifications,
   });
 
   final LiveLocation? self;
@@ -453,6 +455,7 @@ class _LiveMapOverlay extends StatelessWidget {
   final int offlineCount;
   final VoidCallback onProfile;
   final VoidCallback? onManageSafeZones;
+  final VoidCallback onNotifications;
 
   @override
   Widget build(BuildContext context) {
@@ -521,6 +524,8 @@ class _LiveMapOverlay extends StatelessWidget {
                       const SizedBox(height: AppSpacing.sm),
                       ManageSafeZonesButton(onPressed: onManageSafeZones),
                     ],
+                    const SizedBox(height: AppSpacing.sm),
+                    ViewNotificationsButton(onPressed: onNotifications),
                   ],
                 ),
               ),
@@ -551,6 +556,24 @@ class ManageSafeZonesButton extends StatelessWidget {
     icon: const Icon(Icons.add_location_alt_outlined),
     label: const Text('Manage safe zones'),
     style: OutlinedButton.styleFrom(minimumSize: const Size(48, 48)),
+  );
+}
+
+class ViewNotificationsButton extends StatelessWidget {
+  const ViewNotificationsButton({super.key, this.onPressed});
+
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'View notifications',
+    button: true,
+    child: OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: const Icon(Icons.notifications_none),
+      label: const Text('Notifications'),
+      style: OutlinedButton.styleFrom(minimumSize: const Size(48, 48)),
+    ),
   );
 }
 

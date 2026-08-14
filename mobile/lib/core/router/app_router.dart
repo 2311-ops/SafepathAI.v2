@@ -20,8 +20,10 @@ import '../../features/family/presentation/invite_member_screen.dart';
 import '../../features/family/presentation/manage_permissions_screen.dart';
 import '../../features/geofencing/data/geofence_models.dart';
 import '../../features/geofencing/presentation/edit_safe_zone_screen.dart';
+import '../../features/geofencing/presentation/notifications_screen.dart';
 import '../../features/geofencing/presentation/safe_zone_detail_screen.dart';
 import '../../features/geofencing/presentation/safe_zones_screen.dart';
+import '../../features/geofencing/presentation/zone_activity_screen.dart';
 import '../../features/home/presentation/main_shell.dart';
 import '../../features/location/application/permission_controller.dart';
 import '../../features/location/presentation/battery_transparency_screen.dart';
@@ -67,6 +69,9 @@ const _authenticatedOnlyRoutes = {
   '/safe-zones/add',
   '/safe-zones/:zoneId',
   '/safe-zones/:zoneId/edit',
+  '/notifications',
+  '/notifications/quiet-hours',
+  '/zone-activity',
   '/sos/session',
   '/sos/responder/:sessionId',
   '/settings/emergency-contacts',
@@ -267,6 +272,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/safe-zones',
         name: 'safe-zones',
         builder: (context, state) => const SafeZonesScreen.loading(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        name: 'notifications',
+        builder: (context, state) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: '/zone-activity',
+        name: 'zone-activity',
+        builder: (context, state) => const ZoneActivityScreen.empty(),
       ),
       GoRoute(
         path: '/safe-zones/add',

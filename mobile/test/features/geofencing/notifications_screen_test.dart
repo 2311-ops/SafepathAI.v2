@@ -14,7 +14,10 @@ void main() {
     occurredAtUtc: DateTime.utc(2026, 8, 14, 16, 5),
   );
 
-  testWidgets('shows durable unread routine rows and opens activity', (tester) async {
+  testWidgets('shows durable unread routine rows and opens activity', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
     var openedActivityId = '';
     await tester.pumpWidget(
       MaterialApp(
@@ -28,10 +31,14 @@ void main() {
     expect(find.text('Notifications'), findsOneWidget);
     expect(find.text('Maya entered Home'), findsOneWidget);
     expect(find.text('New'), findsOneWidget);
-    expect(find.bySemanticsLabel('Open activity for Maya entered Home'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Open activity for Maya entered Home'),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('Maya entered Home'));
     expect(openedActivityId, 'activity-1');
+    semantics.dispose();
   });
 
   testWidgets('shows the feed empty state and settings action', (tester) async {
