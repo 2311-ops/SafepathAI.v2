@@ -1,0 +1,79 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/features/geofencing/data/geofence_models.dart';
+import 'package:mobile/features/geofencing/presentation/safe_zone_detail_screen.dart';
+import 'package:mobile/features/geofencing/presentation/safe_zones_screen.dart';
+
+void main() {
+  const activeZone = SafeZone(
+    id: 'zone-1',
+    name: 'Home',
+    category: SafeZoneCategory.home,
+    center: SafeZoneCenter(latitude: 30.0444, longitude: 31.2357),
+    radiusMeters: 250,
+    assignedMemberId: 'member-1',
+    sensitivity: SafeZoneSensitivity.reliable,
+    guardianRecipientIds: {'guardian-1'},
+    notifyAssignedMember: false,
+  );
+
+  Widget app(Widget child) => MaterialApp(home: child);
+
+  testWidgets('safe zones list renders empty, error, and truthful cards', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: SafeZonesScreen.empty()));
+    expect(find.text('No safe zones yet'), findsOneWidget);
+    expect(find.text('Add safe zone'), findsOneWidget);
+
+    await tester.pumpWidget(const MaterialApp(home: SafeZonesScreen.error()));
+    expect(
+      find.text("Couldn't load safe zones. Check your connection and try again."),
+      findsOneWidget,
+    );
+    expect(find.text('Try again'), findsOneWidget);
+
+    await tester.pumpWidget(
+      app(
+        SafeZonesScreen(
+          zones: [
+            activeZone,
+            activeZone.copyWith(
+              activation: SafeZoneActivation.needsLocationPermission,
+            ),
+          ],
+          memberNames: const {'member-1': 'Maya'},
+        ),
+      ),
+    );
+    expect(find.text('Home'), findsNWidgets(2));
+    expect(find.text('Maya'), findsNWidgets(2));
+    expect(find.text('250 m'), findsNWidgets(2));
+    expect(find.text('Active'), findsOneWidget);
+    expect(find.text('Location permission needed'), findsOneWidget);
+    expect(find.text('View activity'), findsNWidgets(2));
+  });
+
+  testWidgets('detail exposes permission settings and confirmed delete', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      app(
+        SafeZoneDetailScreen(
+          zone: activeZone.copyWith(
+            activation: SafeZoneActivation.needsLocationPermission,
+          ),
+          assignedMemberName: 'Maya',
+        ),
+      ),
+    );
+
+    expect(find.text('Edit zone'), findsOneWidget);
+    expect(find.text('View activity'), findsOneWidget);
+    expect(find.text('Open Settings'), findsOneWidget);
+    await tester.tap(find.text('Delete zone'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete Home?'), findsOneWidget);
+    expect(find.text('Keep safe zone'), findsOneWidget);
+  });
+}
