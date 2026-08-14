@@ -11,6 +11,12 @@ import '../../privacy/presentation/privacy_center_screen.dart';
 import '../../sos/application/sos_controller.dart';
 import '../../sos/presentation/sos_arm_button.dart';
 
+/// Height of the bottom nav bar plus the raised SOS disc overhang, excluding
+/// the bottom safe-area inset. Exposed so a tab body drawing its own
+/// bottom-anchored surface (e.g. `LiveMapScreen`'s draggable action sheet)
+/// can reserve the space and never sit under the nav bar or the SOS disc.
+const double kShellBottomBarHeight = 124;
+
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
 
@@ -77,7 +83,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         bottomNavigationBar: SafeArea(
           top: false,
           child: SizedBox(
-            height: 124,
+            height: kShellBottomBarHeight,
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.bottomCenter,
