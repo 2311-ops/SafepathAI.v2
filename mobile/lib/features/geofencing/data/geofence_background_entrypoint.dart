@@ -8,8 +8,7 @@ import 'geofence_candidate_uploader.dart';
 const _backgroundChannel = MethodChannel('safepath/geofence-background');
 
 /// Android WorkManager launches this in a headless Flutter engine.
-@pragma('vm:entry-point')
-Future<void> geofenceBackgroundMain() async {
+Future<void> runGeofenceBackgroundDrain() async {
   WidgetsFlutterBinding.ensureInitialized();
   var shouldRetry = true;
   try {

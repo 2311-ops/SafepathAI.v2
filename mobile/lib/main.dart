@@ -9,7 +9,13 @@ import 'core/config/supabase_config.dart';
 import 'core/os_shortcuts/quick_actions_service.dart';
 import 'core/push/push_service.dart';
 import 'features/geofencing/application/geofence_registration_controller.dart';
+import 'features/geofencing/data/geofence_background_entrypoint.dart';
 import 'features/geofencing/data/geofence_candidate_uploader.dart';
+
+/// Android WorkManager resolves named headless entrypoints from the app's
+/// root Dart library, then delegates the actual drain to the geofence module.
+@pragma('vm:entry-point')
+Future<void> geofenceBackgroundMain() => runGeofenceBackgroundDrain();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
