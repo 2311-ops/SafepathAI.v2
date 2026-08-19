@@ -1,0 +1,24 @@
+<svg viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="160" cy="160" r="150" fill="#2E7D7B" fill-opacity="0.08"/>
+  <circle cx="160" cy="160" r="110" fill="#2E7D7B" fill-opacity="0.06"/>
+
+  <g stroke="#2E7D7B" stroke-opacity="0.35" stroke-width="3" stroke-linecap="round">
+    <line x1="160" y1="160" x2="160" y2="72"/>
+    <line x1="160" y1="160" x2="240" y2="120"/>
+    <line x1="160" y1="160" x2="240" y2="208"/>
+    <line x1="160" y1="160" x2="160" y2="248"/>
+    <line x1="160" y1="160" x2="80" y2="208"/>
+    <line x1="160" y1="160" x2="80" y2="120"/>
+  </g>
+
+  <circle cx="160" cy="72" r="24" fill="#2E7D7B"/>
+  <circle cx="240" cy="120" r="20" fill="#2F9E6B"/>
+  <circle cx="240" cy="208" r="20" fill="#6E66C9"/>
+  <circle cx="160" cy="248" r="24" fill="#C95E8F"/>
+  <circle cx="80" cy="208" r="20" fill="#79D6C9"/>
+  <circle cx="80" cy="120" r="20" fill="#2E7D7B"/>
+
+  <circle cx="160" cy="160" r="34" fill="#FFFFFF"/>
+  <circle cx="160" cy="160" r="34" fill="none" stroke="#2E7D7B" stroke-width="3"/>
+  <path d="M160 172 C148 163 140 156 140 147 C140 141 144.5 137 150 137 C154 137 157.5 139.5 160 143 C162.5 139.5 166 137 170 137 C175.5 137 180 141 180 147 C180 156 172 163 160 172 Z" fill="#2E7D7B"/>
+</svg>
