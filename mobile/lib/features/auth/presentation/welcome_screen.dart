@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -80,7 +81,12 @@ class WelcomeScreen extends StatelessWidget {
                             color: Colors.white.withValues(alpha: 0.86),
                           ),
                         ),
-                        const _AdaptiveWelcomeGap(multiplier: 4),
+                        const _AdaptiveWelcomeGap(multiplier: 1),
+                        SvgPicture.asset(
+                          'assets/illustrations/hero-safety.svg',
+                          width: 160,
+                        ),
+                        const _AdaptiveWelcomeGap(multiplier: 1),
                         PrimaryButton(
                           label: 'Create your circle',
                           backgroundColor: AppColors.accentMint,
