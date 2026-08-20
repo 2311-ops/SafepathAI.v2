@@ -7,6 +7,12 @@ depends_on: []
 files_modified:
   - mobile/lib/features/home/presentation/main_shell.dart
   - mobile/lib/features/privacy/presentation/privacy_center_screen.dart
+  - mobile/assets/icons/map.png
+  - mobile/assets/icons/games.png
+  - mobile/assets/icons/consumer-behavior.png
+  - mobile/assets/icons/protection.png
+  - mobile/assets/icons/join.png
+  - mobile/assets/icons/participation.png
 autonomous: true
 requirements: [QUICK-260820-ciz]
 tags: [flutter, ui, icons, assets, navigation, privacy]
@@ -21,10 +27,14 @@ must_haves:
     - "flutter analyze on the whole mobile package reports no new issues, including no unused-field or unused-import warnings from the removed IconData fields."
     - "No file under mobile/lib/features/geofencing/, mobile/test/features/geofencing/, or mobile/test/helpers/ is modified — those belong to a separate in-progress debug session."
     - "mobile/pubspec.yaml is unmodified."
+    - "All six referenced PNGs are git-tracked when this task finishes — `git ls-files mobile/assets/icons/` lists all six. They are UNTRACKED today, so a fresh clone of the current HEAD would not build."
+    - "The four stray root-level PNGs (distance.png, fast-time.png, flag.png, siblings.png) remain untracked and unstaged."
   artifacts:
     - "mobile/lib/features/home/presentation/main_shell.dart with a single-field _ShellTab and Image.asset nav icons"
     - "mobile/lib/features/privacy/presentation/privacy_center_screen.dart with Image.asset app-bar action icons"
+    - "Six committed PNG assets under mobile/assets/icons/ (map, games, consumer-behavior, protection, join, participation)"
   key_links:
+    - "The six PNGs -> git. VERIFIED AT PLANNING TIME: all six are untracked (`??`) while the four activity-*.png from quick task 260820-av2 ARE tracked. Committing Dart code that references untracked assets ships a repo that fails to build on a fresh clone — the exact gap quick task 260820-53n had to close for its three SVGs. Each asset must be staged in the same commit as the code that references it."
     - "_ShellTab.iconAsset -> Image.asset(tab.iconAsset) in _NavItem.build(). Collapsing two IconData fields into one String is the whole structural change; if the field is renamed in one place and not the other the file will not compile."
     - "assets/icons/*.png -> the EXISTING `- assets/icons/` declaration at mobile/pubspec.yaml:112. Already present from quick task 260820-av2. If pubspec is edited, this plan has gone wrong."
     - "Image.asset excludeFromSemantics:true -> _NavItem's existing Semantics(button, selected, label) wrapper and IconButton's tooltip. Without it, Image merges an isImage flag plus an empty label into the parent node and degrades the announcement."
@@ -36,7 +46,7 @@ Replace six generic Material icons with the user's own PNG icon assets: the four
 
 Purpose: These are the last stock Material glyphs on the app's two most-visited surfaces, called out in the pending "stock icons" UI polish todo. The supplied PNGs are full-colour flat illustrations, so this is not a like-for-like `IconData` swap — the nav bar's icon-tinting selected-state mechanism has to change shape to accommodate them.
 
-Output: Two modified Dart files. No new assets, no pubspec change, no test rewrites expected.
+Output: Two modified Dart files plus six newly git-tracked PNG assets. No pubspec change, no test rewrites expected.
 </objective>
 
 <execution_context>
@@ -50,8 +60,12 @@ Output: Two modified Dart files. No new assets, no pubspec change, no test rewri
 @mobile/lib/features/home/presentation/main_shell.dart
 @mobile/lib/features/privacy/presentation/privacy_center_screen.dart
 
-**Assets — already on disk, already declared, do not regenerate/redraw/resize:**
+**Assets — already on disk, already declared, but NOT yet in git. Do not regenerate/redraw/resize:**
 `mobile/assets/icons/` contains `map.png`, `games.png`, `consumer-behavior.png`, `protection.png`, `participation.png`, `join.png` (plus four `activity-*.png` from quick task 260820-av2). `mobile/pubspec.yaml` line 112 already declares `- assets/icons/` under `flutter.assets`, which covers the whole directory. **No pubspec edit is needed and none should be made.**
+
+**However — verified during planning via `git ls-files` / `git status --porcelain`: all six of the PNGs this task references are UNTRACKED.** Only the four `activity-*.png` are committed. Each task below must therefore `git add` the assets it wires, in the same commit as the code referencing them. Quick task 260820-53n hit this exact gap and had to commit three on-disk-but-untracked SVGs; do not repeat it.
+
+**Also untracked, and NOT part of this task:** four stray root-level PNGs — `distance.png`, `fast-time.png`, `flag.png`, `siblings.png` — sitting in the repo root rather than `mobile/assets/icons/`. Leave them untracked and unstaged. Flag them in the summary so the user can decide where they belong; do not move, delete, or commit them.
 
 **Established precedent to copy:** `mobile/lib/features/location/presentation/history_timeline_screen.dart` already renders these same-directory PNGs via `Image.asset('assets/icons/activity-history.png', width: 26, height: 26)`. That screen is the Activity tab, hosted inside `MainShell`'s `IndexedStack`, so every widget test that builds `MainShell` already loads PNGs from `assets/icons/` successfully. Asset resolution under `flutter test` is therefore a solved, proven problem here — not a risk.
 
@@ -89,7 +103,10 @@ Output: Two modified Dart files. No new assets, no pubspec change, no test rewri
 
 5. Out of scope, leave exactly as-is: `_PlainTabPlaceholder` and its `IconData` field (that is the Insights tab's screen *body*, not the nav bar), and the `package:flutter/material.dart` import (still required for `Image`, `Widget`, `AnimatedScale`).
 
-**Staging:** stage only this one path — `git add mobile/lib/features/home/presentation/main_shell.dart`. Never `git add -A` or `git add .`; the tree is dirty with unrelated geofencing work.
+**Staging:** stage exactly these five paths and nothing else —
+`git add mobile/lib/features/home/presentation/main_shell.dart mobile/assets/icons/map.png mobile/assets/icons/games.png mobile/assets/icons/consumer-behavior.png mobile/assets/icons/protection.png`
+
+The four PNGs are currently untracked; the code you just wrote references them, so they belong in this same commit. Never `git add -A`, `git add .`, or `git add mobile/assets/icons/` (the directory glob would also sweep in nothing today, but the tree is dirty with unrelated geofencing work and four stray root-level PNGs — always name paths explicitly).
   </action>
 <!-- planner-discipline-allow: activeIcon -->
   <verify>
@@ -99,6 +116,7 @@ Output: Two modified Dart files. No new assets, no pubspec change, no test rewri
     <automated>cd mobile && test "$(grep -c 'Icons\.insights' lib/features/home/presentation/main_shell.dart)" = "1" && echo "OK: placeholder body icon preserved"</automated>
     <automated>cd mobile && test "$(grep -c 'AppColors.primaryTintBg' lib/features/home/presentation/main_shell.dart)" = "1" && test "$(grep -c 'AnimatedScale' lib/features/home/presentation/main_shell.dart)" = "1" && echo "OK: selected-state indicators preserved"</automated>
     <automated>cd mobile && flutter test test/features/home/sos_button_press_hold_test.dart test/features/location/location_permission_gate_test.dart</automated>
+    <automated>cd "$(git rev-parse --show-toplevel)" && test "$(git ls-files mobile/assets/icons/map.png mobile/assets/icons/games.png mobile/assets/icons/consumer-behavior.png mobile/assets/icons/protection.png | wc -l)" = "4" && echo "OK: all 4 nav PNGs now git-tracked"</automated>
   </verify>
   <done>
 `main_shell.dart` compiles clean under `flutter analyze` with zero unused-field/unused-import warnings. `_ShellTab` has exactly one icon field, a `String` asset path. All four nav tabs render their PNG untinted at 24x24. The tint background, scale bump, and label colour still switch on selection. The Insights placeholder body's Material icon is untouched. Both MainShell-building test files pass. `git status --porcelain` shows exactly one new entry versus the Step 0 baseline.
@@ -127,7 +145,10 @@ Notes:
 
 **Test handling.** A `find.byIcon` inventory across all of `mobile/test` was run during planning: **no existing test asserts on any of these six icons.** The nav-bar-adjacent assertions that do exist go through labels (`find.text('Map')`, `find.text('Insights')`) and are unaffected by an icon swap. So no test edit is expected. If one nevertheless breaks because a `find.byIcon(...)` finder no longer resolves, re-target it to an equivalently strong finder — `find.byTooltip('Invite')`, `find.byTooltip('Circle members')`, or the tab's label `Text` — rather than deleting the assertion or loosening it to `findsAny`/`findsWidgets`. Record in the summary exactly which finder changed and why.
 
-**Staging:** `git add mobile/lib/features/privacy/presentation/privacy_center_screen.dart` only.
+**Staging:** stage exactly these three paths and nothing else —
+`git add mobile/lib/features/privacy/presentation/privacy_center_screen.dart mobile/assets/icons/join.png mobile/assets/icons/participation.png`
+
+Both PNGs are currently untracked and must land in the same commit as the code referencing them. Do not stage the stray root-level `distance.png` / `fast-time.png` / `flag.png` / `siblings.png`.
   </action>
   <verify>
     <automated>cd mobile && test "$(grep -c 'assets/icons/join.png' lib/features/privacy/presentation/privacy_center_screen.dart)" = "1" && test "$(grep -c 'assets/icons/participation.png' lib/features/privacy/presentation/privacy_center_screen.dart)" = "1" && echo "OK: both PNGs wired"</automated>
@@ -135,8 +156,10 @@ Notes:
     <automated>cd mobile && test "$(grep -c "tooltip: 'Invite'" lib/features/privacy/presentation/privacy_center_screen.dart)" = "1" && test "$(grep -c "tooltip: 'Circle members'" lib/features/privacy/presentation/privacy_center_screen.dart)" = "1" && test "$(grep -c '/circle/invite' lib/features/privacy/presentation/privacy_center_screen.dart)" = "1" && test "$(grep -c '/circle/permissions' lib/features/privacy/presentation/privacy_center_screen.dart)" = "1" && test "$(grep -c 'if (hasFamily && isGuardian)' lib/features/privacy/presentation/privacy_center_screen.dart)" = "2" && echo "OK: tooltips, routes, guards unchanged"</automated>
     <automated>cd mobile && flutter analyze</automated>
     <automated>cd mobile && flutter test test/features/privacy/privacy_center_screen_test.dart test/features/home/sos_button_press_hold_test.dart test/core/router/auth_flow_navigation_test.dart</automated>
-    <automated>git diff --name-only -- mobile/pubspec.yaml | wc -l | grep -qx '0' && echo "OK: pubspec.yaml untouched"</automated>
-    <automated>git status --porcelain -- mobile/lib/features/geofencing mobile/test/features/geofencing mobile/test/helpers && git diff --stat</automated>
+    <automated>cd "$(git rev-parse --show-toplevel)" && test "$(git diff --name-only -- mobile/pubspec.yaml | wc -l)" = "0" && echo "OK: pubspec.yaml untouched"</automated>
+    <automated>cd "$(git rev-parse --show-toplevel)" && test "$(git ls-files mobile/assets/icons/ | wc -l)" = "10" && echo "OK: all 6 new PNGs tracked alongside the 4 activity-*.png"</automated>
+    <automated>cd "$(git rev-parse --show-toplevel)" && test "$(git ls-files distance.png fast-time.png flag.png siblings.png | wc -l)" = "0" && echo "OK: stray root PNGs left untracked"</automated>
+    <automated>cd "$(git rev-parse --show-toplevel)" && git status --porcelain -- mobile/lib/features/geofencing mobile/test/features/geofencing mobile/test/helpers && git diff --stat</automated>
   </verify>
   <done>
 Both Guardian app-bar buttons render their PNG at 24x24 with tooltips, routes, and `hasFamily && isGuardian` guards untouched. `flutter analyze` on the whole `mobile/` package reports no issues. All named test files pass with no assertion weakened. `git diff --stat` shows `main_shell.dart` and `privacy_center_screen.dart` as the only files this task changed; `pubspec.yaml` is untouched; every geofencing/helper entry matches the Task 1 Step 0 baseline exactly.
@@ -164,9 +187,10 @@ Both Guardian app-bar buttons render their PNG at 24x24 with tooltips, routes, a
 <verification>
 1. `cd mobile && flutter analyze` — whole package, no issues. This is the gate for the unused-field/unused-import risk created by removing the `IconData` fields.
 2. `cd mobile && flutter test` — full suite, if runtime allows; otherwise at minimum the five files named in the task verify blocks (`sos_button_press_hold_test.dart`, `location_permission_gate_test.dart`, `privacy_center_screen_test.dart`, `auth_flow_navigation_test.dart`, plus any test the executor discovers touching these surfaces). Note: two pre-existing unrelated failures were logged during quick task 260820-av2 — if they reappear, confirm they are the same two and do not attempt to fix them here.
-3. `git diff --stat` — `mobile/lib/features/home/presentation/main_shell.dart` and `mobile/lib/features/privacy/presentation/privacy_center_screen.dart` are the only files this task touched. `mobile/pubspec.yaml` must show zero changes.
-4. `git status --porcelain` compared against the Task 1 Step 0 baseline — every geofencing / `test/helpers` / `.planning/debug` entry unchanged, exactly two new entries added.
-5. Manual (optional, not blocking): launch the app and confirm the four nav icons render in full colour, the selected tab still reads as selected via its tint background and teal label, and the Privacy Center app bar shows the two new icons for a Guardian.
+3. `git diff --stat` — `mobile/lib/features/home/presentation/main_shell.dart` and `mobile/lib/features/privacy/presentation/privacy_center_screen.dart` are the only *modified* files this task touched. `mobile/pubspec.yaml` must show zero changes.
+4. `git ls-files mobile/assets/icons/` returns 10 entries — the 4 pre-existing `activity-*.png` plus the 6 this task committed. This is the gate that stops the repo shipping code that references untracked assets.
+5. `git status --porcelain` compared against the Task 1 Step 0 baseline — every geofencing / `test/helpers` / `.planning/debug` entry unchanged, the 6 PNG `??` entries resolved into commits, and the 4 stray root-level PNGs still `??`.
+6. Manual (optional, not blocking): launch the app and confirm the four nav icons render in full colour, the selected tab still reads as selected via its tint background and teal label, and the Privacy Center app bar shows the two new icons for a Guardian.
 </verification>
 
 <success_criteria>
@@ -176,7 +200,8 @@ Both Guardian app-bar buttons render their PNG at 24x24 with tooltips, routes, a
 - Screen-reader announcements unchanged (one label per nav item; tooltip per icon button).
 - Tooltips, routes, and Guardian guards on the two Privacy Center buttons byte-identical.
 - `flutter analyze` clean on `mobile/`; named tests pass with no assertion weakened.
-- Exactly two files modified; `pubspec.yaml` and all geofencing-session files untouched.
+- All six referenced PNGs are git-tracked and committed alongside the code that references them.
+- Exactly two files modified; `pubspec.yaml`, the four stray root-level PNGs, and all geofencing-session files untouched.
 </success_criteria>
 
 <output>
