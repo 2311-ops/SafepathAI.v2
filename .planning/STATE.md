@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: geofencing
 status: blocked
-stopped_at: 04-17 automated gates green; physical Android/iOS acceptance remains blocked, and 04-05 physical tracer evidence is still incomplete
-last_updated: "2026-08-14T04:58:12.643Z"
+stopped_at: "Completed quick task 260820-5xp: Enhance the online/offline presence indicator (AppColors.offline token + animated pulse)"
+last_updated: "2026-08-20T01:36:33.250Z"
 last_activity: 2026-08-14
 last_activity_desc: "Completed quick task 260814-aft: Wire up delete-zone and open-settings affordances on Safe Zone detail screen"
 progress:
@@ -111,6 +111,9 @@ Progress: [██████████] 97%
 | Phase 04-geofencing P16 | 7min | 2 tasks | 4 files |
 | Phase 04 P11 | 75min | 2 tasks | 9 files |
 | Phase quick-260814-aft P01 | 15min | 3 tasks | 3 files |
+| Phase quick-260820-3tj P01 | 10min | 5 tasks | 9 files |
+| Phase quick-260820-53n P01 | 15min | 5 tasks | 6 files |
+| Phase quick-260820-5xp P01 | 35min | 4 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -226,6 +229,9 @@ Recent decisions affecting current work:
 - [Phase ?]: 04-11: Boot/package/GEOFENCE_NOT_AVAILABLE recovery is bounded and credential-free; authenticated canonical registration remains the only sync path.
 - [Phase ?]: 04-11: iOS uses Core Location plus an app-private outbox; 04-17 still requires Xcode and physical-device evidence.
 - [Phase quick-260814-aft]: SafeZoneDetailScreen's confirm dialog stays owned by the screen; SafeZoneDetailPage supplies only the post-confirmation handler, and family id resolution prefers loaded GeofenceListController state, falling back to FamilyController with an explicit load() for the cold-deep-link case.
+- [Phase ?]: No pre-supplied SVG markup existed for the 3 illustrations despite the plan calling them approved/designed - authored 3 original flat-vector illustrations using only locked AppColors tokens, matching required viewBox dims; user should review against any real approved artwork
+- [Phase quick-260820-53n]: Wired welcome-background.svg (full-bleed Welcome-screen backdrop), emergency-contacts.svg (EmergencyContactsScreen empty state), and zone-activity-empty.svg (ZoneActivityScreen empty state); committed the 3 pre-approved SVG assets which were on disk but untracked before this plan started.
+- [Phase ?]: [Quick 260820-5xp]: FadeTransition (not AnimatedBuilder+Opacity) drives the online presence dot's pulse -- avoids colliding with an existing find.byType(Opacity) single-match widget-test finder used for the marker's unrelated staleness-fade wrapper. _PresenceDotState creates its AnimationController eagerly in initState rather than a lazy late-final field initializer, since the offline/reduced-motion early-return path in build() never touches the controller and a lazy initializer would otherwise construct it for the first time inside dispose(), crashing mid-teardown.
 
 ### Pending Todos
 
@@ -277,6 +283,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260813-09i | Fixed the WhatsApp SOS alert template parameter-count mismatch shipped in 260812-wgl: ISmsGateway.SendAsync's second parameter moved from a single composed string to an ordered IReadOnlyList<string>, SosAlertDispatcher.ComposeSmsTemplateParameters builds three ordered values (name, maps link or "Location unavailable" fallback, invariant-culture UTC timestamp), WhatsAppSmsGateway/LoggingSmsGateway/NoOpSmsGateway updated, tests pin the three-parameter arity/order/fallback/normalization, docs/EXTERNAL-SETUP.md records the confirmed three-placeholder template shape | 2026-08-13 | c84072f, 04a5b7b | | [260813-09i-fix-whatsapp-sos-alert-template-paramete](./quick/260813-09i-fix-whatsapp-sos-alert-template-paramete/) |
 | 260814-8r2 | Wired the Phase 04 Safe Zones UI flow, which existed as unconnected components: added SafeZonesPage/SafeZoneEditorPage/SafeZoneReviewPage/SafeZoneDetailPage Riverpod-connected wrappers, pointed /safe-zones, /safe-zones/add, the new /safe-zones/add/review, and the new /safe-zones/:zoneId/edit routes at them, added SafeZoneDraft.fromZone + editor prefill for the edit path, fixed a real bug where geofence_controller.dart's loadFamily reset a non-empty guardian-recipient selection on review, and added a router-level integration test (safe_zone_router_flow_test.dart) so this class of route-defined-but-unwired gap has automated coverage | 2026-08-14 | 69ecc5c, b90fada, 3e59e95 | | [260814-8r2-wire-up-phase-04-safe-zones-ui-flow-list](./quick/260814-8r2-wire-up-phase-04-safe-zones-ui-flow-list/) |
 | 260814-aft | Wired the two remaining dead affordances on SafeZoneDetailScreen left out of 260814-8r2: onDeleteConfirmed resolves a family id (preferring loaded GeofenceListController state, falling back to FamilyController with an explicit load() for a cold deep link) then calls the existing GeofenceListController.deleteZone, navigating back to /safe-zones only on success; onOpenSettings delegates to locationPermissionServiceProvider.openAppSettings() (it opens OS app settings for background-location permission, not the edit route). No second confirmation dialog added — the screen's existing AlertDialog stays the sole confirm gate. Added router-level test coverage for delete-confirm, delete-cancel, and open-settings | 2026-08-14 | 901b2db, 2c13fdf | | [260814-aft-wire-up-delete-zone-and-open-settings-af](./quick/260814-aft-wire-up-delete-zone-and-open-settings-af/) |
+| 260820-53n | Wired the 3 pre-approved SVG illustrations into WelcomeScreen (full-bleed backdrop), EmergencyContactsScreen (empty state), and ZoneActivityScreen (empty state); also committed the 3 SVG assets themselves, which were on disk but untracked in git before this plan started | 2026-08-20 | e2f2bf5, a271dd1, d70fff6, 7c3ac42 | | [260820-53n-wire-3-already-created-svg-illustration-](./quick/260820-53n-wire-3-already-created-svg-illustration-/) |
 
 ## Deferred Items
 
@@ -288,6 +295,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-14T04:57:22.096Z
-Stopped at: Completed 04-11-PLAN.md (source-complete; 04-05 physical tracer remains incomplete)
+Last session: 2026-08-20T01:36:33.231Z
+Stopped at: Completed quick task 260820-5xp: Enhance the online/offline presence indicator (AppColors.offline token + animated pulse)
 Resume file: None
