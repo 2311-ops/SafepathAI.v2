@@ -19,16 +19,19 @@ class PrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.backgroundColor,
     this.foregroundColor,
+    this.icon,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final Color? backgroundColor;
   final Color? foregroundColor;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
     final hasOverride = backgroundColor != null || foregroundColor != null;
+    final labelText = Text(label);
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -45,7 +48,17 @@ class PrimaryButton extends StatelessWidget {
                 ),
               )
             : null,
-        child: Text(label),
+        child: icon == null
+            ? labelText
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon),
+                  const SizedBox(width: 8),
+                  labelText,
+                ],
+              ),
       ),
     );
   }
