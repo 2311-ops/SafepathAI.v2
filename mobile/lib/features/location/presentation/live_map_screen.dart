@@ -868,7 +868,7 @@ class _InlinePresence extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = isOnline ? AppColors.safe : AppColors.bodySecondary;
+    final foreground = isOnline ? AppColors.safe : AppColors.offline;
     return Row(
       children: [
         _PresenceDot(isOnline: isOnline, size: 8),
@@ -892,24 +892,73 @@ class _InlinePresence extends StatelessWidget {
   }
 }
 
-class _PresenceDot extends StatelessWidget {
+class _PresenceDot extends StatefulWidget {
   const _PresenceDot({required this.isOnline, required this.size});
 
   final bool isOnline;
   final double size;
 
   @override
+  State<_PresenceDot> createState() => _PresenceDotState();
+}
+
+class _PresenceDotState extends State<_PresenceDot>
+    with SingleTickerProviderStateMixin {
+  // Created eagerly in initState (not as a `late final` field initializer)
+  // so the controller always exists while mounted. An offline dot's build()
+  // never reads _pulseController (see the early-return below), so a lazy
+  // `late final` initializer would otherwise run for the first time inside
+  // dispose() -- constructing a fresh AnimationController mid-teardown and
+  // crashing on the deactivated widget tree.
+  late final AnimationController _pulseController;
+
+  // Opacity ranges 1.0 (value=0) down to 0.55 (value=1), equivalent to the
+  // `0.55 + 0.45 * (1 - value)` formula, reused as an Animation<double> so
+  // FadeTransition can drive it directly (see below).
+  late final Animation<double> _pulseOpacity = Tween<double>(
+    begin: 1.0,
+    end: 0.55,
+  ).animate(_pulseController);
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final color = widget.isOnline ? AppColors.safe : AppColors.offline;
+
+    final dot = AnimatedContainer(
       duration: const Duration(milliseconds: 220),
-      width: size,
-      height: size,
+      width: widget.size,
+      height: widget.size,
       decoration: BoxDecoration(
-        color: isOnline ? AppColors.safe : AppColors.bodySecondary,
+        color: color,
         shape: BoxShape.circle,
         border: Border.all(color: AppColors.surface, width: 2),
       ),
     );
+
+    if (!widget.isOnline || reduceMotion) return dot;
+
+    // FadeTransition (not AnimatedBuilder+Opacity): it drives opacity via
+    // RenderAnimatedOpacity directly rather than composing an `Opacity`
+    // widget, so it does not collide with existing `find.byType(Opacity)`
+    // widget-test finders that assert a single Opacity descendant for the
+    // unrelated staleness-fade wrapper elsewhere in the marker tree.
+    return FadeTransition(opacity: _pulseOpacity, child: dot);
   }
 }
 
