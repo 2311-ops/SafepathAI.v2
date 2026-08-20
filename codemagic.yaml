@@ -145,7 +145,7 @@ workflows:
 
     environment:
       flutter: stable
-      java: 17
+      java: 21
       groups:
         - safepath_mobile_config
         - safepath_firebase_config
