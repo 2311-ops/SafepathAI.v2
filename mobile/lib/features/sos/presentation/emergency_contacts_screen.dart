@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -377,6 +378,11 @@ class _EmptyContactsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          SvgPicture.asset(
+            'assets/illustrations/emergency-contacts.svg',
+            width: 130,
+          ),
+          const SizedBox(height: AppSpacing.md),
           Text('No emergency contacts yet.', style: AppTypography.title),
           const SizedBox(height: AppSpacing.xs),
           Text(
