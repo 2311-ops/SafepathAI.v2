@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: geofencing
 status: blocked
-stopped_at: "Completed quick task 260820-6mb: Split two-toned colors in the aggregate status pill"
-last_updated: "2026-08-20T01:52:24.892Z"
+stopped_at: "Completed quick task 260820-ciz: Replace 6 stock bottom-nav/Privacy-Center Guardian icons with the user's own PNG assets"
+last_updated: "2026-08-20T06:17:11.999Z"
 last_activity: 2026-08-14
 last_activity_desc: "Completed quick task 260814-aft: Wire up delete-zone and open-settings affordances on Safe Zone detail screen"
 progress:
@@ -235,6 +235,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Quick 260820-5xp]: FadeTransition (not AnimatedBuilder+Opacity) drives the online presence dot's pulse -- avoids colliding with an existing find.byType(Opacity) single-match widget-test finder used for the marker's unrelated staleness-fade wrapper. _PresenceDotState creates its AnimationController eagerly in initState rather than a lazy late-final field initializer, since the offline/reduced-motion early-return path in build() never touches the controller and a lazy initializer would otherwise construct it for the first time inside dispose(), crashing mid-teardown.
 - [Phase quick-260820-6mb]: Live Map compact status pill separator span left unstyled (inherits base Text.rich style) rather than explicitly colored, per plan's simplicity guidance.
 - [Quick 260820-av2]: Extended SafePathCard with optional color/border params (D-01) rather than forking it — it had no such API despite the task brief's assumption; all 31 existing call sites stay pixel-identical since both params default to null. showDatePicker's initialDate/firstDate/lastDate normalized to date-only and clamped (D-02) to prevent an assertion crash from a UTC-midnight selectedDate.toLocal() exceeding lastDate before 02:00 local. Added a dedicated onDateSelected callback + _goToDate helper (D-03) instead of simulating N chevron taps for a date pick. TimelineNode's duration-badge text color (0xFF1E7A50) is a private const local to timeline_node.dart, not added to AppColors (D-04) — flagged for user acceptance since it's the one value in this task not drawn from the locked token file.
+- [Phase quick-260820-ciz]: Replaced 6 stock bottom-nav/Privacy-Center Guardian app-bar Material icons with the user's own full-colour PNGs (map.png, games.png, consumer-behavior.png, protection.png, join.png, participation.png), which were already on disk but untracked; _ShellTab collapsed from two IconData fields to one String iconAsset since the PNGs are single full-colour illustrations with no outlined/filled pair.
 
 ### Pending Todos
 
@@ -288,6 +289,7 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260814-aft | Wired the two remaining dead affordances on SafeZoneDetailScreen left out of 260814-8r2: onDeleteConfirmed resolves a family id (preferring loaded GeofenceListController state, falling back to FamilyController with an explicit load() for a cold deep link) then calls the existing GeofenceListController.deleteZone, navigating back to /safe-zones only on success; onOpenSettings delegates to locationPermissionServiceProvider.openAppSettings() (it opens OS app settings for background-location permission, not the edit route). No second confirmation dialog added — the screen's existing AlertDialog stays the sole confirm gate. Added router-level test coverage for delete-confirm, delete-cancel, and open-settings | 2026-08-14 | 901b2db, 2c13fdf | | [260814-aft-wire-up-delete-zone-and-open-settings-af](./quick/260814-aft-wire-up-delete-zone-and-open-settings-af/) |
 | 260820-53n | Wired the 3 pre-approved SVG illustrations into WelcomeScreen (full-bleed backdrop), EmergencyContactsScreen (empty state), and ZoneActivityScreen (empty state); also committed the 3 SVG assets themselves, which were on disk but untracked in git before this plan started | 2026-08-20 | e2f2bf5, a271dd1, d70fff6, 7c3ac42 | | [260820-53n-wire-3-already-created-svg-illustration-](./quick/260820-53n-wire-3-already-created-svg-illustration-/) |
 | 260820-av2 | Redesigned the Activity screen to the approved mockup: icon-led header, tappable member-selector pill + avatar bottom sheet, human date label with a clamped date picker and today-capped next-day chevron, colour-coded icon-led stat cards, a map icon on View route, and green transit timeline nodes with duration pills. Extended SafePathCard/StatTile/PrimaryButton/TimelineNode backward-compatibly (all new params default null); registered the 4 activity-*.png icons. Zero edits to the pre-existing history_timeline_screen_test.dart; 2 pre-existing unrelated test failures found and logged, not fixed | 2026-08-20 | 7a3ce45, f7203e9 | | [260820-av2-redesign-activity-screen-history-timelin](./quick/260820-av2-redesign-activity-screen-history-timelin/) |
+| 260820-ciz | Replaced 6 stock Material icons with the user's own full-colour PNGs: the 4 MainShell bottom-nav tab icons (map/games/consumer-behavior/protection.png) and the 2 Privacy Center Guardian app-bar icons (join/participation.png). _ShellTab collapsed from two IconData fields to one String iconAsset since the PNGs are single full-colour illustrations; Image.asset rendered untinted with excludeFromSemantics:true so existing Semantics/tooltip labels stay the sole announcement. All 6 PNGs were already on disk but untracked; committed alongside the code referencing them | 2026-08-20 | c67aefd, 982b308 | | [260820-ciz-replace-6-bottom-nav-and-circle-manageme](./quick/260820-ciz-replace-6-bottom-nav-and-circle-manageme/) |
 
 ## Deferred Items
 
@@ -299,6 +301,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-20T01:52:24.866Z
-Stopped at: Completed quick task 260820-av2: Redesign the Activity screen (history timeline) to the approved mockup
+Last session: 2026-08-20T06:17:11.971Z
+Stopped at: Completed quick task 260820-ciz: Replace 6 stock bottom-nav/Privacy-Center Guardian icons with the user's own PNG assets
 Resume file: None
