@@ -675,12 +675,23 @@ class _CompactStatusSummary extends StatelessWidget {
           const Icon(Icons.wifi_tethering, size: 12, color: AppColors.safe),
           const SizedBox(width: 4),
           Flexible(
-            child: Text(
-              '$onlineCount on  $offlineCount off',
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '$onlineCount on',
+                    style: const TextStyle(color: AppColors.safe),
+                  ),
+                  const TextSpan(text: '  '),
+                  TextSpan(
+                    text: '$offlineCount off',
+                    style: const TextStyle(color: AppColors.offline),
+                  ),
+                ],
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTypography.caption.copyWith(
-                color: AppColors.safe,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0,
                 fontSize: 10.5,
