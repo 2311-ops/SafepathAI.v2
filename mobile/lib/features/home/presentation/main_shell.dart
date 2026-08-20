@@ -25,7 +25,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   // it is excluded from this list — only the four navigable tabs remain.
   static const _tabs = [
     _ShellTab(iconAsset: 'assets/icons/map.png', label: 'Map'),
-    _ShellTab(iconAsset: 'assets/icons/games.png', label: 'Activity'),
+    _ShellTab(iconAsset: 'assets/icons/activity.png', label: 'Activity'),
     _ShellTab(
       iconAsset: 'assets/icons/consumer-behavior.png',
       label: 'Insights',
