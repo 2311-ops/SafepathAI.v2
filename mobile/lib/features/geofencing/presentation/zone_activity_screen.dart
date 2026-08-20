@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../shared_widgets/timeline_node.dart';
 import '../application/geofence_activity_controller.dart';
@@ -184,17 +185,20 @@ class _ActivitySkeleton extends StatelessWidget {
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
   @override
-  Widget build(BuildContext context) => const Center(
+  Widget build(BuildContext context) => Center(
     child: Padding(
-      padding: EdgeInsets.all(24),
+      padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.timeline_outlined, size: 48),
-          SizedBox(height: 16),
-          Text('No zone activity yet'),
-          SizedBox(height: 8),
-          Text('Confirmed arrivals and departures from the last 7 days will appear here.'),
+          SvgPicture.asset(
+            'assets/illustrations/zone-activity-empty.svg',
+            width: 110,
+          ),
+          const SizedBox(height: 16),
+          const Text('No zone activity yet'),
+          const SizedBox(height: 8),
+          const Text('Confirmed arrivals and departures from the last 7 days will appear here.'),
         ],
       ),
     ),
