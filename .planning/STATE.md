@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: geofencing
 status: blocked
-stopped_at: "Completed quick task 260820-5xp: Enhance the online/offline presence indicator (AppColors.offline token + animated pulse)"
-last_updated: "2026-08-20T01:36:33.250Z"
+stopped_at: "Completed quick task 260820-6mb: Split two-toned colors in the aggregate status pill"
+last_updated: "2026-08-20T01:52:24.892Z"
 last_activity: 2026-08-14
 last_activity_desc: "Completed quick task 260814-aft: Wire up delete-zone and open-settings affordances on Safe Zone detail screen"
 progress:
@@ -114,6 +114,7 @@ Progress: [██████████] 97%
 | Phase quick-260820-3tj P01 | 10min | 5 tasks | 9 files |
 | Phase quick-260820-53n P01 | 15min | 5 tasks | 6 files |
 | Phase quick-260820-5xp P01 | 35min | 4 tasks | 3 files |
+| Phase quick-260820-6mb P01 | 10min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -232,6 +233,7 @@ Recent decisions affecting current work:
 - [Phase ?]: No pre-supplied SVG markup existed for the 3 illustrations despite the plan calling them approved/designed - authored 3 original flat-vector illustrations using only locked AppColors tokens, matching required viewBox dims; user should review against any real approved artwork
 - [Phase quick-260820-53n]: Wired welcome-background.svg (full-bleed Welcome-screen backdrop), emergency-contacts.svg (EmergencyContactsScreen empty state), and zone-activity-empty.svg (ZoneActivityScreen empty state); committed the 3 pre-approved SVG assets which were on disk but untracked before this plan started.
 - [Phase ?]: [Quick 260820-5xp]: FadeTransition (not AnimatedBuilder+Opacity) drives the online presence dot's pulse -- avoids colliding with an existing find.byType(Opacity) single-match widget-test finder used for the marker's unrelated staleness-fade wrapper. _PresenceDotState creates its AnimationController eagerly in initState rather than a lazy late-final field initializer, since the offline/reduced-motion early-return path in build() never touches the controller and a lazy initializer would otherwise construct it for the first time inside dispose(), crashing mid-teardown.
+- [Phase quick-260820-6mb]: Live Map compact status pill separator span left unstyled (inherits base Text.rich style) rather than explicitly colored, per plan's simplicity guidance.
 
 ### Pending Todos
 
@@ -295,6 +297,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-20T01:36:33.231Z
-Stopped at: Completed quick task 260820-5xp: Enhance the online/offline presence indicator (AppColors.offline token + animated pulse)
+Last session: 2026-08-20T01:52:24.866Z
+Stopped at: Completed quick task 260820-6mb: Split two-toned colors in the aggregate status pill
 Resume file: None
