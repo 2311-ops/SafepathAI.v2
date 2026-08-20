@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
@@ -111,7 +112,11 @@ class _InviteMemberScreenState extends ConsumerState<InviteMemberScreen> {
                 padding: const EdgeInsets.all(22),
                 child: Column(
                   children: [
-                    const Icon(Icons.diversity_3, size: 48),
+                    SvgPicture.asset(
+                      'assets/illustrations/family-connect.svg',
+                      width: 100,
+                      height: 100,
+                    ),
                     const SizedBox(height: AppSpacing.md),
                     Text('Create a circle first', style: AppTypography.title),
                     const SizedBox(height: AppSpacing.xs),
