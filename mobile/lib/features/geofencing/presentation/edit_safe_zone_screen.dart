@@ -500,6 +500,7 @@ class _CategoryAndNamePanel extends StatelessWidget {
               children: [
                 for (final category in SafeZoneCategory.values)
                   _CategoryOption(
+                    key: ValueKey('category-option-${category.name}'),
                     category: category,
                     selected: selectedCategory == category,
                     onTap: () => onCategorySelected(category),
@@ -523,6 +524,7 @@ class _CategoryAndNamePanel extends StatelessWidget {
 
 class _CategoryOption extends StatelessWidget {
   const _CategoryOption({
+    super.key,
     required this.category,
     required this.selected,
     required this.onTap,

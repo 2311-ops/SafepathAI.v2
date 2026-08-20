@@ -161,12 +161,12 @@ void main() {
       );
       expect(reviewButton.onPressed, isNotNull);
 
-      await tester.drag(
-        find.byType(SingleChildScrollView),
-        const Offset(0, -160),
+      final customOption = find.byKey(
+        const ValueKey('category-option-custom'),
       );
+      await tester.ensureVisible(customOption);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Custom'));
+      await tester.tap(customOption);
       await tester.pump();
       await tester.tap(find.widgetWithText(ElevatedButton, 'Review zone'));
       await tester.pump();
