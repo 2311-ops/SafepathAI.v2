@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../shared_widgets/safepath_text_field.dart';
 import '../../family/data/family_models.dart';
 import '../../location/application/location_controller.dart';
 import '../../location/application/map_geometry.dart';
@@ -162,29 +163,15 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              Text('ZONE TYPE AND NAME', style: AppTypography.caption),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final category in SafeZoneCategory.values)
-                    ChoiceChip(
-                      label: Text(category.wireValue),
-                      selected: draft.category == category,
-                      onSelected: (_) {
-                        controller.selectCategory(category);
-                        _nameController.text = controller.draft.name;
-                      },
-                    ),
-                ],
-              ),
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: 'ZONE NAME',
-                  errorText: editor.validation.name,
-                ),
-                onChanged: controller.setName,
+              _CategoryAndNamePanel(
+                selectedCategory: draft.category,
+                nameController: _nameController,
+                nameError: editor.validation.name,
+                onCategorySelected: (category) {
+                  controller.selectCategory(category);
+                  _nameController.text = controller.draft.name;
+                },
+                onNameChanged: controller.setName,
               ),
               const SizedBox(height: 24),
               DropdownButtonFormField<String>(
@@ -257,7 +244,7 @@ class _SafeZoneEditorScreenState extends ConsumerState<SafeZoneEditorScreen> {
                     for (final sensitivity in SafeZoneSensitivity.values)
                       RadioListTile<SafeZoneSensitivity>(
                         value: sensitivity,
-                        title: Text(sensitivity.wireValue),
+                        title: Text(sensitivity.label),
                         subtitle: Text(sensitivity.description),
                       ),
                   ],
@@ -435,6 +422,173 @@ const _fallbackMapCenter = SafeZoneCenter(latitude: 20, longitude: 0);
 
 String _formatCenter(SafeZoneCenter center) =>
     '${center.latitude.toStringAsFixed(4)}, ${center.longitude.toStringAsFixed(4)}';
+
+Color _categoryColor(SafeZoneCategory category) => switch (category) {
+  SafeZoneCategory.home => AppColors.safe,
+  SafeZoneCategory.school => AppColors.primaryTeal,
+  SafeZoneCategory.university => AppColors.primaryTeal,
+  SafeZoneCategory.workplace => AppColors.memberViolet,
+  SafeZoneCategory.custom => AppColors.bodySecondary,
+};
+
+IconData _categoryIcon(SafeZoneCategory category) => switch (category) {
+  SafeZoneCategory.home => Icons.home_outlined,
+  SafeZoneCategory.school => Icons.school_outlined,
+  SafeZoneCategory.university => Icons.account_balance_outlined,
+  SafeZoneCategory.workplace => Icons.work_outline,
+  SafeZoneCategory.custom => Icons.place_outlined,
+};
+
+class _CategoryAndNamePanel extends StatelessWidget {
+  const _CategoryAndNamePanel({
+    required this.selectedCategory,
+    required this.nameController,
+    required this.nameError,
+    required this.onCategorySelected,
+    required this.onNameChanged,
+  });
+
+  final SafeZoneCategory selectedCategory;
+  final TextEditingController nameController;
+  final String? nameError;
+  final ValueChanged<SafeZoneCategory> onCategorySelected;
+  final ValueChanged<String> onNameChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.hairline),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120C3A3F),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.category_outlined),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Zone type & name', style: AppTypography.title),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Choose what this place is, and give it a name your family will recognize.',
+                        style: AppTypography.bodySecondary,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final category in SafeZoneCategory.values)
+                  _CategoryOption(
+                    category: category,
+                    selected: selectedCategory == category,
+                    onTap: () => onCategorySelected(category),
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            SafePathTextField(
+              label: 'Zone name',
+              controller: nameController,
+              errorText: nameError,
+              onChanged: onNameChanged,
+              prefixIcon: _categoryIcon(selectedCategory),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryOption extends StatelessWidget {
+  const _CategoryOption({
+    required this.category,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final SafeZoneCategory category;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _categoryColor(category);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeInOut,
+          constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xsMd,
+            vertical: AppSpacing.sm,
+          ),
+          decoration: BoxDecoration(
+            color: selected ? color : color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(14),
+            border: selected ? null : Border.all(color: color),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _categoryIcon(category),
+                size: 18,
+                color: selected ? Colors.white : color,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                category.wireValue,
+                style: AppTypography.body.copyWith(
+                  color: selected ? Colors.white : color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (selected) ...[
+                const SizedBox(width: AppSpacing.xs),
+                const Icon(Icons.check, size: 16, color: Colors.white),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _LocationPickerPanel extends StatelessWidget {
   const _LocationPickerPanel({
