@@ -24,22 +24,13 @@ class _MainShellState extends ConsumerState<MainShell> {
   // The SOS slot (index 2) is an action, never a navigation destination, so
   // it is excluded from this list — only the four navigable tabs remain.
   static const _tabs = [
-    _ShellTab(icon: Icons.map_outlined, activeIcon: Icons.map, label: 'Map'),
+    _ShellTab(iconAsset: 'assets/icons/map.png', label: 'Map'),
+    _ShellTab(iconAsset: 'assets/icons/games.png', label: 'Activity'),
     _ShellTab(
-      icon: Icons.history_outlined,
-      activeIcon: Icons.history,
-      label: 'Activity',
-    ),
-    _ShellTab(
-      icon: Icons.insights_outlined,
-      activeIcon: Icons.insights,
+      iconAsset: 'assets/icons/consumer-behavior.png',
       label: 'Insights',
     ),
-    _ShellTab(
-      icon: Icons.privacy_tip_outlined,
-      activeIcon: Icons.privacy_tip,
-      label: 'Privacy',
-    ),
+    _ShellTab(iconAsset: 'assets/icons/protection.png', label: 'Privacy'),
   ];
 
   void _onArmComplete() {
@@ -135,14 +126,9 @@ class _MainShellState extends ConsumerState<MainShell> {
 }
 
 class _ShellTab {
-  const _ShellTab({
-    required this.icon,
-    required this.activeIcon,
-    required this.label,
-  });
+  const _ShellTab({required this.iconAsset, required this.label});
 
-  final IconData icon;
-  final IconData activeIcon;
+  final String iconAsset;
   final String label;
 }
 
@@ -187,9 +173,11 @@ class _NavItem extends StatelessWidget {
                     duration: const Duration(milliseconds: 180),
                     curve: Curves.easeOutCubic,
                     scale: selected ? 1.08 : 1.0,
-                    child: Icon(
-                      selected ? tab.activeIcon : tab.icon,
-                      color: color,
+                    child: Image.asset(
+                      tab.iconAsset,
+                      width: 24,
+                      height: 24,
+                      excludeFromSemantics: true,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
