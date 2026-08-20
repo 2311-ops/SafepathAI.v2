@@ -13,6 +13,7 @@
 // seam. Leaving `onToggle` null renders every switch disabled.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -46,10 +47,15 @@ class SafeZonesScreen extends StatelessWidget {
       isLoading = false,
       errorMessage = null;
 
-  const SafeZonesScreen.error({super.key, this.onRetry})
+  /// [onAdd] is accepted here (unlike `.loading`) because failing to READ the
+  /// zone list never prevents CREATING a zone — the two are independent calls.
+  /// Leaving it null previously made the header '+' inert in every error
+  /// state, so a load failure presented as a button that did nothing at all.
+  /// Callers pass it whenever a family is resolved; only the no-circle case
+  /// still omits it.
+  const SafeZonesScreen.error({super.key, this.onRetry, this.onAdd})
     : zones = const [],
       memberNames = const {},
-      onAdd = null,
       onOpen = null,
       onActivity = null,
       onToggle = null,
@@ -150,7 +156,11 @@ class SafeZonesScreen extends StatelessWidget {
     }
     if (zones.isEmpty) {
       return _StateMessage(
-        icon: Icons.add_location_alt_outlined,
+        illustration: SvgPicture.asset(
+          'assets/illustrations/safe-zone-empty.svg',
+          width: 96,
+          height: 96,
+        ),
         title: 'No safe zones yet',
         body:
             'Create a place alert for home, school, work, or anywhere your '
@@ -419,13 +429,15 @@ IconData _categoryIcon(SafeZoneCategory category) => switch (category) {
 
 class _StateMessage extends StatelessWidget {
   const _StateMessage({
-    required this.icon,
+    this.icon,
+    this.illustration,
     required this.title,
     required this.body,
     this.action,
-  });
+  }) : assert(icon != null || illustration != null);
 
-  final IconData icon;
+  final IconData? icon;
+  final Widget? illustration;
   final String title;
   final String body;
   final Widget? action;
@@ -437,7 +449,7 @@ class _StateMessage extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 48, color: AppColors.primaryTeal),
+          illustration ?? Icon(icon!, size: 48, color: AppColors.primaryTeal),
           const SizedBox(height: AppSpacing.md),
           Text(title, style: AppTypography.title, textAlign: TextAlign.center),
           const SizedBox(height: AppSpacing.sm),
