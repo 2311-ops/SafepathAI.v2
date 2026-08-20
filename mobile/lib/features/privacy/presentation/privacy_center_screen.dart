@@ -204,13 +204,23 @@ class PrivacyCenterScreen extends ConsumerWidget {
         actions: [
           if (hasFamily && isGuardian)
             IconButton(
-              icon: const Icon(Icons.person_add_alt_1),
+              icon: Image.asset(
+                'assets/icons/join.png',
+                width: 24,
+                height: 24,
+                excludeFromSemantics: true,
+              ),
               tooltip: 'Invite',
               onPressed: () => context.push('/circle/invite'),
             ),
           if (hasFamily && isGuardian)
             IconButton(
-              icon: const Icon(Icons.groups_2_outlined),
+              icon: Image.asset(
+                'assets/icons/participation.png',
+                width: 24,
+                height: 24,
+                excludeFromSemantics: true,
+              ),
               tooltip: 'Circle members',
               onPressed: () => context.push('/circle/permissions'),
             ),
