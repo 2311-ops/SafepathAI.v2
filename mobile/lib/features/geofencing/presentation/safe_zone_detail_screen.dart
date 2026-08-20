@@ -64,7 +64,7 @@ class SafeZoneDetailScreen extends StatelessWidget {
             _InfoRow(title: 'Assigned member', value: assignedMemberName),
             _InfoRow(title: 'Type', value: zone.category.wireValue),
             _InfoRow(title: 'Radius', value: '${zone.radiusMeters} m'),
-            _InfoRow(title: 'Sensitivity', value: zone.sensitivity.wireValue),
+            _InfoRow(title: 'Sensitivity', value: zone.sensitivity.label),
             _InfoRow(title: 'Status', value: _activationLabel(zone.activation)),
             if (zone.activation == SafeZoneActivation.needsLocationPermission)
               Card(

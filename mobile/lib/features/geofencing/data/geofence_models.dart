@@ -19,13 +19,26 @@ enum SafeZoneCategory {
   };
 }
 
+/// `wireValue` is the backend contract (`SafePath.Domain.Enums`
+/// `SafeZoneSensitivity`, which spells the least-sensitive option
+/// `Conservative`); `label` is the user-facing copy, which 04-UI-SPEC.md
+/// mandates as "Reliable". These two MUST stay separate: they were previously
+/// a single field, so choosing the friendlier UI word silently changed the
+/// wire value too. Every stored zone comes back as `Conservative`, matched
+/// nothing, and `_enumFromWire` threw — which failed the whole zone-list load
+/// and left the "Add safe zone" button dead.
 enum SafeZoneSensitivity {
-  reliable('Reliable'),
-  balanced('Balanced'),
-  responsive('Responsive');
+  reliable('Conservative', 'Reliable'),
+  balanced('Balanced', 'Balanced'),
+  responsive('Responsive', 'Responsive');
 
-  const SafeZoneSensitivity(this.wireValue);
+  const SafeZoneSensitivity(this.wireValue, this.label);
+
+  /// Sent to and parsed from the API. Never render this.
   final String wireValue;
+
+  /// Shown to the user. Never send this.
+  final String label;
 
   String get description => switch (this) {
     SafeZoneSensitivity.reliable => 'Wait for a clearer, sustained crossing',

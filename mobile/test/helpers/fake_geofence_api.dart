@@ -8,6 +8,7 @@ import 'package:mobile/features/geofencing/data/geofence_models.dart';
 
 class FakeGeofenceApi implements GeofenceApi {
   List<SafeZone> zonesToReturn = const [];
+  bool throwsOnList = false;
   bool throwsOnCreate = false;
   bool throwsOnUpdate = false;
 
@@ -26,6 +27,9 @@ class FakeGeofenceApi implements GeofenceApi {
   @override
   Future<List<SafeZone>> list(String familyId) async {
     listCalls++;
+    if (throwsOnList) {
+      throw const GeofenceApiException("Couldn't load safe zones.");
+    }
     return zonesToReturn;
   }
 

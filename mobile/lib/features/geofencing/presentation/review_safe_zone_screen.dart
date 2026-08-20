@@ -120,7 +120,7 @@ class _SafeZoneReviewScreenState extends ConsumerState<SafeZoneReviewScreen> {
             ),
             _Group(
               title: 'Sensitivity',
-              value: draft.sensitivity.wireValue,
+              value: draft.sensitivity.label,
               action: 'Edit sensitivity',
               onPressed: widget.onEditSensitivity,
             ),

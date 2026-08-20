@@ -55,6 +55,17 @@ class _SafeZonesPageState extends ConsumerState<SafeZonesPage> {
       return const SafeZonesScreen.loading();
     }
     if (family == null) {
+      // A failed circle bootstrap (e.g. the API is unreachable) also leaves
+      // `family` null, and this branch used to collapse it into the benign
+      // "No safe zones yet" empty state — whose `onAdd` is null, so both add
+      // affordances were silently dead: tapping '+' produced no navigation,
+      // no snackbar, and no error. Surface the failure with a working retry
+      // instead. `error == null` here still means the genuine "no circle
+      // yet" case, which keeps the empty state (a zone cannot belong to no
+      // circle).
+      if (familyState?.error != null) {
+        return SafeZonesScreen.error(onRetry: _retryFamily);
+      }
       return const SafeZonesScreen.empty();
     }
 
@@ -65,7 +76,13 @@ class _SafeZonesPageState extends ConsumerState<SafeZonesPage> {
       return const SafeZonesScreen.loading();
     }
     if (listState.error != null && listState.zones.isEmpty) {
-      return SafeZonesScreen.error(onRetry: () => _retry(family.id));
+      // The family IS resolved here, so creating a zone is still perfectly
+      // possible — only reading the existing ones failed. Keep '+' live, or a
+      // list-load failure silently presents as a dead Add button.
+      return SafeZonesScreen.error(
+        onRetry: () => _retry(family.id),
+        onAdd: () => context.push('/safe-zones/add'),
+      );
     }
 
     final memberNames = <String, String>{
@@ -88,6 +105,13 @@ class _SafeZonesPageState extends ConsumerState<SafeZonesPage> {
 
   void _retry(String familyId) {
     ref.read(geofenceListControllerProvider.notifier).load(familyId);
+  }
+
+  /// Retry for the *family* bootstrap failure above. Once it succeeds this
+  /// widget rebuilds with a non-null family and `_load` issues the zone
+  /// fetch, so no second call is needed here.
+  void _retryFamily() {
+    ref.read(familyControllerProvider.notifier).refresh();
   }
 
   Future<void> _toggle(

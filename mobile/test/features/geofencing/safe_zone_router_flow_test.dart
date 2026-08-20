@@ -30,7 +30,9 @@ import 'package:mobile/features/geofencing/application/geofence_controller.dart'
 import 'package:mobile/features/geofencing/data/geofence_api.dart';
 import 'package:mobile/features/geofencing/data/geofence_models.dart';
 import 'package:mobile/features/geofencing/presentation/safe_zones_page.dart';
+import 'package:mobile/features/location/application/location_controller.dart';
 import 'package:mobile/features/location/application/permission_controller.dart';
+import 'package:mobile/features/location/data/location_models.dart';
 import 'package:mobile/features/profile/application/profile_controller.dart';
 import 'package:mobile/features/profile/data/user_profile.dart';
 
@@ -76,6 +78,14 @@ class _SeededFamilyController extends FamilyController {
   );
 }
 
+/// Reproduces a failed circle bootstrap (e.g. the API is unreachable):
+/// `FamilyController` records the error but leaves `family` null.
+class _FailedFamilyController extends FamilyController {
+  @override
+  FamilyState build() =>
+      const FamilyState(error: 'Network error. Check your connection.');
+}
+
 class _SeededProfileController extends ProfileController {
   @override
   ProfileState build() => const ProfileState(
@@ -85,6 +95,27 @@ class _SeededProfileController extends ProfileController {
       fullName: null,
       role: Role.guardian,
     ),
+  );
+}
+
+/// The create journey needs a known member location: since commit `2bb8b30`
+/// a new draft only carries an explicit center when one can be derived
+/// (assigned member's live location, else the caller's own), and
+/// `validateForReview()` refuses to advance to review without it — the guard
+/// that stops a zone being saved at 0,0. Seeding this mirrors
+/// `safe_zone_editor_test.dart`'s `_SeededMemberLocationController`.
+class _SeededMemberLocationController extends LocationController {
+  @override
+  LocationState build() => LocationState(
+    members: {
+      'member-1': LiveLocation(
+        userId: 'member-1',
+        lat: 29.9765,
+        lng: 31.1325,
+        accuracyMeters: 18,
+        recordedAtUtc: DateTime.utc(2026, 8, 14, 12),
+      ),
+    },
   );
 }
 
@@ -114,11 +145,17 @@ sb.Session _fakeSession() => sb.Session(
 ProviderContainer _buildContainer(
   FakeGeofenceApi geofenceApi, {
   FakeLocationPermissionService? locationPermissionService,
+  bool seedMemberLocation = false,
+  bool failFamilyLoad = false,
 }) {
   final authApi = FakeAuthApi(initialSession: _fakeSession());
   final container = ProviderContainer(
     overrides: [
-      familyControllerProvider.overrideWith(_SeededFamilyController.new),
+      familyControllerProvider.overrideWith(
+        failFamilyLoad
+            ? _FailedFamilyController.new
+            : _SeededFamilyController.new,
+      ),
       profileControllerProvider.overrideWith(_SeededProfileController.new),
       authApiProvider.overrideWithValue(authApi),
       locationPermissionServiceProvider.overrideWithValue(
@@ -129,6 +166,10 @@ ProviderContainer _buildContainer(
         _FakeSavePermissionCoordinator(),
       ),
       safeZoneMapOverrideProvider.overrideWithValue(const SizedBox.expand()),
+      if (seedMemberLocation)
+        locationControllerProvider.overrideWith(
+          _SeededMemberLocationController.new,
+        ),
     ],
   );
   return container;
@@ -197,7 +238,7 @@ void main() {
     'create journey: list -> add -> review -> save calls create once',
     (tester) async {
       final geofenceApi = FakeGeofenceApi()..zonesToReturn = [_seededZone()];
-      final container = _buildContainer(geofenceApi);
+      final container = _buildContainer(geofenceApi, seedMemberLocation: true);
       addTearDown(container.dispose);
       final router = container.read(routerProvider);
 
@@ -212,11 +253,14 @@ void main() {
       expect(find.text('Review zone'), findsOneWidget);
 
       // Add opens as a fresh, usable draft: standard name, first non-guardian
-      // member selected, and guardian notifications seeded.
+      // member selected, guardian notifications seeded, and an explicit
+      // center derived from that member's live location (without which
+      // `validateForReview()` blocks the Review-zone tap).
       final draft = container.read(geofenceControllerProvider).draft;
       expect(draft.name, 'Home');
       expect(draft.assignedMemberId, 'member-1');
       expect(draft.guardianRecipientIds, {'guardian-1'});
+      expect(draft.hasExplicitCenter, isTrue);
 
       final enabledReview = tester.widget<ElevatedButton>(
         find.widgetWithText(ElevatedButton, 'Review zone'),
@@ -233,6 +277,74 @@ void main() {
 
       expect(geofenceApi.createCalls, 1);
       expect(find.text('Review safe zone'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'a failed circle load surfaces an error with a working retry instead of '
+    'a silent empty state with a dead add button',
+    (tester) async {
+      final geofenceApi = FakeGeofenceApi();
+      final container = _buildContainer(geofenceApi, failFamilyLoad: true);
+      addTearDown(container.dispose);
+      final router = container.read(routerProvider);
+
+      router.go('/safe-zones');
+      await tester.pumpWidget(_app(container, router));
+      await tester.pumpAndSettle();
+
+      // The regression: this used to render "No safe zones yet" with both add
+      // affordances null, so tapping '+' did nothing at all — no navigation,
+      // no snackbar, no error.
+      expect(find.text('No safe zones yet'), findsNothing);
+      expect(find.text("Couldn't load safe zones"), findsOneWidget);
+
+      final retry = find.widgetWithText(OutlinedButton, 'Try again');
+      expect(tester.widget<OutlinedButton>(retry).onPressed, isNotNull);
+    },
+  );
+
+  testWidgets(
+    'a failed zone-list load still lets the guardian add a zone',
+    (tester) async {
+      // The user's reported symptom, reproduced: the circle loads fine and the
+      // guardian reaches "Places & zones", but the LIST fetch fails (on the
+      // real device, a `Conservative` sensitivity the client could not parse).
+      // `SafeZonesScreen.error` hardcoded `onAdd = null`, so the header '+'
+      // was drawn gray and its onTap was null — tapping it did nothing at all:
+      // no navigation, no snackbar, no error.
+      final geofenceApi = FakeGeofenceApi()..throwsOnList = true;
+      final container = _buildContainer(geofenceApi, seedMemberLocation: true);
+      addTearDown(container.dispose);
+      final router = container.read(routerProvider);
+
+      router.go('/safe-zones');
+      await tester.pumpWidget(_app(container, router));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Couldn't load safe zones"), findsOneWidget);
+
+      final addButton = find.ancestor(
+        of: find.byIcon(Icons.add),
+        matching: find.byType(InkWell),
+      );
+      expect(
+        tester.widget<InkWell>(addButton).onTap,
+        isNotNull,
+        reason: 'failing to READ zones must not disable CREATING one',
+      );
+
+      await tester.tap(find.byIcon(Icons.add));
+      await tester.pumpAndSettle();
+
+      // Asserted on the rendered editor rather than a route string: go_router
+      // does not reflect imperative pushes in
+      // `currentConfiguration.uri` (verified — the passing happy-path create
+      // journey above also reports '/safe-zones' there). `SafeZoneEditorScreen`
+      // only ever mounts at /safe-zones/add, so this IS the navigation proof.
+      expect(find.text('Add safe zone'), findsWidgets); // AppBar title + CTA
+      expect(find.text('Review zone'), findsOneWidget);
+      expect(find.text("Couldn't load safe zones"), findsNothing);
     },
   );
 
