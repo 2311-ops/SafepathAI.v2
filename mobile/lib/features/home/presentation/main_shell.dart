@@ -27,7 +27,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     _ShellTab(iconAsset: 'assets/icons/map.png', label: 'Map'),
     _ShellTab(iconAsset: 'assets/icons/activity.png', label: 'Activity'),
     _ShellTab(
-      iconAsset: 'assets/icons/consumer-behavior.png',
+      iconAsset: 'assets/icons/metrics.png',
       label: 'Insights',
     ),
     _ShellTab(iconAsset: 'assets/icons/protection.png', label: 'Privacy'),
@@ -58,7 +58,7 @@ class _MainShellState extends ConsumerState<MainShell> {
             LiveMapScreen(),
             HistoryTimelineScreen(),
             _PlainTabPlaceholder(
-              icon: Icons.insights,
+              icon: Icons.bar_chart_rounded,
               title: 'Insights',
               body: 'Insights are coming soon',
             ),
