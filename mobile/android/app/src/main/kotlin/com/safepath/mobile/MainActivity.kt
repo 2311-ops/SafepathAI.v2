@@ -5,10 +5,12 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
@@ -70,6 +72,7 @@ class MainActivity : FlutterActivity() {
 
     private fun replaceMonitoredZones(call: MethodCall, result: MethodChannel.Result) {
         if (capability() != CAPABILITY_READY) {
+            Log.w(REGISTRATION_TAG, "replace rejected: capability=${capability()}")
             result.error("capability_unavailable", "Background location capability is not ready.", capability())
             return
         }
@@ -84,8 +87,26 @@ class MainActivity : FlutterActivity() {
             result.error("invalid_zone", exception.message, null)
             return
         }
-        geofencingClient.removeGeofences(geofencePendingIntent)
+        Log.i(REGISTRATION_TAG, "replace start count=${geofences.size}")
+        // Mutability is part of PendingIntent identity. Remove the old immutable
+        // registration before replacing it so an app update cannot leave duplicates.
+        val legacy = PendingIntent.getBroadcast(
+            this, 2404, Intent(this, GeofenceBroadcastReceiver::class.java),
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+        val removal = if (legacy != null) {
+            Log.i(REGISTRATION_TAG, "remove legacy callback start")
+            geofencingClient.removeGeofences(legacy).continueWithTask { task ->
+                task.result
+                legacy.cancel()
+                geofencingClient.removeGeofences(geofencePendingIntent)
+            }
+        } else {
+            geofencingClient.removeGeofences(geofencePendingIntent)
+        }
+        removal
             .addOnSuccessListener {
+                Log.i(REGISTRATION_TAG, "remove complete")
                 if (geofences.isEmpty()) {
                     result.success(null)
                     return@addOnSuccessListener
@@ -97,18 +118,30 @@ class MainActivity : FlutterActivity() {
                     .addGeofences(geofences)
                     .build()
                 try {
+                    Log.i(REGISTRATION_TAG, "add start count=${geofences.size}")
                     geofencingClient.addGeofences(request, geofencePendingIntent)
-                        .addOnSuccessListener { result.success(null) }
+                        .addOnSuccessListener {
+                            Log.i(REGISTRATION_TAG, "add complete")
+                            result.success(null)
+                        }
                         .addOnFailureListener { error ->
+                            logRegistrationFailure("add", error)
                             result.error("registration_failed", error.message, null)
                         }
                 } catch (security: SecurityException) {
+                    logRegistrationFailure("add", security)
                     result.error("capability_unavailable", security.message, capability())
                 }
             }
             .addOnFailureListener { error ->
+                logRegistrationFailure("remove", error)
                 result.error("registration_failed", error.message, null)
             }
+    }
+
+    private fun logRegistrationFailure(stage: String, error: Exception) {
+        val status = (error as? ApiException)?.statusCode
+        Log.w(REGISTRATION_TAG, "$stage failed type=${error.javaClass.simpleName} status=$status")
     }
 
     private fun toGeofence(zone: Map<String, Any?>): Geofence {
@@ -157,12 +190,13 @@ class MainActivity : FlutterActivity() {
             this,
             2404,
             Intent(this, GeofenceBroadcastReceiver::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            geofencePendingIntentFlags(Build.VERSION.SDK_INT)
         )
     }
 
     private companion object {
         const val CHANNEL = "safepath/geofencing"
+        const val REGISTRATION_TAG = "SafePathGeofence"
         const val MAX_ZONES = 20
         const val GEOFENCE_PERMISSION_REQUEST = 2404
         const val CAPABILITY_READY = "ready"

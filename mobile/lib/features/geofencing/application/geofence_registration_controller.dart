@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/application/auth_controller.dart';
@@ -60,42 +62,76 @@ class GeofenceRegistrationController
     if (ref.read(authControllerProvider) is! AuthAuthenticated) return;
     state = const GeofenceRegistrationSyncing();
     final gateway = ref.read(nativeGeofenceGatewayProvider);
-    final capability = await gateway.getCapability();
-    if (request != _syncGeneration || ref.read(authControllerProvider) is! AuthAuthenticated) return;
-    if (capability != NativeGeofenceCapability.ready) {
-      state = capability == NativeGeofenceCapability.needsLocationPermission ||
-              capability == NativeGeofenceCapability.needsBackgroundPermission
-          ? const GeofenceRegistrationNeedsLocationPermission()
-          : const GeofenceRegistrationNeedsSync(
-              'Geofencing is unavailable on this device.',
-            );
-      return;
-    }
+    var stage = 'capability';
     try {
+      _log('request=$request stage=$stage start');
+      final capability = await gateway.getCapability();
+      if (request != _syncGeneration ||
+          ref.read(authControllerProvider) is! AuthAuthenticated) {
+        return;
+      }
+      _log('request=$request capability=${capability.name}');
+      if (capability != NativeGeofenceCapability.ready) {
+        state =
+            capability == NativeGeofenceCapability.needsLocationPermission ||
+                capability == NativeGeofenceCapability.needsBackgroundPermission
+            ? const GeofenceRegistrationNeedsLocationPermission()
+            : const GeofenceRegistrationNeedsSync(
+                'Geofencing is unavailable on this device.',
+              );
+        return;
+      }
+      stage = 'fetch';
+      _log('request=$request stage=$stage start');
       final registration = await ref
           .read(geofenceRegistrationApiProvider)
           .fetchRegistration();
-      if (request != _syncGeneration || ref.read(authControllerProvider) is! AuthAuthenticated) return;
+      if (request != _syncGeneration ||
+          ref.read(authControllerProvider) is! AuthAuthenticated) {
+        return;
+      }
       final zones = registration == null
           ? const <NativeGeofenceZone>[]
           : [registration.toNativeZone()];
+      stage = 'native-replace';
+      _log(
+        'request=$request stage=$stage start generation=${registration?.generation}',
+      );
       await gateway.replaceMonitoredZones(zones);
-      if (request != _syncGeneration || ref.read(authControllerProvider) is! AuthAuthenticated) return;
+      if (request != _syncGeneration ||
+          ref.read(authControllerProvider) is! AuthAuthenticated) {
+        return;
+      }
       if (registration != null) {
         // Native success is intentionally ordered before the exact server
         // generation acknowledgement; stale generations are never claimed.
+        stage = 'acknowledge';
+        _log(
+          'request=$request stage=$stage start generation=${registration.generation}',
+        );
         await ref
             .read(geofenceRegistrationApiProvider)
-            .acknowledgeRegistration(registration.zoneId, registration.generation);
+            .acknowledgeRegistration(
+              registration.zoneId,
+              registration.generation,
+            );
       }
       if (request == _syncGeneration) {
+        _log('request=$request ready generation=${registration?.generation}');
         state = GeofenceRegistrationReady(generation: registration?.generation);
       }
     } catch (error) {
+      // Exception messages/details can contain network credentials or coordinates.
+      final code = error is PlatformException ? error.code : error.runtimeType;
+      _log('request=$request stage=$stage failed code=$code');
       if (request == _syncGeneration) {
         state = GeofenceRegistrationNeedsSync(error.toString());
       }
     }
+  }
+
+  void _log(String message) {
+    if (kDebugMode) debugPrint('GeofenceRegistration: $message');
   }
 
   Future<void> requestBackgroundPermissionForSave() async {
@@ -105,7 +141,8 @@ class GeofenceRegistrationController
     if (capability == NativeGeofenceCapability.ready) {
       await sync();
     } else {
-      state = capability == NativeGeofenceCapability.needsLocationPermission ||
+      state =
+          capability == NativeGeofenceCapability.needsLocationPermission ||
               capability == NativeGeofenceCapability.needsBackgroundPermission
           ? const GeofenceRegistrationNeedsLocationPermission()
           : const GeofenceRegistrationNeedsSync(
@@ -117,7 +154,9 @@ class GeofenceRegistrationController
   Future<void> clearOnLogout() async {
     _syncGeneration++;
     try {
-      await ref.read(nativeGeofenceGatewayProvider).replaceMonitoredZones(const []);
+      await ref
+          .read(nativeGeofenceGatewayProvider)
+          .replaceMonitoredZones(const []);
     } catch (_) {
       // Logout must not be blocked by a routine monitoring cleanup failure.
     }
