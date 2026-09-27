@@ -112,6 +112,9 @@ class SignalRSosHubClient implements SosHubClient {
             accessTokenFactory: () async =>
                 _supabase.auth.currentSession?.accessToken ?? '',
             headers: _signalRHeadersFor(_apiBaseUrl),
+            // Match the location hub: 2 seconds is too aggressive for a cold
+            // negotiate through ngrok on a physical device.
+            requestTimeout: 15000,
           ),
         )
         .withAutomaticReconnect(retryDelays: [2000, 5000, 10000, 20000])

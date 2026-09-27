@@ -2,9 +2,17 @@ plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    // Google Services (Firebase) ??? enables google-services.json processing
-    // for FCM (03-06). Version declared in the root android/build.gradle.kts.
-    id("com.google.gms.google-services")
+}
+
+// Local and contributor builds are allowed to run without provisioned Firebase
+// credentials. When the gitignored config is present, enable Google Services and
+// FCM normally; otherwise main.dart's guarded Firebase initialization provides
+// the documented no-push fallback instead of failing the native Gradle build.
+val googleServicesConfig = file("google-services.json")
+if (googleServicesConfig.exists()) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.lifecycle("google-services.json not found; building with Firebase/FCM disabled.")
 }
 
 android {
