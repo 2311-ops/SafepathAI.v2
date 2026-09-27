@@ -17,6 +17,7 @@ import '../application/location_controller.dart';
 import '../application/map_geometry.dart';
 import '../application/staleness.dart';
 import '../data/location_models.dart';
+import 'battery_indicator.dart';
 import 'low_battery_banner.dart';
 import 'member_detail_sheet.dart';
 import 'vector_map.dart';
@@ -214,13 +215,9 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
           id: location.userId,
           lat: location.lat,
           lng: location.lng,
-          // Widened from the 44x44 tap-target-only box so the always-visible
-          // name and online/offline labels have room beneath the avatar; the
-          // declared box must contain the whole Column[avatar, labels]
-          // (research §5). Height raised 88->108 to also fit the battery
-          // readout row (LOC-04) without a RenderFlex overflow.
+          // Keep the avatar, name, and battery inside the projected tap target.
           width: 86,
-          height: 72,
+          height: 96,
           child: LiveMemberMarker(
             location: location,
             name: _memberName(location, state),
@@ -387,6 +384,10 @@ class LiveMemberMarker extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 _MarkerNameLabel(name: name),
+                if (location.batteryPercent != null) ...[
+                  const SizedBox(height: 3),
+                  BatteryIndicator(percent: location.batteryPercent),
+                ],
               ],
             ),
           ),
