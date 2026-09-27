@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-09-27T21:30:00+03:00",
+  "timestamp": "2026-09-27T21:44:00+03:00",
   "phase": "04",
   "phase_name": "geofencing",
   "phase_dir": ".planning/phases/04-geofencing",
@@ -68,6 +68,6 @@
     }
   ],
   "uncommitted_files": [],
-  "next_action": "Read existing zone e8c005b1-4bd9-43ec-a845-9bf2acd56e45 through Guardian API after friend cold-reopens app. Require generation 2 with needsSync=false and needsLocationPermission=false before process-death/walking steps. Keep API/tunnel live; logs are backend/logs/phase04-api-20260927.*.log.",
+  "next_action": "User approved pushing tested registration patch for friend rebuild. After fresh flutter run (native changes, not hot reload), collect only SafePathGeofence and GeofenceRegistration logs and recheck existing zone generation 2 acknowledgement. Permissions/GPS/appops were allowed; do not keep changing permissions or recreating zones. See 04-REGISTRATION-DEBUG.md. Keep API/tunnel live.",
   "context_notes": "Latest state supersedes earlier generation 1 progress: gen1 acknowledgement was verified at 18:14 UTC with zero activity. OPPO am kill denied KILL_BACKGROUND_PROCESSES; run-as toybox kill reported unknown PID. Matching UID was confirmed, but no absent-PID result was supplied. PID later changed from 2249 to 17366; this alone does not prove the intended process-death test. Friend moved, so at user request recentered SAME zone via PUT at 18:29:59 UTC using fix 18:28:54.29 UTC (63 seconds old, 10.4m accuracy), yielding generation 2 pending acknowledgement. No accepted physical transition, replay, SOS or iPhone evidence. See remote verification document. Do not fabricate completion summaries."
 }

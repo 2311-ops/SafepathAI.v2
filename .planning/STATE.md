@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: geofencing
 status: blocked
-stopped_at: "04-05: zone recentered at new location; generation 2 acknowledgement pending; process death unproven"
-last_updated: "2026-09-27T18:30:00Z"
+stopped_at: "04-05: await friend rebuild with mutable geofence callback fix/diagnostics, then generation 2 acknowledgement"
+last_updated: "2026-09-27T18:44:00Z"
 last_activity: 2026-09-27
-last_activity_desc: "Recentered existing 100m zone from fresh Member fix; await generation 2 acknowledgement"
+last_activity_desc: "Fixed immutable geofence callback, added private-data-free diagnostics; 168 Flutter and 3 native tests, analyze and APK build passed"
 progress:
   total_phases: 8
   completed_phases: 4

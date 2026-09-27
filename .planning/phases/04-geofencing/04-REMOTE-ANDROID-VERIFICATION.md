@@ -10,6 +10,14 @@ Generation 1 had been acknowledged, with zero zone activity at 18:14 UTC. The su
 
 ## Join And Register
 
+Current retry requires a native rebuild of the registration patch (see `04-REGISTRATION-DEBUG.md`), not another permission change or hot reload. After launch, collect only the dedicated safe diagnostic messages:
+
+```powershell
+adb -d logcat -d -v brief -s SafePathGeofence flutter | Select-String 'SafePathGeofence|GeofenceRegistration'
+```
+
+These new messages contain stages/counts/generation/error codes, not coordinates or session material. Old Geofencer-only logs do not contain the app's caught registration errors.
+
 1. Install the current debug APK or build branch `phase/04-geofencing` using `start_mobile.md` section 6 and the current tunnel URL. Keep the backend PC awake and the tunnel running.
 2. Sign in with the friend's own account, choose Member, and accept the test-circle invitation shared privately. Old-project accounts must register again or use Google.
 3. Report the Member display name, Android model/version, and whether ADB is available on the friend's computer. The operator verifies membership in family `40bdffff-c601-47a1-9a8b-7394813dde56`.
