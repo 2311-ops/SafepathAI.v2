@@ -99,6 +99,10 @@ class SignalRLocationHubClient implements LocationHubClient {
             accessTokenFactory: () async =>
                 _supabase.auth.currentSession?.accessToken ?? '',
             headers: _signalRHeadersFor(_apiBaseUrl),
+            // The package default is 2 seconds, which is shorter than a cold
+            // ngrok/SignalR negotiate on a physical device. Keep connection
+            // startup from failing spuriously on a healthy but slow network.
+            requestTimeout: 15000,
           ),
         )
         .withAutomaticReconnect(retryDelays: [2000, 5000, 10000, 20000])

@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:math' show Point;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../application/map_geometry.dart';
@@ -260,6 +262,7 @@ class VectorMap extends StatefulWidget {
 class _VectorMapState extends State<VectorMap> {
   MapLibreMapController? _mapController;
   bool _styleLoaded = false;
+  int _annotationGeneration = 0;
   late final ValueNotifier<CameraPosition?> _cameraPosition =
       ValueNotifier<CameraPosition?>(null);
   late final ValueNotifier<bool> _isCameraMoving = ValueNotifier<bool>(false);
@@ -298,7 +301,7 @@ class _VectorMapState extends State<VectorMap> {
         (!identical(oldWidget.circles, widget.circles) ||
             !identical(oldWidget.lines, widget.lines) ||
             !identical(oldWidget.dots, widget.dots))) {
-      _drawAnnotations();
+      unawaited(_drawAnnotations());
     }
     // Markers need no explicit reprojection step any more: they are projected
     // synchronously in build() from the live camera, so this rebuild has
@@ -307,6 +310,11 @@ class _VectorMapState extends State<VectorMap> {
 
   @override
   void dispose() {
+    // Invalidate any annotation sequence currently awaiting a platform
+    // channel call. The native map can outlive this State for a few frames
+    // while a route is popped, so an await may resume after disposal.
+    _annotationGeneration++;
+    _styleLoaded = false;
     widget.controller?.removeListener(_onCameraCommand);
     // Symmetric with _onMapCreated's controller.addListener(_onControllerNotified)
     // - without this, a camera-changed notification firing after this State
@@ -316,6 +324,7 @@ class _VectorMapState extends State<VectorMap> {
     // _onControllerNotified's own `if (!mounted) return;` guard is a second,
     // independent line of defence for that same race.
     _mapController?.removeListener(_onControllerNotified);
+    _mapController = null;
     _cameraPosition.dispose();
     _isCameraMoving.dispose();
     super.dispose();
@@ -335,6 +344,7 @@ class _VectorMapState extends State<VectorMap> {
   }
 
   void _onMapCreated(MapLibreMapController controller) {
+    if (!mounted) return;
     _mapController = controller;
     _cameraPosition.value = controller.cameraPosition;
     _isCameraMoving.value = controller.isCameraMoving;
@@ -356,6 +366,7 @@ class _VectorMapState extends State<VectorMap> {
   }
 
   Future<void> _onStyleLoaded() async {
+    if (!mounted) return;
     _styleLoaded = true;
     await _drawAnnotations();
   }
@@ -370,53 +381,65 @@ class _VectorMapState extends State<VectorMap> {
 
   Future<void> _drawAnnotations() async {
     final controller = _mapController;
-    if (controller == null) return;
+    if (controller == null || !mounted) return;
+    final generation = _annotationGeneration;
+    bool active() =>
+        mounted &&
+        generation == _annotationGeneration &&
+        identical(controller, _mapController);
 
-    await controller.clearFills();
-    await controller.clearLines();
-    await controller.clearCircles();
+    try {
+      if (!active()) return;
+      await controller.clearFills();
+      if (!active()) return;
+      await controller.clearLines();
+      if (!active()) return;
+      await controller.clearCircles();
 
-    for (final circle in widget.circles) {
-      final ring = geodesicRing(circle.center, circle.radiusMeters);
-      if (ring.isEmpty) continue;
-      final geometry = [
-        [for (final point in ring) LatLng(point.lat, point.lng)],
-      ];
-      await controller.addFill(
-        FillOptions(
-          geometry: geometry,
-          fillColor: circle.colorHex,
-          fillOutlineColor: circle.colorHex,
-          fillOpacity: circle.fillOpacity,
-        ),
-      );
-      await controller.addLine(
-        LineOptions(
-          geometry: [for (final point in ring) LatLng(point.lat, point.lng)],
-          lineColor: circle.colorHex,
-          lineWidth: circle.outlineWidth,
-          lineOpacity: circle.outlineOpacity,
-          lineJoin: 'round',
-        ),
-      );
-    }
+      for (final circle in widget.circles) {
+        if (!active()) return;
+        final ring = geodesicRing(circle.center, circle.radiusMeters);
+        if (ring.isEmpty) continue;
+        final geometry = [
+          [for (final point in ring) LatLng(point.lat, point.lng)],
+        ];
+        await controller.addFill(
+          FillOptions(
+            geometry: geometry,
+            fillColor: circle.colorHex,
+            fillOutlineColor: circle.colorHex,
+            fillOpacity: circle.fillOpacity,
+          ),
+        );
+        if (!active()) return;
+        await controller.addLine(
+          LineOptions(
+            geometry: [for (final point in ring) LatLng(point.lat, point.lng)],
+            lineColor: circle.colorHex,
+            lineWidth: circle.outlineWidth,
+            lineOpacity: circle.outlineOpacity,
+            lineJoin: 'round',
+          ),
+        );
+      }
 
-    for (final line in widget.lines) {
-      if (line.points.length < 2) continue;
-      await controller.addLine(
-        LineOptions(
-          geometry: [
-            for (final point in line.points) LatLng(point.lat, point.lng),
-          ],
-          lineColor: line.colorHex,
-          lineWidth: line.width,
-          lineOpacity: line.opacity,
-          lineJoin: 'round',
-        ),
-      );
-    }
+      for (final line in widget.lines) {
+        if (!active()) return;
+        if (line.points.length < 2) continue;
+        await controller.addLine(
+          LineOptions(
+            geometry: [
+              for (final point in line.points) LatLng(point.lat, point.lng),
+            ],
+            lineColor: line.colorHex,
+            lineWidth: line.width,
+            lineOpacity: line.opacity,
+            lineJoin: 'round',
+          ),
+        );
+      }
 
-    if (widget.dots.isNotEmpty) {
+      if (!active() || widget.dots.isEmpty) return;
       await controller.addCircles([
         for (final dot in widget.dots)
           CircleOptions(
@@ -429,6 +452,18 @@ class _VectorMapState extends State<VectorMap> {
             circleStrokeOpacity: dot.strokeOpacity,
           ),
       ]);
+    } on MissingPluginException {
+      // A platform view may be tearing down while an annotation call is in
+      // flight. The native channel disappears in that window; there is no
+      // useful recovery for this frame and it must not become an unhandled
+      // exception on the UI isolate.
+      return;
+    } on PlatformException {
+      // Treat plugin channel failures during teardown/recreation like the
+      // missing-channel case. Normal map rendering will retry on the next
+      // style-loaded callback.
+      if (!mounted || generation != _annotationGeneration) return;
+      rethrow;
     }
   }
 
