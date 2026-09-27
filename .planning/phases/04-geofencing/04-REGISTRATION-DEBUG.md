@@ -21,6 +21,8 @@ Google requires mutable geofencing callbacks: [GeofencingClient](https://develop
 
 ## Verification
 
+- Push initially rejected because teammate commit `03ccf74` arrived concurrently. Fetched, reviewed and merged without conflicts (merge `d977c1e`), preserving runtime/map/Firebase fallback changes.
+- Combined branch full Flutter suite: 464 passed; analyzer clean; debug APK rebuilt successfully. Widget tests print the expected Firebase-not-configured fallback; real FCM remains a physical-device gate.
 - Flutter geofencing + SOS suite: 168 passed.
 - Focused registration/gateway suite: 11 passed.
 - Android :app:testDebugUnitTest: BUILD SUCCESSFUL; XML reports 2 PendingIntent flag tests + 1 upload-worker test, zero failures/errors.
