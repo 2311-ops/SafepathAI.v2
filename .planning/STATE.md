@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: geofencing
 status: blocked
-stopped_at: "Completed quick task 260820-ciz: Replace 6 stock bottom-nav/Privacy-Center Guardian icons with the user's own PNG assets"
-last_updated: "2026-08-20T06:17:11.999Z"
-last_activity: 2026-08-14
-last_activity_desc: "Completed quick task 260814-aft: Wire up delete-zone and open-settings affordances on Safe Zone detail screen"
+stopped_at: "04-05: waiting for remote Member join and real Android boundary evidence; 04-17 automated checks refreshed"
+last_updated: "2026-09-27T16:46:00Z"
+last_activity: 2026-09-27
+last_activity_desc: "Prepared remote Android test circle; 461 Flutter, 253 backend, native worker, migration and build checks passed"
 progress:
   total_phases: 8
   completed_phases: 4
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 ## Current Position
 
 Phase: 04 (geofencing) — BLOCKED
-Plan: 17 of 17
-Status: Automated gates green; blocked on required Android/iOS physical acceptance evidence
-Current blocker: 2026-08-14 - physical Android/iOS acceptance evidence pending
-Last activity: 2026-08-14 - Completed quick task 260814-aft: Wire up delete-zone and open-settings affordances on Safe Zone detail screen
+Plan: 05 of 17 checkpoint; 04-17 Task 1 automated checks refreshed
+Status: Automated gates green; remote Android and signed iPhone physical acceptance remain open
+Current blocker: 2026-09-27 - friend's Android account must join the test circle before zone registration/movement; iPhone evidence also pending
+Last activity: 2026-09-27 - Repaired battery marker/splash test regressions, reran full checks, and prepared the remote test circle
 
 Progress: [██████████] 97%
 
@@ -301,6 +301,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-20T06:17:11.971Z
-Stopped at: Completed quick task 260820-ciz: Replace 6 stock bottom-nav/Privacy-Center Guardian icons with the user's own PNG assets
-Resume file: None
+Last session: 2026-09-27T16:46:00Z
+Stopped at: 04-05 physical checkpoint; remote Member join and device evidence pending
+Resume file: .planning/phases/04-geofencing/.continue-here.md

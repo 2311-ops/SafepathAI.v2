@@ -3,17 +3,57 @@ phase: 04-geofencing
 plan: 17
 status: blocked-human-physical-acceptance
 created: 2026-08-14
+updated: 2026-09-27
 timezone: Africa/Cairo
 requirements: [GEO-01, GEO-02, GEO-03, NOTIF-02]
 ---
 
 # Phase 04 Device Verification
 
-04-17 Task 1 automated gates are complete and green as of 2026-08-14. 04-17 Task 2 remains blocked because the required Android and iOS physical acceptance evidence has not been produced.
+04-17 Task 1 automated gates were refreshed and passed on 2026-09-27. Task 2 and the earlier 04-05 tracer checkpoint remain open: required Android and iOS physical acceptance evidence has not been produced.
 
 Per PR-04, Phase 4 is not approved/closed until signed physical iPhone + APNs evidence exists alongside Android physical movement/recovery evidence. No 04-05 evidence was fabricated or retroactively claimed.
 
-## Environment Evidence
+## Current Verification: 2026-09-27
+
+| Gate | Command / evidence | Result |
+|---|---|---|
+| Backend full suite | `dotnet test backend/SafePath.sln --no-restore --configuration Release --verbosity quiet` | PASS: 228 application tests, 25 API integration tests; command exit 0 |
+| Flutter full suite | `flutter test --no-pub --reporter expanded --timeout 60s` | PASS: 461 tests |
+| Flutter analysis | `flutter analyze --no-pub` | PASS: no issues |
+| Native Android worker test | `gradlew.bat :app:testDebugUnitTest --console=plain` | PASS: BUILD SUCCESSFUL; JUnit XML records 1 test, 0 failures/errors |
+| Model drift | `dotnet ef migrations has-pending-model-changes --no-build --configuration Release --project backend/src/SafePath.Infrastructure --startup-project backend/src/SafePath.Api` | PASS: no pending model changes |
+| Database migration state | Same EF projects/configuration with `migrations list` | PASS: all 12 migrations applied, through `20260811173100_AddGeofencing` |
+| Android build and launch | `flutter run --no-pub -d R58M30TGNXV --no-resident --dart-define-from-file=env.json --dart-define=API_BASE_URL=https://exclude-driving-maternal.ngrok-free.dev` | PASS: debug APK built, installed, and launched |
+| Remote API | Tunnel `/openapi/v1.json`, with ngrok bypass header | HTTP 200 |
+| Signed-in API | Connected phone session calling `/me` and `/families/mine` | HTTP 200; Google sign-in succeeded |
+| SOS dependency isolation | Scoped source scan of geofence backend, Dart, Kotlin, and Swift code | No AlertHub/SosAlertDispatcher/SosController/foreground-service dependencies found |
+| Routine payload | `RoutinePushWorker` payload inspected | Only type, activityId, zoneId; no coordinates |
+| Presentation isolation | Scoped geofence presentation scan | No SOS/error red references found |
+| Map SDK boundary | Dart import scan | Only `vector_map.dart` imports MapLibre |
+
+Environment: Windows, .NET SDK 9.0.205, EF CLI 9.0.3/runtime 9.0.9, Flutter 3.44.5, Dart 3.12.2, Samsung SM A305F/Android 11/API 30. EF's tool-version warning and Gradle deprecation warnings did not fail the checks.
+
+The first Debug backend test build hit Windows DLL locks from the live API. The successful Release run used separate build output without stopping the API. An earlier interrupted Flutter run was not counted as evidence. Logs under `.planning/tmp/phase04-*` are local, ignored artifacts. The native XML result, not PowerShell's stderr pipeline status, establishes the worker test result.
+
+### Repairs
+
+Commit `76694fa` restores the existing `BatteryIndicator` to `LiveMemberMarker`, expands its projected bounds to 86 x 96, checks the marker in those bounds, and scrolls the splash navigation test's login link into view. The initial Flutter run had 459 passes and 2 failures; the full rerun passed all 461.
+
+### Current Device Setup
+
+- Supabase project is now `dvhxboclavtudtwzifst`; the August accounts and test-zone IDs below are historical, not current fixtures.
+- Created `Phase 04 Test Circle`, family ID `40bdffff-c601-47a1-9a8b-7394813dde56`, using the signed-in account's production API.
+- The connected account is the test Guardian. Fine/coarse/background location are granted on its Samsung phone.
+- The user selected their friend's remote Android phone for the monitored Member and boundary test.
+- A 24-hour, single-use Member invitation was generated and given to the user privately. Its code/token is intentionally omitted from this committed document.
+- At the last check the family contained only the Guardian and had zero zones. Await the friend's join before selecting their account and a current location for a 100 m zone.
+- No current-project registration acknowledgement, real boundary candidate, headless upload, offline replay, push delivery, or SOS concurrency is claimed.
+- Signed iPhone/macOS/Xcode/APNs acceptance remains unverified and required by PR-04.
+
+Next: follow `04-REMOTE-ANDROID-VERIFICATION.md` after the friend joins. Do not create 04-05 or 04-17 completion summaries until their physical gates pass.
+
+## Historical Environment Evidence: 2026-08-14
 
 | Tool | Evidence |
 |---|---|
@@ -24,7 +64,7 @@ Per PR-04, Phase 4 is not approved/closed until signed physical iPhone + APNs ev
 | Gradle wrapper | `9.1.0-all` |
 | Android Java runtime | Android Studio JBR `25.0.2` for debug build; app unit test also ran successfully under configured Java tooling |
 
-## Automated Gate Results
+## Historical Automated Gate Results: 2026-08-14
 
 | Gate | Command | Result |
 |---|---|---|
@@ -58,7 +98,7 @@ Notes:
 | `36e3a48` | Cleared the final geofence uploader analyzer infos so `flutter analyze` is green |
 | `7e1464a` | Restored per-recipient Privacy Center controls so the full Flutter suite is green and the screen again matches its “each family member” privacy promise |
 
-## Physical Acceptance Status
+## Historical Physical Acceptance Status: 2026-08-14
 
 | Platform | Status | Evidence / blocker |
 |---|---|---|

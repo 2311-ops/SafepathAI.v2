@@ -1,19 +1,19 @@
 {
   "version": "1.0",
-  "timestamp": "2026-08-16T01:38:38.4487887+03:00",
+  "timestamp": "2026-09-27T19:46:00+03:00",
   "phase": "04",
   "phase_name": "geofencing",
   "phase_dir": ".planning/phases/04-geofencing",
   "plan": 5,
   "task": 1,
   "total_tasks": 1,
-  "status": "paused",
+  "status": "blocked",
   "completed_tasks": [
     {
       "id": 1,
       "name": "Prove Android process-death registration and authenticated upload",
       "status": "in_progress",
-      "progress": "Native registration is proven on physical device. On 2026-08-16, zone a51cd0a6-a6ca-4104-80d8-f1e5cf74ee6e was created through the production API, assigned to the connected phone user, registered by Google Play Services at 100m, and acknowledged by the backend as needsSync=false. WorkManager headless upload had a real entrypoint bug and was fixed in commit 3b7ce81. Real boundary candidate, upload, offline replay, and SOS isolation evidence remain incomplete."
+      "progress": "Historical registration evidence is retained in .continue-here.md, but Supabase changed to dvhxboclavtudtwzifst. Google login and authenticated API now work. Prepared family 40bdffff-c601-47a1-9a8b-7394813dde56 with the connected Samsung as Guardian. Friend's remote Android is the selected Member device; invitation shared privately, join pending, zero zones. 04-17 automated checks passed: 461 Flutter, 228 application, 25 API tests, native worker, analyze, migrations, build. Commit 76694fa repairs battery/splash regressions. Physical candidate/upload/replay/SOS and signed iPhone evidence remain incomplete."
     }
   ],
   "remaining_tasks": [
@@ -22,8 +22,9 @@
       "name": "Complete physical verification checklist",
       "status": "in_progress",
       "subtasks": [
-        "Keep backend and adb reverse tcp:5059 tcp:5059 active",
-        "Use or recreate the acknowledged 100m zone a51cd0a6-a6ca-4104-80d8-f1e5cf74ee6e",
+        "Keep backend port 5059 and the existing ngrok tunnel active",
+        "Wait for friend to join family 40bdffff-c601-47a1-9a8b-7394813dde56; record display name and Android model/API",
+        "Create a fresh 100m zone assigned to the friend's Member account at their current test location and verify generation acknowledgement",
         "Physically cross the 100m boundary or use a real OS-supported location simulation method",
         "Capture GeofenceBroadcastReceiver and GeofenceNativeStore logs for the native candidate write",
         "Run adb shell am kill com.safepath.mobile, not force-stop",
@@ -36,16 +37,16 @@
   ],
   "blockers": [
     {
-      "description": "No real boundary crossing has been produced yet on the physical phone.",
+      "description": "Remote Member join, fresh zone registration, and real boundary evidence are pending in the new project; signed iPhone/APNs evidence is also missing.",
       "type": "human_action",
-      "workaround": "Walk/drive the connected phone across the 100m boundary while logcat is capturing, or use a real OS-supported location simulation method. This Samsung Android 11 cmd location does not expose test-provider injection."
+      "workaround": "Follow 04-REMOTE-ANDROID-VERIFICATION.md on the friend's phone after joining and registering the zone. Use actual OS callbacks and server correlation; do not fabricate device evidence."
     }
   ],
   "async_jobs": [],
   "human_actions_pending": [
     {
-      "action": "Physically cross the 100m boundary for zone a51cd0a6-a6ca-4104-80d8-f1e5cf74ee6e while logs are captured",
-      "context": "Registration and backend acknowledgement are complete, but no real GeofenceBroadcastReceiver/GeofenceNativeStore candidate event has been captured.",
+      "action": "Friend joins the test circle and provides their Member name and Android model/API",
+      "context": "A one-use 24h invitation was shared privately. No zone exists in the current project; create and acknowledge a fresh zone before movement.",
       "blocking": true
     },
     {
@@ -70,6 +71,6 @@
     ".planning/HANDOFF.json",
     ".planning/phases/04-geofencing/.continue-here.md"
   ],
-  "next_action": "Capture logcat while physically crossing the 100m boundary for zone a51cd0a6-a6ca-4104-80d8-f1e5cf74ee6e, then verify native candidate write, WorkManager authenticated upload, offline replay, and SOS isolation.",
-  "context_notes": "This is a blocking checkpoint. Do not fabricate device evidence, event IDs, or log output. Verified so far: zone creation, permission grants, native registration/sync acknowledgement, focused analyzer/test, debug deploy, and commit 3b7ce81 for the headless entrypoint fix. Not verified yet: real boundary candidate, authenticated candidate upload, offline replay, and SOS isolation."
+  "next_action": "Check friend membership in family 40bdffff-c601-47a1-9a8b-7394813dde56, create/acknowledge a fresh 100m zone assigned to them, and execute the remote Android checklist. Keep API/tunnel live.",
+  "context_notes": "Blocking physical checkpoint. Current evidence is in 04-DEVICE-VERIFICATION.md; remote instructions in 04-REMOTE-ANDROID-VERIFICATION.md. August fixture IDs and decisions are historical. Do not fabricate device evidence or create 04-05/04-17 completion summaries. No new-project physical transition or iPhone acceptance has been observed."
 }
