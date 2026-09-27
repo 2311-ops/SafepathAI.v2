@@ -1,6 +1,8 @@
 # Remote Android Verification
 
-Status: prepared, not executed. Applies to 04-05 and the Android portion of 04-17. A successful app launch or API request is not a boundary-crossing pass.
+Status: membership confirmed; registration and movement not executed. Applies to 04-05 and the Android portion of 04-17. A successful app launch or API request is not a boundary-crossing pass.
+
+2026-09-27: Youssef Ghallab joined as Member; user reports OPPO A52 / Android 11. The friend is waiting before walking. Reopen the map, grant background location, and wait for a fresh accurate fix and server registration acknowledgement before movement. ADB availability and API level still need device evidence. Do not use the Guardian Samsung serial for the friend's commands.
 
 ## Join And Register
 

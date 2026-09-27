@@ -18,7 +18,8 @@ Per PR-04, Phase 4 is not approved/closed until signed physical iPhone + APNs ev
 
 | Gate | Command / evidence | Result |
 |---|---|---|
-| Backend full suite | `dotnet test backend/SafePath.sln --no-restore --configuration Release --verbosity quiet` | PASS: 228 application tests, 25 API integration tests; command exit 0 |
+| Backend full suite | `dotnet test backend/SafePath.sln --no-restore --configuration Release --verbosity minimal` | PASS after clock-skew fix: 231 application tests, 25 API integration tests; command exit 0 |
+| Backend clean rebuild | `dotnet build backend/SafePath.sln --no-restore --configuration Release --no-incremental --verbosity minimal` | PASS: zero warnings, zero errors |
 | Flutter full suite | `flutter test --no-pub --reporter expanded --timeout 60s` | PASS: 461 tests |
 | Flutter analysis | `flutter analyze --no-pub` | PASS: no issues |
 | Native Android worker test | `gradlew.bat :app:testDebugUnitTest --console=plain` | PASS: BUILD SUCCESSFUL; JUnit XML records 1 test, 0 failures/errors |
@@ -47,11 +48,11 @@ Commit `76694fa` restores the existing `BatteryIndicator` to `LiveMemberMarker`,
 - The connected account is the test Guardian. Fine/coarse/background location are granted on its Samsung phone.
 - The user selected their friend's remote Android phone for the monitored Member and boundary test.
 - A 24-hour, single-use Member invitation was generated and given to the user privately. Its code/token is intentionally omitted from this committed document.
-- At the last check the family contained only the Guardian and had zero zones. Await the friend's join before selecting their account and a current location for a 100 m zone.
+- Confirmed Member Youssef Ghallab (`f4026a11-435d-4eb6-8a74-c70ccb3caacc`) joined. User reports OPPO A52 / Android 11 and no walking yet. Last member fix was stale, so zero zones remain; obtain a fresh fix before creating and acknowledging a 100 m zone.
 - No current-project registration acknowledgement, real boundary candidate, headless upload, offline replay, push delivery, or SOS concurrency is claimed.
 - Signed iPhone/macOS/Xcode/APNs acceptance remains unverified and required by PR-04.
 
-Next: follow `04-REMOTE-ANDROID-VERIFICATION.md` after the friend joins. Do not create 04-05 or 04-17 completion summaries until their physical gates pass.
+Next: follow `04-REMOTE-ANDROID-VERIFICATION.md` from fresh location and registration. Backend audit and warning details are in `04-BACKEND-HEALTH.md`. Do not create 04-05 or 04-17 completion summaries until their physical gates pass.
 
 ## Historical Environment Evidence: 2026-08-14
 

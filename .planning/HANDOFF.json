@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-09-27T19:46:00+03:00",
+  "timestamp": "2026-09-27T20:33:00+03:00",
   "phase": "04",
   "phase_name": "geofencing",
   "phase_dir": ".planning/phases/04-geofencing",
@@ -13,7 +13,7 @@
       "id": 1,
       "name": "Prove Android process-death registration and authenticated upload",
       "status": "in_progress",
-      "progress": "Historical registration evidence is retained in .continue-here.md, but Supabase changed to dvhxboclavtudtwzifst. Google login and authenticated API now work. Prepared family 40bdffff-c601-47a1-9a8b-7394813dde56 with the connected Samsung as Guardian. Friend's remote Android is the selected Member device; invitation shared privately, join pending, zero zones. 04-17 automated checks passed: 461 Flutter, 228 application, 25 API tests, native worker, analyze, migrations, build. Commit 76694fa repairs battery/splash regressions. Physical candidate/upload/replay/SOS and signed iPhone evidence remain incomplete."
+      "progress": "Current Supabase project dvhxboclavtudtwzifst. Youssef Ghallab (f4026a11-435d-4eb6-8a74-c70ccb3caacc) has joined family 40bdffff-c601-47a1-9a8b-7394813dde56 as Member. User reports OPPO A52 / Android 11; friend is waiting before walking. Last fix is stale, zero zones: require fresh accurate location before creating 100m zone. Fixed backend rejection of small future device-clock skew; clamps up to 30 seconds to receipt time, rejects larger skew. 231 application + 25 API tests pass; full Release rebuild has zero warnings/errors. Earlier 461 Flutter/native/analyze/build gates remain valid; mobile source unchanged in this audit. Physical candidate/upload/replay/SOS and signed iPhone evidence remain incomplete."
     }
   ],
   "remaining_tasks": [
@@ -23,7 +23,7 @@
       "status": "in_progress",
       "subtasks": [
         "Keep backend port 5059 and the existing ngrok tunnel active",
-        "Wait for friend to join family 40bdffff-c601-47a1-9a8b-7394813dde56; record display name and Android model/API",
+        "Have confirmed Member Youssef Ghallab reopen SafePath and enable background location on OPPO A52 / Android 11; verify a fresh accurate location",
         "Create a fresh 100m zone assigned to the friend's Member account at their current test location and verify generation acknowledgement",
         "Physically cross the 100m boundary or use a real OS-supported location simulation method",
         "Capture GeofenceBroadcastReceiver and GeofenceNativeStore logs for the native candidate write",
@@ -37,7 +37,7 @@
   ],
   "blockers": [
     {
-      "description": "Remote Member join, fresh zone registration, and real boundary evidence are pending in the new project; signed iPhone/APNs evidence is also missing.",
+      "description": "Member joined; fresh location, zone registration, and real boundary evidence are pending; signed iPhone/APNs evidence is also missing.",
       "type": "human_action",
       "workaround": "Follow 04-REMOTE-ANDROID-VERIFICATION.md on the friend's phone after joining and registering the zone. Use actual OS callbacks and server correlation; do not fabricate device evidence."
     }
@@ -45,8 +45,8 @@
   "async_jobs": [],
   "human_actions_pending": [
     {
-      "action": "Friend joins the test circle and provides their Member name and Android model/API",
-      "context": "A one-use 24h invitation was shared privately. No zone exists in the current project; create and acknowledge a fresh zone before movement.",
+      "action": "Friend reopens SafePath on OPPO A52 / Android 11 and grants background location; wait for operator confirmation before walking",
+      "context": "Membership is confirmed. Last location is stale. No zone exists in the current project; create and acknowledge a fresh zone before movement.",
       "blocking": true
     },
     {
@@ -67,10 +67,7 @@
       "phase": "04"
     }
   ],
-  "uncommitted_files": [
-    ".planning/HANDOFF.json",
-    ".planning/phases/04-geofencing/.continue-here.md"
-  ],
-  "next_action": "Check friend membership in family 40bdffff-c601-47a1-9a8b-7394813dde56, create/acknowledge a fresh 100m zone assigned to them, and execute the remote Android checklist. Keep API/tunnel live.",
+  "uncommitted_files": [],
+  "next_action": "Read a fresh location for Member f4026a11-435d-4eb6-8a74-c70ccb3caacc through the Guardian's authorized API, create/acknowledge a fresh 100m zone, then execute the remote Android checklist. Keep API/tunnel live; logs are backend/logs/phase04-api-20260927.*.log.",
   "context_notes": "Blocking physical checkpoint. Current evidence is in 04-DEVICE-VERIFICATION.md; remote instructions in 04-REMOTE-ANDROID-VERIFICATION.md. August fixture IDs and decisions are historical. Do not fabricate device evidence or create 04-05/04-17 completion summaries. No new-project physical transition or iPhone acceptance has been observed."
 }
