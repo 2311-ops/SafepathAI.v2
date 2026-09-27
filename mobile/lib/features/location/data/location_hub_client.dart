@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:signalr_netcore/ihub_protocol.dart' as signalr_protocol;
 import 'package:signalr_netcore/signalr_client.dart' as signalr;
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
@@ -97,6 +98,7 @@ class SignalRLocationHubClient implements LocationHubClient {
           options: signalr.HttpConnectionOptions(
             accessTokenFactory: () async =>
                 _supabase.auth.currentSession?.accessToken ?? '',
+            headers: _signalRHeadersFor(_apiBaseUrl),
           ),
         )
         .withAutomaticReconnect(retryDelays: [2000, 5000, 10000, 20000])
@@ -113,10 +115,8 @@ class SignalRLocationHubClient implements LocationHubClient {
       ),
     );
     connection.onreconnected(
-      ({String? connectionId}) => _setStateIfCurrent(
-        generation,
-        LocationHubConnectionState.connected,
-      ),
+      ({String? connectionId}) =>
+          _setStateIfCurrent(generation, LocationHubConnectionState.connected),
     );
     connection.onclose(
       ({Exception? error}) => _setStateIfCurrent(
@@ -197,6 +197,15 @@ class SignalRLocationHubClient implements LocationHubClient {
   String _locationHubUrl(String familyId) {
     final base = _apiBaseUrl.replaceFirst(RegExp(r'/$'), '');
     return '$base/hubs/location?familyId=${Uri.encodeQueryComponent(familyId)}';
+  }
+
+  signalr_protocol.MessageHeaders? _signalRHeadersFor(String baseUrl) {
+    final apiHeaders = apiDefaultHeadersFor(baseUrl);
+    if (apiHeaders.isEmpty) return null;
+
+    final headers = signalr_protocol.MessageHeaders();
+    apiHeaders.forEach(headers.setHeaderValue);
+    return headers;
   }
 
   void _handleLocationUpdated(List<Object?>? arguments) {
