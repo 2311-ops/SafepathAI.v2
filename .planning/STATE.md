@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: geofencing
 status: blocked
-stopped_at: "04-05: OPPO Member joined; awaiting fresh location, zone acknowledgement and physical evidence"
-last_updated: "2026-09-27T17:33:00Z"
+stopped_at: "04-05: 100m OPPO test zone created; generation 1 acknowledgement pending before walking"
+last_updated: "2026-09-27T17:57:00Z"
 last_activity: 2026-09-27
-last_activity_desc: "Confirmed friend membership; repaired location clock-skew rejection; 256 backend tests and zero-warning rebuild passed"
+last_activity_desc: "Created 100m zone for online OPPO Member; waiting for phone registration before movement"
 progress:
   total_phases: 8
   completed_phases: 4
@@ -31,8 +31,8 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 Phase: 04 (geofencing) — BLOCKED
 Plan: 05 of 17 checkpoint; 04-17 Task 1 automated checks refreshed
 Status: Automated gates green; remote Android and signed iPhone physical acceptance remain open
-Current blocker: 2026-09-27 - Member joined on OPPO A52 / Android 11; fresh location and exact-generation zone acknowledgement required before walking; iPhone evidence also pending
-Last activity: 2026-09-27 - Audited live backend, fixed small clock-skew location rejection, passed 256 backend tests, and restarted the patched API
+Current blocker: 2026-09-27 - OPPO A52 / Android 11 must acknowledge zone e8c005b1-4bd9-43ec-a845-9bf2acd56e45 generation 1 before walking; iPhone evidence also pending
+Last activity: 2026-09-27 - Created 100m test zone at stationary Member's last fix; requested app cold reopen to register
 
 Progress: [██████████] 97%
 
@@ -301,6 +301,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-27T17:33:00Z
-Stopped at: 04-05 physical checkpoint; Member joined, fresh location/registration and device evidence pending
+Last session: 2026-09-27T17:57:00Z
+Stopped at: 04-05 physical checkpoint; zone created, generation 1 acknowledgement and device evidence pending
 Resume file: .planning/phases/04-geofencing/.continue-here.md

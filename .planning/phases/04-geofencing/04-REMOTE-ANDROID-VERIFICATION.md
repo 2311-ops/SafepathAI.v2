@@ -1,6 +1,8 @@
 # Remote Android Verification
 
-Status: membership confirmed; registration and movement not executed. Applies to 04-05 and the Android portion of 04-17. A successful app launch or API request is not a boundary-crossing pass.
+Status: membership confirmed; 100m zone created; phone registration acknowledgement and movement pending. Applies to 04-05 and the Android portion of 04-17. A successful app launch or API request is not a boundary-crossing pass.
+
+Latest setup at 17:56 UTC: existing zone `e8c005b1-4bd9-43ec-a845-9bf2acd56e45`, generation 1, assigned Member `f4026a11-435d-4eb6-8a74-c70ccb3caacc`. Center came from stationary Member's 17:52:16 UTC fix (16.5m accuracy, 250 seconds old). Requested cold reopen to fetch registration. Wait for exact-generation acknowledgement before process death or walking. Do not create a duplicate zone.
 
 2026-09-27: Youssef Ghallab joined as Member; user reports OPPO A52 / Android 11. The friend is waiting before walking. Reopen the map, grant background location, and wait for a fresh accurate fix and server registration acknowledgement before movement. ADB availability and API level still need device evidence. Do not use the Guardian Samsung serial for the friend's commands.
 

@@ -43,6 +43,8 @@ Commit `76694fa` restores the existing `BatteryIndicator` to `LiveMemberMarker`,
 
 ### Current Device Setup
 
+Update 17:56 UTC: Member is online. Created zone `e8c005b1-4bd9-43ec-a845-9bf2acd56e45` (100m, Conservative, generation 1) through Guardian production API. Source Member fix at 17:52:16.352 UTC was 250 seconds old with 16.5m accuracy; user had reported friend stationary awaiting permission to walk. Zone acknowledgement is pending. Both needsSync and needsLocationPermission are true because no acknowledgement exists; this alone does not diagnose OS permission state. Cold reopen requested. This supersedes the earlier zero-zone status below.
+
 - Supabase project is now `dvhxboclavtudtwzifst`; the August accounts and test-zone IDs below are historical, not current fixtures.
 - Created `Phase 04 Test Circle`, family ID `40bdffff-c601-47a1-9a8b-7394813dde56`, using the signed-in account's production API.
 - The connected account is the test Guardian. Fine/coarse/background location are granted on its Samsung phone.
