@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart' as gsi;
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
@@ -100,7 +101,7 @@ class SupabaseAuthApi implements AuthApi {
     this._client, {
     this.googleSignInTokensProvider,
     this.googleIdTokenSignIn,
-    this.googleNativeSignInTimeout = const Duration(seconds: 12),
+    this.googleTokenExchangeTimeout = const Duration(seconds: 30),
   });
 
   static const _googleSignInScopes = <String>['email', 'profile'];
@@ -108,7 +109,7 @@ class SupabaseAuthApi implements AuthApi {
   final sb.SupabaseClient _client;
   final GoogleSignInTokensProvider? googleSignInTokensProvider;
   final GoogleIdTokenSignIn? googleIdTokenSignIn;
-  final Duration googleNativeSignInTimeout;
+  final Duration googleTokenExchangeTimeout;
 
   /// `google_sign_in`'s `GoogleSignIn.instance.initialize()` must be called
   /// exactly once and awaited before any other method on the instance is
@@ -251,17 +252,12 @@ class SupabaseAuthApi implements AuthApi {
   @override
   Future<bool> signInWithGoogle() async {
     try {
-      await _signInWithGoogleNatively().timeout(
-        googleNativeSignInTimeout,
-        onTimeout: () {
-          throw AuthApiException(
-            AuthIssue.unknown,
-            message: 'Google native sign-in timed out.',
-          );
-        },
-      );
+      _logGoogleSignIn('Opening account picker');
+      await _signInWithGoogleNatively();
+      _logGoogleSignIn('Supabase sign-in completed');
       return true;
     } on gsi.GoogleSignInException catch (error) {
+      _logGoogleSignIn('Native result: ${error.code.name}');
       if (error.code == gsi.GoogleSignInExceptionCode.canceled) {
         // User backed out of the native picker before completing it — not
         // an error, same observable contract as the superseded browser
@@ -274,9 +270,17 @@ class SupabaseAuthApi implements AuthApi {
       );
     } on AuthApiException {
       rethrow;
+    } on TimeoutException {
+      _logGoogleSignIn('Token exchange timed out');
+      throw AuthApiException(
+        AuthIssue.network,
+        message: 'Google token exchange timed out.',
+      );
     } on sb.AuthException catch (error) {
+      _logGoogleSignIn('Supabase rejected sign-in: ${error.code}');
       throw AuthApiException(AuthIssue.unknown, message: error.message);
     } catch (error) {
+      _logGoogleSignIn('Sign-in failed: ${error.runtimeType}');
       throw AuthApiException(AuthIssue.network, message: error.toString());
     }
   }
@@ -285,10 +289,15 @@ class SupabaseAuthApi implements AuthApi {
     final tokens = await (googleSignInTokensProvider ?? _requestGoogleTokens)
         .call();
     _ensureCompleteGoogleTokens(tokens);
-    await (googleIdTokenSignIn ?? _signInWithGoogleTokens).call(
-      idToken: tokens.idToken,
-      accessToken: tokens.accessToken,
-    );
+    _logGoogleSignIn('Exchanging Google tokens with Supabase');
+    // Account selection and consent are user-driven and must not time out.
+    await (googleIdTokenSignIn ?? _signInWithGoogleTokens)
+        .call(idToken: tokens.idToken, accessToken: tokens.accessToken)
+        .timeout(googleTokenExchangeTimeout);
+  }
+
+  void _logGoogleSignIn(String message) {
+    if (kDebugMode) debugPrint('[GoogleSignIn] $message');
   }
 
   Future<GoogleSignInTokens> _requestGoogleTokens() async {
