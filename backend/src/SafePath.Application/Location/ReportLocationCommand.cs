@@ -18,6 +18,7 @@ public record ReportLocationResult(Guid PingId);
 
 public class ReportLocationCommandHandler : ICommandHandler<ReportLocationCommand, ReportLocationResult>
 {
+    private static readonly TimeSpan MaximumClockSkew = TimeSpan.FromSeconds(30);
     private readonly IApplicationDbContext _db;
     private readonly IFamilyAuthorizationService _authorization;
     private readonly ILocationBroadcastService _broadcast;
@@ -41,7 +42,12 @@ public class ReportLocationCommandHandler : ICommandHandler<ReportLocationComman
     public async Task<ReportLocationResult> Handle(ReportLocationCommand command, CancellationToken cancellationToken = default)
     {
         await _authorization.RequireMembership(command.CallerUserId, command.FamilyId, cancellationToken);
-        Validate(command);
+        var receivedAtUtc = DateTime.UtcNow;
+        Validate(command, receivedAtUtc);
+        // Tolerate small device clock differences without persisting or broadcasting future fixes.
+        var recordedAtUtc = command.RecordedAtUtc > receivedAtUtc
+            ? receivedAtUtc
+            : command.RecordedAtUtc;
 
         var ping = new LocationPing
         {
@@ -51,8 +57,8 @@ public class ReportLocationCommandHandler : ICommandHandler<ReportLocationComman
             Longitude = command.Longitude,
             AccuracyMeters = command.AccuracyMeters,
             BatteryPercent = command.BatteryPercent,
-            RecordedAtUtc = command.RecordedAtUtc,
-            ReceivedAtUtc = DateTime.UtcNow,
+            RecordedAtUtc = recordedAtUtc,
+            ReceivedAtUtc = receivedAtUtc,
         };
 
         _db.LocationPings.Add(ping);
@@ -77,7 +83,7 @@ public class ReportLocationCommandHandler : ICommandHandler<ReportLocationComman
                 command.Longitude,
                 command.AccuracyMeters,
                 command.BatteryPercent,
-                command.RecordedAtUtc),
+                recordedAtUtc),
             eligibleRecipients,
             cancellationToken);
 
@@ -104,7 +110,7 @@ public class ReportLocationCommandHandler : ICommandHandler<ReportLocationComman
         return new ReportLocationResult(ping.Id);
     }
 
-    private static void Validate(ReportLocationCommand command)
+    private static void Validate(ReportLocationCommand command, DateTime receivedAtUtc)
     {
         if (double.IsNaN(command.Latitude) || command.Latitude is < -90 or > 90)
         {
@@ -126,9 +132,9 @@ public class ReportLocationCommandHandler : ICommandHandler<ReportLocationComman
             throw new ArgumentException("Battery percent must be between 0 and 100.", nameof(command));
         }
 
-        if (command.RecordedAtUtc > DateTime.UtcNow)
+        if (command.RecordedAtUtc > receivedAtUtc + MaximumClockSkew)
         {
-            throw new ArgumentException("RecordedAtUtc cannot be in the future.", nameof(command));
+            throw new ArgumentException("RecordedAtUtc exceeds the allowed device clock skew of 30 seconds.", nameof(command));
         }
     }
 }

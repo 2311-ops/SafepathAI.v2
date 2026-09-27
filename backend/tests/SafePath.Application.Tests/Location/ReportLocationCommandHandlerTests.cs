@@ -39,6 +39,7 @@ public class ReportLocationCommandHandlerTests : IDisposable
 
         var ping = Assert.Single(db.LocationPings);
         Assert.Equal(callerId, ping.UserId);
+        Assert.Equal(recordedAt, ping.RecordedAtUtc);
         Assert.Equal(familyId, broadcast.FamilyId);
         Assert.Equal(callerId, broadcast.Update!.UserId);
         Assert.Equal(30.0444, broadcast.Update.Lat);
@@ -75,6 +76,33 @@ public class ReportLocationCommandHandlerTests : IDisposable
             DateTime.UtcNow.AddMinutes(-1))));
 
         Assert.Empty(db.LocationPings);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    [InlineData(20)]
+    public async Task Handle_SmallFutureClockSkew_ClampsPersistedAndBroadcastTimestamp(int secondsAhead)
+    {
+        await using var db = _factory.CreateContext();
+        var (familyId, callerId, _) = await SeedFamily(db);
+        var broadcast = new RecordingLocationBroadcastService();
+        var handler = new ReportLocationCommandHandler(
+            db,
+            new FamilyAuthorizationService(db),
+            broadcast,
+            new SharingAuthorizationService(db),
+            new LowBatteryAlertTracker());
+        var before = DateTime.UtcNow;
+
+        await handler.Handle(new ReportLocationCommand(
+            callerId, familyId, 30.0444, 31.2357, 10, null, before.AddSeconds(secondsAhead)));
+
+        var ping = Assert.Single(db.LocationPings);
+        Assert.InRange(ping.ReceivedAtUtc, before, DateTime.UtcNow);
+        Assert.Equal(ping.ReceivedAtUtc, ping.RecordedAtUtc);
+        Assert.Equal(ping.RecordedAtUtc, broadcast.Update!.RecordedAtUtc);
+        Assert.Equal(1, broadcast.BroadcastCount);
     }
 
     [Fact]
