@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-09-27T20:57:00+03:00",
+  "timestamp": "2026-09-27T21:30:00+03:00",
   "phase": "04",
   "phase_name": "geofencing",
   "phase_dir": ".planning/phases/04-geofencing",
@@ -24,7 +24,7 @@
       "subtasks": [
         "Keep backend port 5059 and the existing ngrok tunnel active",
         "Have Member Youssef Ghallab cold-reopen SafePath with background location allowed on OPPO A52 / Android 11",
-        "Verify generation 1 acknowledgement for existing zone e8c005b1-4bd9-43ec-a845-9bf2acd56e45; do not create a duplicate",
+        "Verify generation 2 acknowledgement for recentered zone e8c005b1-4bd9-43ec-a845-9bf2acd56e45; do not create a duplicate",
         "Physically cross the 100m boundary or use a real OS-supported location simulation method",
         "Capture GeofenceBroadcastReceiver and GeofenceNativeStore logs for the native candidate write",
         "Run adb shell am kill com.safepath.mobile, not force-stop",
@@ -46,7 +46,7 @@
   "human_actions_pending": [
     {
       "action": "Friend reopens SafePath on OPPO A52 / Android 11 and grants background location; wait for operator confirmation before walking",
-      "context": "100m zone e8c005b1-4bd9-43ec-a845-9bf2acd56e45 exists at generation 1; phone has not acknowledged. Swipe away and reopen, not Force stop. Do not walk yet.",
+      "context": "100m zone e8c005b1-4bd9-43ec-a845-9bf2acd56e45 was recentered at 18:29 UTC and is generation 2; phone has not acknowledged the new generation. Swipe away and reopen, not Force stop. Do not walk yet.",
       "blocking": true
     },
     {
@@ -68,6 +68,6 @@
     }
   ],
   "uncommitted_files": [],
-  "next_action": "Read existing zone e8c005b1-4bd9-43ec-a845-9bf2acd56e45 through Guardian API after friend cold-reopens app. Require generation 1 with needsSync=false and needsLocationPermission=false before process-death/walking steps. Keep API/tunnel live; logs are backend/logs/phase04-api-20260927.*.log.",
-  "context_notes": "Blocking physical checkpoint. Current evidence is in 04-DEVICE-VERIFICATION.md; remote instructions in 04-REMOTE-ANDROID-VERIFICATION.md. August fixture IDs and decisions are historical. Do not fabricate device evidence or create 04-05/04-17 completion summaries. No new-project physical transition or iPhone acceptance has been observed."
+  "next_action": "Read existing zone e8c005b1-4bd9-43ec-a845-9bf2acd56e45 through Guardian API after friend cold-reopens app. Require generation 2 with needsSync=false and needsLocationPermission=false before process-death/walking steps. Keep API/tunnel live; logs are backend/logs/phase04-api-20260927.*.log.",
+  "context_notes": "Latest state supersedes earlier generation 1 progress: gen1 acknowledgement was verified at 18:14 UTC with zero activity. OPPO am kill denied KILL_BACKGROUND_PROCESSES; run-as toybox kill reported unknown PID. Matching UID was confirmed, but no absent-PID result was supplied. PID later changed from 2249 to 17366; this alone does not prove the intended process-death test. Friend moved, so at user request recentered SAME zone via PUT at 18:29:59 UTC using fix 18:28:54.29 UTC (63 seconds old, 10.4m accuracy), yielding generation 2 pending acknowledgement. No accepted physical transition, replay, SOS or iPhone evidence. See remote verification document. Do not fabricate completion summaries."
 }

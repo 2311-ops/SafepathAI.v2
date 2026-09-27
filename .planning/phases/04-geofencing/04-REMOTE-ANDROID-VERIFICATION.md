@@ -2,7 +2,9 @@
 
 Status: membership confirmed; 100m zone created; phone registration acknowledgement and movement pending. Applies to 04-05 and the Android portion of 04-17. A successful app launch or API request is not a boundary-crossing pass.
 
-Latest setup at 17:56 UTC: existing zone `e8c005b1-4bd9-43ec-a845-9bf2acd56e45`, generation 1, assigned Member `f4026a11-435d-4eb6-8a74-c70ccb3caacc`. Center came from stationary Member's 17:52:16 UTC fix (16.5m accuracy, 250 seconds old). Requested cold reopen to fetch registration. Wait for exact-generation acknowledgement before process death or walking. Do not create a duplicate zone.
+Latest setup at 18:29:59 UTC: recentered existing zone `e8c005b1-4bd9-43ec-a845-9bf2acd56e45`, now generation 2, assigned Member `f4026a11-435d-4eb6-8a74-c70ccb3caacc`. Center came from Member's 18:28:54.29 UTC fix (10.4m accuracy, 63 seconds old). Radius remains 100m; recipient/sensitivity settings preserved. Requested cold reopen to fetch generation 2. Wait for its acknowledgement before process death or walking. Do not create a duplicate zone.
+
+Generation 1 had been acknowledged, with zero zone activity at 18:14 UTC. The subsequent process-death attempt is INCONCLUSIVE: OPPO denied `am kill` with KILL_BACKGROUND_PROCESSES; run-as toybox kill reported unknown PID despite matching app UID. Later PID changed from 2249 to 17366, but no absent-PID result or correlated native event was supplied. Friend moved before this was resolved, then user requested a new starting location. That earlier movement is not an acceptance pass. Neither numeric PID should be reused without a current device read.
 
 2026-09-27: Youssef Ghallab joined as Member; user reports OPPO A52 / Android 11. The friend is waiting before walking. Reopen the map, grant background location, and wait for a fresh accurate fix and server registration acknowledgement before movement. ADB availability and API level still need device evidence. Do not use the Guardian Samsung serial for the friend's commands.
 

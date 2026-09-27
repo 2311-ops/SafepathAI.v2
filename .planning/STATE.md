@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: geofencing
 status: blocked
-stopped_at: "04-05: 100m OPPO test zone created; generation 1 acknowledgement pending before walking"
-last_updated: "2026-09-27T17:57:00Z"
+stopped_at: "04-05: zone recentered at new location; generation 2 acknowledgement pending; process death unproven"
+last_updated: "2026-09-27T18:30:00Z"
 last_activity: 2026-09-27
-last_activity_desc: "Created 100m zone for online OPPO Member; waiting for phone registration before movement"
+last_activity_desc: "Recentered existing 100m zone from fresh Member fix; await generation 2 acknowledgement"
 progress:
   total_phases: 8
   completed_phases: 4
@@ -31,8 +31,8 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 Phase: 04 (geofencing) — BLOCKED
 Plan: 05 of 17 checkpoint; 04-17 Task 1 automated checks refreshed
 Status: Automated gates green; remote Android and signed iPhone physical acceptance remain open
-Current blocker: 2026-09-27 - OPPO A52 / Android 11 must acknowledge zone e8c005b1-4bd9-43ec-a845-9bf2acd56e45 generation 1 before walking; iPhone evidence also pending
-Last activity: 2026-09-27 - Created 100m test zone at stationary Member's last fix; requested app cold reopen to register
+Current blocker: 2026-09-27 - OPPO A52 / Android 11 must acknowledge zone e8c005b1-4bd9-43ec-a845-9bf2acd56e45 generation 2; process death is not confirmed; iPhone evidence also pending
+Last activity: 2026-09-27 - Recentered existing 100m zone using a 63-second-old fix with 10.4m accuracy; requested cold reopen
 
 Progress: [██████████] 97%
 
@@ -301,6 +301,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-27T17:57:00Z
-Stopped at: 04-05 physical checkpoint; zone created, generation 1 acknowledgement and device evidence pending
+Last session: 2026-09-27T18:30:00Z
+Stopped at: 04-05 physical checkpoint; zone recentered, generation 2 acknowledgement and process-death evidence pending
 Resume file: .planning/phases/04-geofencing/.continue-here.md
