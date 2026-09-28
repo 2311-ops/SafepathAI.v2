@@ -19,8 +19,8 @@ enum NativeGeofenceTransition { enter, exit, error }
 NativeGeofenceCapability nativeGeofenceCapabilityFromStatus(Object? value) =>
     switch (value) {
       'ready' || 'authorizedAlways' => NativeGeofenceCapability.ready,
-      'needsLocationPermission' || 'notDetermined' =>
-        NativeGeofenceCapability.needsLocationPermission,
+      'needsLocationPermission' ||
+      'notDetermined' => NativeGeofenceCapability.needsLocationPermission,
       'needsBackgroundPermission' || 'authorizedWhenInUse' =>
         NativeGeofenceCapability.needsBackgroundPermission,
       _ => NativeGeofenceCapability.unavailable,
@@ -158,7 +158,6 @@ class MethodChannelNativeGeofencePlatform implements NativeGeofencePlatform {
       _channel.invokeMethod<void>('replaceMonitoredZones', {
         'zones': zones.map((zone) => zone.toMap()).toList(growable: false),
       });
-
 }
 
 final nativeGeofencePlatformProvider = Provider<NativeGeofencePlatform>(
@@ -227,7 +226,8 @@ class GeofenceRegistration {
   factory GeofenceRegistration.fromJson(Map<String, dynamic> json) =>
       GeofenceRegistration(
         zoneId: json['zoneId'] as String,
-        generation: json['generation'] as int,
+        generation:
+            (json['generation'] ?? json['registrationGeneration']) as int,
         latitude: (json['latitude'] as num).toDouble(),
         longitude: (json['longitude'] as num).toDouble(),
         radiusMeters: (json['radiusMeters'] as num).toDouble(),
@@ -235,7 +235,7 @@ class GeofenceRegistration {
 }
 
 abstract class GeofenceRegistrationApi {
-  Future<GeofenceRegistration?> fetchRegistration();
+  Future<List<GeofenceRegistration>> fetchRegistrations();
   Future<void> acknowledgeRegistration(String zoneId, int generation);
 }
 
@@ -246,22 +246,20 @@ class DioGeofenceRegistrationApi implements GeofenceRegistrationApi {
   @override
   Future<void> acknowledgeRegistration(String zoneId, int generation) async {
     await _dio.post<void>(
-      '/geofences/$zoneId/registrations/$generation/acknowledgements',
+      '/geofences/$zoneId/registrations/$generation/acknowledgements/current',
     );
   }
 
   @override
-  Future<GeofenceRegistration?> fetchRegistration() async {
-    try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        '/geofences/registration',
-      );
-      final data = response.data;
-      return data == null ? null : GeofenceRegistration.fromJson(data);
-    } on DioException catch (error) {
-      if (error.response?.statusCode == 404) return null;
-      rethrow;
-    }
+  Future<List<GeofenceRegistration>> fetchRegistrations() async {
+    final response = await _dio.get<List<dynamic>>('/geofences/registrations');
+    return (response.data ?? const [])
+        .whereType<Map>()
+        .map(
+          (entry) =>
+              GeofenceRegistration.fromJson(Map<String, dynamic>.from(entry)),
+        )
+        .toList(growable: false);
   }
 }
 

@@ -100,38 +100,57 @@ void main() {
     expect(zone.requestId, 'zone-1:7');
   });
 
-  test('identifies the recoverable platform failure that needs a canonical resync', () {
-    final unavailable = NativeGeofenceCandidate(
-      eventId: 'event-recovery',
-      requestId: '',
-      transition: NativeGeofenceTransition.error,
-      occurredAtUtc: DateTime.utc(2026, 8, 14),
-      errorCode: nativeGeofenceNotAvailableErrorCode,
-    );
+  test('parses plural registration endpoint shape', () {
+    final registration = GeofenceRegistration.fromJson({
+      'zoneId': 'zone-1',
+      'registrationGeneration': 8,
+      'latitude': 30.0444,
+      'longitude': 31.2357,
+      'radiusMeters': 120,
+    });
 
-    expect(unavailable.requiresCanonicalResync, isTrue);
+    expect(registration.generation, 8);
+    expect(registration.toNativeZone().requestId, 'zone-1:8');
   });
 
-  test('maps iOS location authorization states to the shared capability contract', () {
-    expect(
-      nativeGeofenceCapabilityFromStatus('authorizedAlways'),
-      NativeGeofenceCapability.ready,
-    );
-    expect(
-      nativeGeofenceCapabilityFromStatus('authorizedWhenInUse'),
-      NativeGeofenceCapability.needsBackgroundPermission,
-    );
-    expect(
-      nativeGeofenceCapabilityFromStatus('notDetermined'),
-      NativeGeofenceCapability.needsLocationPermission,
-    );
-    expect(
-      nativeGeofenceCapabilityFromStatus('denied'),
-      NativeGeofenceCapability.unavailable,
-    );
-    expect(
-      nativeGeofenceCapabilityFromStatus('restricted'),
-      NativeGeofenceCapability.unavailable,
-    );
-  });
+  test(
+    'identifies the recoverable platform failure that needs a canonical resync',
+    () {
+      final unavailable = NativeGeofenceCandidate(
+        eventId: 'event-recovery',
+        requestId: '',
+        transition: NativeGeofenceTransition.error,
+        occurredAtUtc: DateTime.utc(2026, 8, 14),
+        errorCode: nativeGeofenceNotAvailableErrorCode,
+      );
+
+      expect(unavailable.requiresCanonicalResync, isTrue);
+    },
+  );
+
+  test(
+    'maps iOS location authorization states to the shared capability contract',
+    () {
+      expect(
+        nativeGeofenceCapabilityFromStatus('authorizedAlways'),
+        NativeGeofenceCapability.ready,
+      );
+      expect(
+        nativeGeofenceCapabilityFromStatus('authorizedWhenInUse'),
+        NativeGeofenceCapability.needsBackgroundPermission,
+      );
+      expect(
+        nativeGeofenceCapabilityFromStatus('notDetermined'),
+        NativeGeofenceCapability.needsLocationPermission,
+      );
+      expect(
+        nativeGeofenceCapabilityFromStatus('denied'),
+        NativeGeofenceCapability.unavailable,
+      );
+      expect(
+        nativeGeofenceCapabilityFromStatus('restricted'),
+        NativeGeofenceCapability.unavailable,
+      );
+    },
+  );
 }

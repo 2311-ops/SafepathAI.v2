@@ -38,19 +38,18 @@ class _FakeGateway implements NativeGeofencePlatform {
 }
 
 class _FakeApi implements GeofenceRegistrationApi {
-  GeofenceRegistration? registration;
-  String? acknowledgedZoneId;
-  int? acknowledgedGeneration;
+  List<GeofenceRegistration> registrations = const [];
+  final acknowledged = <String, int>{};
   Object? acknowledgementError;
   @override
   Future<void> acknowledgeRegistration(String zoneId, int generation) async {
     if (acknowledgementError case final error?) throw error;
-    acknowledgedZoneId = zoneId;
-    acknowledgedGeneration = generation;
+    acknowledged[zoneId] = generation;
   }
 
   @override
-  Future<GeofenceRegistration?> fetchRegistration() async => registration;
+  Future<List<GeofenceRegistration>> fetchRegistrations() async =>
+      registrations;
 }
 
 class _FakeAuthController extends AuthController {
@@ -78,13 +77,15 @@ void main() {
         );
         final platform = _FakeGateway(NativeGeofenceCapability.ready);
         final api = _FakeApi()
-          ..registration = const GeofenceRegistration(
-            zoneId: 'private-zone-id',
-            generation: 2,
-            latitude: 30.0444,
-            longitude: 31.2357,
-            radiusMeters: 100,
-          );
+          ..registrations = const [
+            GeofenceRegistration(
+              zoneId: 'private-zone-id',
+              generation: 2,
+              latitude: 30.0444,
+              longitude: 31.2357,
+              radiusMeters: 100,
+            ),
+          ];
         switch (stage) {
           case 'capability':
             platform.capabilityError = failure;
@@ -109,7 +110,7 @@ void main() {
           container.read(geofenceRegistrationControllerProvider),
           isA<GeofenceRegistrationNeedsSync>(),
         );
-        expect(api.acknowledgedGeneration, isNull);
+        expect(api.acknowledged, isEmpty);
         expect(
           logs.join('\n'),
           contains('stage=$stage failed code=registration_failed'),
@@ -130,13 +131,15 @@ void main() {
   test('acknowledges only after native replacement succeeds', () async {
     final platform = _FakeGateway(NativeGeofenceCapability.ready);
     final api = _FakeApi()
-      ..registration = const GeofenceRegistration(
-        zoneId: 'zone-1',
-        generation: 3,
-        latitude: 30.0444,
-        longitude: 31.2357,
-        radiusMeters: 120,
-      );
+      ..registrations = const [
+        GeofenceRegistration(
+          zoneId: 'zone-1',
+          generation: 3,
+          latitude: 30.0444,
+          longitude: 31.2357,
+          radiusMeters: 120,
+        ),
+      ];
     final container = ProviderContainer(
       overrides: [
         authControllerProvider.overrideWith(
@@ -150,8 +153,7 @@ void main() {
     container.read(geofenceRegistrationControllerProvider);
     await _pump();
     expect(platform.replaceCallCount, 1);
-    expect(api.acknowledgedZoneId, 'zone-1');
-    expect(api.acknowledgedGeneration, 3);
+    expect(api.acknowledged, {'zone-1': 3});
     expect(
       container.read(geofenceRegistrationControllerProvider),
       isA<GeofenceRegistrationReady>(),
@@ -165,13 +167,15 @@ void main() {
         NativeGeofenceCapability.needsLocationPermission,
       );
       final api = _FakeApi()
-        ..registration = const GeofenceRegistration(
-          zoneId: 'zone-1',
-          generation: 3,
-          latitude: 30.0444,
-          longitude: 31.2357,
-          radiusMeters: 120,
-        );
+        ..registrations = const [
+          GeofenceRegistration(
+            zoneId: 'zone-1',
+            generation: 3,
+            latitude: 30.0444,
+            longitude: 31.2357,
+            radiusMeters: 120,
+          ),
+        ];
       final container = ProviderContainer(
         overrides: [
           authControllerProvider.overrideWith(
@@ -185,13 +189,60 @@ void main() {
       container.read(geofenceRegistrationControllerProvider);
       await _pump();
       expect(platform.replaceCallCount, 0);
-      expect(api.acknowledgedZoneId, isNull);
+      expect(api.acknowledged, isEmpty);
       expect(
         container.read(geofenceRegistrationControllerProvider),
         isA<GeofenceRegistrationNeedsLocationPermission>(),
       );
     },
   );
+
+  test('registers and acknowledges every assigned safe zone', () async {
+    final platform = _FakeGateway(NativeGeofenceCapability.ready);
+    final api = _FakeApi()
+      ..registrations = const [
+        GeofenceRegistration(
+          zoneId: 'home-zone',
+          generation: 3,
+          latitude: 30.0444,
+          longitude: 31.2357,
+          radiusMeters: 120,
+        ),
+        GeofenceRegistration(
+          zoneId: 'school-zone',
+          generation: 5,
+          latitude: 30.0555,
+          longitude: 31.2444,
+          radiusMeters: 150,
+        ),
+      ];
+    final container = ProviderContainer(
+      overrides: [
+        authControllerProvider.overrideWith(
+          () => _FakeAuthController(const AuthAuthenticated()),
+        ),
+        nativeGeofencePlatformProvider.overrideWithValue(platform),
+        geofenceRegistrationApiProvider.overrideWithValue(api),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.read(geofenceRegistrationControllerProvider);
+    await _pump();
+
+    expect(platform.zones.map((zone) => zone.zoneId), [
+      'home-zone',
+      'school-zone',
+    ]);
+    expect(api.acknowledged, {'home-zone': 3, 'school-zone': 5});
+    expect(
+      container.read(geofenceRegistrationControllerProvider),
+      isA<GeofenceRegistrationReady>().having(
+        (state) => state.generation,
+        'generation',
+        5,
+      ),
+    );
+  });
 
   test(
     'logout removes routine monitored zones without SOS integration',

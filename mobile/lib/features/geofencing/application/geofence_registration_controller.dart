@@ -83,26 +83,31 @@ class GeofenceRegistrationController
       }
       stage = 'fetch';
       _log('request=$request stage=$stage start');
-      final registration = await ref
+      final registrations = await ref
           .read(geofenceRegistrationApiProvider)
-          .fetchRegistration();
+          .fetchRegistrations();
       if (request != _syncGeneration ||
           ref.read(authControllerProvider) is! AuthAuthenticated) {
         return;
       }
-      final zones = registration == null
-          ? const <NativeGeofenceZone>[]
-          : [registration.toNativeZone()];
+      final zones = registrations
+          .map((registration) => registration.toNativeZone())
+          .toList(growable: false);
       stage = 'native-replace';
+      final generation = registrations.isEmpty
+          ? null
+          : registrations
+                .map((registration) => registration.generation)
+                .reduce((a, b) => a > b ? a : b);
       _log(
-        'request=$request stage=$stage start generation=${registration?.generation}',
+        'request=$request stage=$stage start count=${registrations.length} generation=$generation',
       );
       await gateway.replaceMonitoredZones(zones);
       if (request != _syncGeneration ||
           ref.read(authControllerProvider) is! AuthAuthenticated) {
         return;
       }
-      if (registration != null) {
+      for (final registration in registrations) {
         // Native success is intentionally ordered before the exact server
         // generation acknowledgement; stale generations are never claimed.
         stage = 'acknowledge';
@@ -117,8 +122,8 @@ class GeofenceRegistrationController
             );
       }
       if (request == _syncGeneration) {
-        _log('request=$request ready generation=${registration?.generation}');
-        state = GeofenceRegistrationReady(generation: registration?.generation);
+        _log('request=$request ready count=${registrations.length}');
+        state = GeofenceRegistrationReady(generation: generation);
       }
     } catch (error) {
       // Exception messages/details can contain network credentials or coordinates.

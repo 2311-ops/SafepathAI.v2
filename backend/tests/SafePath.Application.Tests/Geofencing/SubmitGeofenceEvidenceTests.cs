@@ -20,12 +20,12 @@ public sealed class SubmitGeofenceEvidenceTests : IDisposable
         var handler = new SubmitGeofenceEvidenceCommandHandler(db, new FamilyAuthorizationService(db));
         var firstEventId = Guid.NewGuid();
 
-        var waiting = await handler.Handle(Command(fixture, firstEventId, fixture.Now));
-        var confirmed = await handler.Handle(Command(fixture, Guid.NewGuid(), fixture.Now.AddSeconds(60)));
+        var confirmed = await handler.Handle(Command(fixture, firstEventId, fixture.Now));
+        var duplicateTransition = await handler.Handle(Command(fixture, Guid.NewGuid(), fixture.Now.AddSeconds(10)));
         var replay = await handler.Handle(Command(fixture, firstEventId, fixture.Now));
 
-        Assert.Equal(GeofenceEvidenceOutcome.Waiting, waiting.Outcome);
         Assert.Equal(GeofenceEvidenceOutcome.Confirmed, confirmed.Outcome);
+        Assert.Equal(GeofenceEvidenceOutcome.Duplicate, duplicateTransition.Outcome);
         Assert.Equal(GeofenceEvidenceOutcome.Duplicate, replay.Outcome);
         Assert.Single(db.GeofenceActivities);
         Assert.Equal(2, db.GeofenceFeedItems.Count());
@@ -33,7 +33,7 @@ public sealed class SubmitGeofenceEvidenceTests : IDisposable
     }
 
     [Fact]
-    public async Task AmbiguousOrOppositeEvidence_DoesNotCreateDeliveryRows()
+    public async Task AmbiguousOrOppositeEvidence_DoesNotCreateDeliveryRowsUntilClearCallback()
     {
         await using var db = _factory.CreateContext();
         var fixture = await SeedAsync(db);
@@ -45,10 +45,10 @@ public sealed class SubmitGeofenceEvidenceTests : IDisposable
 
         Assert.Equal(GeofenceEvidenceOutcome.Waiting, waiting.Outcome);
         Assert.Equal(GeofenceEvidenceOutcome.Reset, reset.Outcome);
-        Assert.Equal(GeofenceEvidenceOutcome.Waiting, restarted.Outcome);
-        Assert.Empty(db.GeofenceActivities);
-        Assert.Empty(db.GeofenceFeedItems);
-        Assert.Empty(db.GeofenceRoutineJobs);
+        Assert.Equal(GeofenceEvidenceOutcome.Confirmed, restarted.Outcome);
+        Assert.Single(db.GeofenceActivities);
+        Assert.Equal(2, db.GeofenceFeedItems.Count());
+        Assert.Equal(2, db.GeofenceRoutineJobs.Count());
     }
 
     [Fact]

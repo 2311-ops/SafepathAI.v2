@@ -22,6 +22,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private lateinit var geofencingClient: GeofencingClient
+    private var pendingBackgroundCapabilityResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -37,10 +38,7 @@ class MainActivity : FlutterActivity() {
         when (call.method) {
             "getCapability" -> result.success(mapOf("status" to capability()))
             "requestBackgroundCapability" -> {
-                requestBackgroundCapability()
-                // Android returns from the permission sheet asynchronously. The Flutter
-                // save flow re-checks capability after the explicit user action.
-                result.success(mapOf("status" to capability()))
+                requestBackgroundCapability(result)
             }
             "replaceMonitoredZones" -> replaceMonitoredZones(call, result)
             else -> return false
@@ -141,7 +139,11 @@ class MainActivity : FlutterActivity() {
             .build()
     }
 
-    private fun requestBackgroundCapability() {
+    private fun requestBackgroundCapability(result: MethodChannel.Result) {
+        if (pendingBackgroundCapabilityResult != null) {
+            result.error("permission_request_active", "A location permission request is already active.", null)
+            return
+        }
         val permissions = buildList {
             if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) add(Manifest.permission.ACCESS_FINE_LOCATION)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !hasPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
@@ -149,8 +151,18 @@ class MainActivity : FlutterActivity() {
             }
         }
         if (permissions.isNotEmpty()) {
+            pendingBackgroundCapabilityResult = result
             ActivityCompat.requestPermissions(this, permissions.toTypedArray(), GEOFENCE_PERMISSION_REQUEST)
+        } else {
+            result.success(mapOf("status" to capability()))
         }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != GEOFENCE_PERMISSION_REQUEST) return
+        pendingBackgroundCapabilityResult?.success(mapOf("status" to capability()))
+        pendingBackgroundCapabilityResult = null
     }
 
     private fun capability(): String = when {

@@ -20,27 +20,22 @@ public sealed class GeofenceTransitionEvaluatorTests
     }
 
     [Fact]
-    public void ClearInside_EvidenceStartsAndThenConfirmsOnlyAfterContiguousDwell()
+    public void ClearInside_EvidenceConfirmsFromOrdinaryNativeCallback()
     {
         var first = Evaluate(GeofenceTransition.Enter, Now, latitude: 0.0002, accuracyMeters: 5);
-        var beforeDwell = Evaluate(GeofenceTransition.Enter, Now.AddSeconds(59), latitude: 0.0002, accuracyMeters: 5, first.State);
-        var confirmed = Evaluate(GeofenceTransition.Enter, Now.AddSeconds(60), latitude: 0.0002, accuracyMeters: 5, first.State);
 
-        Assert.Equal(GeofenceEvaluationOutcome.Waiting, first.Outcome);
-        Assert.Equal(GeofenceEvaluationOutcome.Waiting, beforeDwell.Outcome);
-        Assert.Equal(GeofenceEvaluationOutcome.Confirmed, confirmed.Outcome);
+        Assert.Equal(GeofenceEvaluationOutcome.Confirmed, first.Outcome);
     }
 
     [Fact]
     public void BoundaryOverlappingAccuracy_WaitsWithoutAccumulatingDwell()
     {
-        var first = Evaluate(GeofenceTransition.Enter, Now, latitude: 0.0002, accuracyMeters: 5);
-        var ambiguous = Evaluate(GeofenceTransition.Enter, Now.AddSeconds(30), latitude: 0.00075, accuracyMeters: 20, first.State);
+        var ambiguous = Evaluate(GeofenceTransition.Enter, Now.AddSeconds(30), latitude: 0.00075, accuracyMeters: 20);
         var restarted = Evaluate(GeofenceTransition.Enter, Now.AddSeconds(60), latitude: 0.0002, accuracyMeters: 5, ambiguous.State);
 
         Assert.Equal(GeofenceEvaluationOutcome.Waiting, ambiguous.Outcome);
         Assert.Null(ambiguous.State.FirstClearSideObservedAtUtc);
-        Assert.Equal(GeofenceEvaluationOutcome.Waiting, restarted.Outcome);
+        Assert.Equal(GeofenceEvaluationOutcome.Confirmed, restarted.Outcome);
     }
 
     [Fact]
@@ -68,7 +63,7 @@ public sealed class GeofenceTransitionEvaluatorTests
     {
         var result = Evaluate(GeofenceTransition.Exit, Now, latitude: 0.0015, accuracyMeters: 5);
 
-        Assert.Equal(GeofenceEvaluationOutcome.Waiting, result.Outcome);
+        Assert.Equal(GeofenceEvaluationOutcome.Confirmed, result.Outcome);
         Assert.NotNull(result.State.FirstClearSideObservedAtUtc);
     }
 

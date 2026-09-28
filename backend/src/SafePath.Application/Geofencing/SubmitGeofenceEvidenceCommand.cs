@@ -60,6 +60,10 @@ public sealed class SubmitGeofenceEvidenceCommandHandler : ICommandHandler<Submi
             item.SafeZoneId == zone.Id && item.MemberUserId == command.CallerUserId &&
             item.RegistrationGeneration == command.RegistrationGeneration && item.IntendedTransition == command.Transition,
             cancellationToken);
+        if (confirmation is { State: GeofenceConfirmationCandidateState.Confirmed })
+        {
+            return new SubmitGeofenceEvidenceResult(GeofenceEvidenceOutcome.Duplicate);
+        }
         var currentState = confirmation is { State: GeofenceConfirmationCandidateState.Pending }
             ? new GeofenceTransitionState(confirmation.IntendedTransition, confirmation.FirstObservedAtUtc, confirmation.LastObservedAtUtc)
             : GeofenceTransitionState.Empty;

@@ -4,7 +4,7 @@ using SafePath.Domain.Enums;
 namespace SafePath.Application.Geofencing;
 
 /// <summary>
-/// Pure, server-owned accuracy-envelope and contiguous-dwell evaluator. Persistence owns the
+/// Pure, server-owned accuracy-envelope evaluator. Persistence owns the
 /// state between calls; this type deliberately has no database, clock, or delivery dependency.
 /// </summary>
 public static class GeofenceTransitionEvaluator
@@ -52,11 +52,12 @@ public static class GeofenceTransitionEvaluator
             return new GeofenceEvaluationResult(GeofenceEvaluationOutcome.Waiting, GeofenceTransitionState.Empty);
         }
 
+        // Native region APIs usually emit only the boundary transition callback; they do not
+        // guarantee a second same-transition observation after our server dwell window. Treat a
+        // clear-side callback as enough to confirm, while ambiguous accuracy still waits.
         var firstClearSideAtUtc = state.FirstClearSideObservedAtUtc ?? evidence.OccurredAtUtc;
         var nextState = new GeofenceTransitionState(evidence.IntendedTransition, firstClearSideAtUtc, evidence.OccurredAtUtc);
-        return evidence.OccurredAtUtc - firstClearSideAtUtc >= calibration.DwellDuration
-            ? new GeofenceEvaluationResult(GeofenceEvaluationOutcome.Confirmed, nextState)
-            : new GeofenceEvaluationResult(GeofenceEvaluationOutcome.Waiting, nextState);
+        return new GeofenceEvaluationResult(GeofenceEvaluationOutcome.Confirmed, nextState);
     }
 
     private static bool IsValid(GeofenceTransitionEvidence evidence, GeofenceZoneGeometry zone, DateTime nowUtc) =>
