@@ -177,12 +177,6 @@ public sealed class RoutinePushWorker : BackgroundService
             ?? throw new InvalidOperationException("Routine notification feed item no longer exists.");
         var activity = await db.GeofenceActivities.SingleOrDefaultAsync(item => item.Id == feedItem.ActivityId, cancellationToken)
             ?? throw new InvalidOperationException("Routine notification activity no longer exists.");
-        var memberName = await db.Users
-            .Where(user => user.Id == activity.MemberUserId)
-            .Select(user => string.IsNullOrWhiteSpace(user.DisplayName) ? user.FullName : user.DisplayName!)
-            .SingleOrDefaultAsync(cancellationToken);
-        memberName = string.IsNullOrWhiteSpace(memberName) ? "A family member" : memberName;
-
         var tokenRows = await db.UserDeviceTokens
             .Where(token => token.UserId == job.RecipientUserId)
             .ToListAsync(cancellationToken);
@@ -197,13 +191,11 @@ public sealed class RoutinePushWorker : BackgroundService
         job.LastFailureReason = null;
         await db.SaveChangesAsync(cancellationToken);
 
-        var transitionText = activity.Transition == GeofenceTransition.Enter ? "entered" : "left";
-        var title = $"{memberName} {transitionText} {activity.SafeZoneDisplayName}";
         var result = await sender.SendAsync(
             tokenRows.Select(token => token.Token).ToList(),
             new PushMessage(
-                title,
-                title,
+                "SafePath activity",
+                "New safe-zone activity.",
                 new Dictionary<string, string>
                 {
                     ["type"] = "geofence",
@@ -215,6 +207,15 @@ public sealed class RoutinePushWorker : BackgroundService
         if (result.InvalidTokens.Count > 0)
         {
             db.UserDeviceTokens.RemoveRange(tokenRows.Where(token => result.InvalidTokens.Contains(token.Token)));
+            if (result.SuccessCount <= 0)
+            {
+                await db.SaveChangesAsync(cancellationToken);
+            }
+        }
+
+        if (result.SuccessCount <= 0)
+        {
+            throw new InvalidOperationException("Routine push provider accepted no device tokens.");
         }
 
         job.State = GeofenceRoutineJobState.Delivered;

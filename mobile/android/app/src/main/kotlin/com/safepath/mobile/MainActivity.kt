@@ -22,17 +22,18 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private lateinit var geofencingClient: GeofencingClient
-    private lateinit var nativeStore: GeofenceNativeStore
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         geofencingClient = LocationServices.getGeofencingClient(this)
-        nativeStore = GeofenceNativeStore(applicationContext)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
-            .setMethodCallHandler(::onGeofencingMethod)
+        GeofenceChannelRegistrar.register(
+            flutterEngine.dartExecutor.binaryMessenger,
+            applicationContext,
+            ::onGeofencingMethod
+        )
     }
 
-    private fun onGeofencingMethod(call: MethodCall, result: MethodChannel.Result) {
+    private fun onGeofencingMethod(call: MethodCall, result: MethodChannel.Result): Boolean {
         when (call.method) {
             "getCapability" -> result.success(mapOf("status" to capability()))
             "requestBackgroundCapability" -> {
@@ -42,32 +43,9 @@ class MainActivity : FlutterActivity() {
                 result.success(mapOf("status" to capability()))
             }
             "replaceMonitoredZones" -> replaceMonitoredZones(call, result)
-            "drainPendingCandidates" -> result.success(
-                nativeStore.drain().map { candidate ->
-                    mapOf(
-                        "eventId" to candidate.eventId,
-                        "requestId" to candidate.requestId,
-                        "transition" to candidate.transition,
-                        "occurredAtEpochMs" to candidate.occurredAtEpochMs,
-                        "latitude" to candidate.latitude,
-                        "longitude" to candidate.longitude,
-                        "accuracyMeters" to candidate.accuracyMeters,
-                        "errorCode" to candidate.errorCode
-                    )
-                }
-            )
-            "acknowledgeCandidate" -> {
-                val eventId = call.argument<String>("eventId")
-                if (eventId.isNullOrBlank()) {
-                    result.error("invalid_arguments", "eventId is required.", null)
-                } else if (nativeStore.acknowledge(eventId)) {
-                    result.success(null)
-                } else {
-                    result.error("outbox_write_failed", "Could not acknowledge candidate.", null)
-                }
-            }
-            else -> result.notImplemented()
+            else -> return false
         }
+        return true
     }
 
     private fun replaceMonitoredZones(call: MethodCall, result: MethodChannel.Result) {
@@ -195,7 +173,6 @@ class MainActivity : FlutterActivity() {
     }
 
     private companion object {
-        const val CHANNEL = "safepath/geofencing"
         const val REGISTRATION_TAG = "SafePathGeofence"
         const val MAX_ZONES = 20
         const val GEOFENCE_PERMISSION_REQUEST = 2404

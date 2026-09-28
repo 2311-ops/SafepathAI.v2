@@ -1,18 +1,41 @@
 ---
 phase: 04-geofencing
 plan: 17
-status: blocked-human-physical-acceptance
+status: human_needed
 created: 2026-08-14
-updated: 2026-09-27
+updated: 2026-09-28
 timezone: Africa/Cairo
 requirements: [GEO-01, GEO-02, GEO-03, NOTIF-02]
 ---
 
 # Phase 04 Device Verification
 
-04-17 Task 1 automated gates were refreshed and passed on 2026-09-27. Task 2 and the earlier 04-05 tracer checkpoint remain open: required Android and iOS physical acceptance evidence has not been produced.
+04-17 Task 1 automated gates were refreshed and passed on 2026-09-27. Task 2 and the earlier 04-05 tracer checkpoint remain open as human-needed acceptance debt: required Android and iOS physical acceptance evidence has not been produced.
 
-Per PR-04, Phase 4 is not approved/closed until signed physical iPhone + APNs evidence exists alongside Android physical movement/recovery evidence. No 04-05 evidence was fabricated or retroactively claimed.
+Per PR-04, Phase 4 is not approved/closed until signed physical iPhone + APNs evidence exists alongside Android physical movement/recovery evidence. `04-05-SUMMARY.md` records a deferred partial checkpoint only; no 04-05 evidence was fabricated or retroactively claimed.
+
+## Review Repair Verification: 2026-09-28
+
+`04-05` was marked deferred-partial so the phase could proceed through automated review without claiming missing physical evidence. The Phase 4 code review initially found two blockers and two warnings; all were fixed and the final `04-REVIEW.md` status is `clean`.
+
+| Gate | Command / evidence | Result |
+|---|---|---|
+| Backend focused regression | `dotnet test backend/tests/SafePath.Application.Tests/SafePath.Application.Tests.csproj --no-restore --configuration Release --filter FullyQualifiedName~RoutineNotificationDispatcherTests --verbosity minimal` | PASS: 4 tests |
+| Flutter focused regression | `flutter test --no-pub test/features/geofencing/geofence_candidate_uploader_test.dart` | PASS: 5 tests |
+| Android native unit test | `mobile/android/gradlew.bat :app:testDebugUnitTest --console=plain` | PASS: BUILD SUCCESSFUL |
+| Backend full suite | `dotnet test backend/SafePath.sln --no-restore --configuration Release --verbosity minimal` | PASS: 232 application tests, 25 API integration tests; Domain test assembly has no tests |
+| Backend clean rebuild | `dotnet build backend/SafePath.sln --no-restore --configuration Release --no-incremental --verbosity minimal` | PASS: zero warnings, zero errors |
+| Flutter analysis | `flutter analyze --no-pub` | PASS: no issues |
+| Flutter full suite | `flutter test --no-pub --reporter expanded --timeout 60s` | PASS: 466 tests |
+| Model drift | `dotnet ef migrations has-pending-model-changes --no-build --configuration Release --project backend/src/SafePath.Infrastructure --startup-project backend/src/SafePath.Api` | PASS: no pending model changes |
+| Code review | `.planning/phases/04-geofencing/04-REVIEW.md` | PASS: clean after fixes |
+
+Repairs made during review:
+
+- Shared Android geofence outbox MethodChannel registration between foreground `MainActivity` and the headless WorkManager engine.
+- Kept OS-visible routine push notification text generic while preserving identifier-only routing data.
+- Retried routine push jobs when the provider accepts zero device tokens and persisted invalid-token pruning before retry scheduling.
+- Acknowledged malformed/permanent native candidate rows while retaining transient network/auth failures for retry.
 
 ## Current Verification: 2026-09-27
 

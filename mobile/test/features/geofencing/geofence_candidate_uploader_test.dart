@@ -175,6 +175,60 @@ void main() {
       expect(native.acknowledgements, [first.eventId]);
     },
   );
+
+  test('drops malformed native rows that cannot be submitted', () async {
+    final auth = _FakeAuthApi(session: null);
+    final malformed = NativeGeofenceCandidate(
+      eventId: '00000000-0000-0000-0000-000000000003',
+      requestId: 'missing-generation',
+      transition: NativeGeofenceTransition.error,
+      occurredAtUtc: DateTime.utc(2026, 8, 13, 10),
+      errorCode: nativeGeofenceNotAvailableErrorCode,
+    );
+    final native = _FakeNativePlatform([malformed]);
+    final dio = Dio(BaseOptions(baseUrl: 'https://example.test'));
+
+    final result = await GeofenceCandidateUploader(
+      authApi: auth,
+      dio: dio,
+      nativePlatform: native,
+    ).drain();
+
+    expect(result.shouldRetry, isFalse);
+    expect(native.acknowledgements, [malformed.eventId]);
+  });
+
+  test(
+    'drops permanent server rejections but retries transient failures',
+    () async {
+      final auth = _FakeAuthApi(session: null);
+      final rejected = _candidate(
+        eventId: '00000000-0000-0000-0000-000000000004',
+      );
+      final transient = _candidate(
+        eventId: '00000000-0000-0000-0000-000000000005',
+      );
+      final native = _FakeNativePlatform([rejected, transient]);
+      var callCount = 0;
+      final dio = Dio(BaseOptions(baseUrl: 'https://example.test'))
+        ..httpClientAdapter = _SequenceAdapter(() {
+          callCount++;
+          if (callCount == 1) return 403;
+          throw DioException(
+            requestOptions: RequestOptions(path: '/geofences/candidates'),
+          );
+        });
+
+      final result = await GeofenceCandidateUploader(
+        authApi: auth,
+        dio: dio,
+        nativePlatform: native,
+      ).drain();
+
+      expect(result.shouldRetry, isTrue);
+      expect(native.acknowledgements, [rejected.eventId]);
+    },
+  );
 }
 
 class _ReplyingAdapter implements HttpClientAdapter {

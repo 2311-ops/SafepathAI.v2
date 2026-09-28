@@ -26,8 +26,8 @@ public sealed class RoutineNotificationDispatcherTests : IDisposable
         var sender = new LoggingRoutinePushSender(
             NullLogger<LoggingRoutinePushSender>.Instance);
         var message = new PushMessage(
-            "Sam entered Home",
-            "Sam entered Home",
+            "SafePath activity",
+            "New safe-zone activity.",
             new Dictionary<string, string>
             {
                 ["type"] = "geofence",
@@ -63,7 +63,12 @@ public sealed class RoutineNotificationDispatcherTests : IDisposable
 
         var job = await db.GeofenceRoutineJobs.FindAsync(fixture.JobId);
         Assert.NotNull(capturedMessage);
-        Assert.Equal("Sam entered Home", capturedMessage!.Title);
+        Assert.Equal("SafePath activity", capturedMessage!.Title);
+        Assert.Equal("New safe-zone activity.", capturedMessage.Body);
+        Assert.DoesNotContain("Sam", capturedMessage.Title);
+        Assert.DoesNotContain("Home", capturedMessage.Title);
+        Assert.DoesNotContain("Sam", capturedMessage.Body);
+        Assert.DoesNotContain("Home", capturedMessage.Body);
         Assert.Equal("geofence", capturedMessage.Data["type"]);
         Assert.Equal(fixture.ActivityId.ToString(), capturedMessage.Data["activityId"]);
         Assert.Equal(fixture.ZoneId.ToString(), capturedMessage.Data["zoneId"]);
@@ -72,6 +77,30 @@ public sealed class RoutineNotificationDispatcherTests : IDisposable
         Assert.Equal(GeofenceRoutineJobState.Delivered, job!.State);
         Assert.NotNull(await db.GeofenceActivities.FindAsync(fixture.ActivityId));
         Assert.NotNull(await db.GeofenceFeedItems.FindAsync(fixture.FeedItemId));
+    }
+
+    [Fact]
+    public async Task DrainDueJobs_RetriesWhenProviderAcceptsNoDeviceTokens()
+    {
+        await using var db = _factory.CreateContext();
+        var now = DateTime.UtcNow;
+        var fixture = await SeedRoutineJobAsync(db, now, token: "expired-token");
+        var sender = new Mock<IRoutinePushSender>();
+        sender
+            .Setup(item => item.SendAsync(It.IsAny<IReadOnlyList<string>>(), It.IsAny<PushMessage>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PushSendResult(0, new[] { "expired-token" }));
+
+        await RoutinePushWorker.DrainDueJobsAsync(
+            db,
+            new RoutineNotificationDispatcher(db),
+            sender.Object,
+            now);
+
+        var retryJob = await db.GeofenceRoutineJobs.FindAsync(fixture.JobId);
+        Assert.Equal(GeofenceRoutineJobState.Pending, retryJob!.State);
+        Assert.True(retryJob.NextAttemptAtUtc > now);
+        Assert.Equal("Routine push provider accepted no device tokens.", retryJob.LastFailureReason);
+        Assert.Empty(db.UserDeviceTokens);
     }
 
     [Fact]

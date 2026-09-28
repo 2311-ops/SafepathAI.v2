@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 04
 current_phase_name: geofencing
-status: blocked
-stopped_at: "04-05: await friend rebuild with mutable geofence callback fix/diagnostics, then generation 2 acknowledgement"
-last_updated: "2026-09-27T18:44:00Z"
-last_activity: 2026-09-27
-last_activity_desc: "Merged teammate runtime/map fixes with geofence callback repair; 464 Flutter tests, clean analyzer and rebuilt APK; 3 native unit tests passed before merge"
+status: in_progress
+stopped_at: "04-05 deferred-partial; continue with 04-17 automated verification/code review while Android/iOS physical acceptance remains human-needed debt"
+last_updated: "2026-09-28T00:00:00Z"
+last_activity: 2026-09-28
+last_activity_desc: "Marked 04-05 as deferred-partial physical acceptance debt, fixed Phase 4 code-review blockers, and reached clean automated review while Android/iOS physical acceptance remains human-needed"
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 61
-  completed_plans: 59
-  percent: 50
+  completed_plans: 60
+  percent: 98
 ---
 
 # Project State
@@ -28,13 +28,13 @@ See: .planning/PROJECT.md (updated 2026-07-16)
 
 ## Current Position
 
-Phase: 04 (geofencing) — BLOCKED
-Plan: 05 of 17 checkpoint; 04-17 Task 1 automated checks refreshed
-Status: Automated gates green; remote Android and signed iPhone physical acceptance remain open
-Current blocker: 2026-09-27 - OPPO A52 / Android 11 must acknowledge zone e8c005b1-4bd9-43ec-a845-9bf2acd56e45 generation 2; process death is not confirmed; iPhone evidence also pending
-Last activity: 2026-09-27 - Recentered existing 100m zone using a 63-second-old fix with 10.4m accuracy; requested cold reopen
+Phase: 04 (geofencing) - IN PROGRESS
+Plan: 17 of 17 closeout; 04-05 is deferred-partial physical acceptance debt
+Status: Automated gates and code review are clean; remote Android and signed iPhone physical acceptance remain human-needed
+Current blocker: 2026-09-28 - Phase shipping remains gated by Android/iOS physical acceptance unless explicitly shipped as a partial/deferred state outside the normal GSD ship gate
+Last activity: 2026-09-28 - Recorded 04-05 deferred-partial summary, fixed review findings, and retained missing physical evidence in deferred-items.md
 
-Progress: [██████████] 97%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -301,6 +301,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-27T18:30:00Z
-Stopped at: 04-05 physical checkpoint; zone recentered, generation 2 acknowledgement and process-death evidence pending
+Last session: 2026-09-28T00:00:00Z
+Stopped at: 04-17 automated verification/code review; 04-05 physical checkpoint is deferred, with generation 2 acknowledgement and process-death evidence still pending
 Resume file: .planning/phases/04-geofencing/.continue-here.md

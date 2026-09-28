@@ -28,6 +28,10 @@ class GeofenceBackgroundEngine(private val context: Context) {
         mainHandler.post {
             val createdEngine = FlutterEngine(context)
             engine.set(createdEngine)
+            GeofenceChannelRegistrar.register(
+                createdEngine.dartExecutor.binaryMessenger,
+                context.applicationContext
+            )
             MethodChannel(createdEngine.dartExecutor.binaryMessenger, CHANNEL)
                 .setMethodCallHandler { call, result ->
                     if (call.method != "complete") {

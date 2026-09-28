@@ -34,17 +34,25 @@ class GeofenceCandidateUploader {
       var shouldRetry = false;
       for (final candidate in await _nativePlatform.drainPendingCandidates()) {
         try {
+          final request = _CandidateRequest.fromNative(candidate);
           final response = await _dio.post<void>(
             '/geofences/candidates',
-            data: _CandidateRequest.fromNative(candidate).toJson(),
+            data: request.toJson(),
           );
           if (response.statusCode != 200 && response.statusCode != 202) {
             shouldRetry = true;
             continue;
           }
           await _nativePlatform.acknowledgeCandidate(candidate.eventId);
+        } on FormatException {
+          await _nativePlatform.acknowledgeCandidate(candidate.eventId);
+        } on DioException catch (error) {
+          if (_isPermanentFailure(error)) {
+            await _nativePlatform.acknowledgeCandidate(candidate.eventId);
+          } else {
+            shouldRetry = true;
+          }
         } catch (_) {
-          // Retain every candidate until the server accepts it or confirms replay.
           shouldRetry = true;
         }
       }
@@ -54,6 +62,11 @@ class GeofenceCandidateUploader {
       // the app-private native outbox unchanged for a later retry/relaunch.
       return const GeofenceCandidateDrainResult(shouldRetry: true);
     }
+  }
+
+  static bool _isPermanentFailure(DioException error) {
+    final status = error.response?.statusCode;
+    return status == 400 || status == 403 || status == 404;
   }
 }
 
