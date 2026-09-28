@@ -86,27 +86,7 @@ class _SpyPrivacyController extends PrivacyController {
   PrivacyState build() => PrivacyState(
     matrix: SharingMatrix(
       entries: [
-        const SharingCell(
-          recipientId: 'mem-first-recipient',
-          recipientName: 'First Recipient',
-          dataType: SharedDataType.liveLocation,
-          isEnabled: true,
-        ),
-        const SharingCell(
-          recipientId: 'mem-first-recipient',
-          recipientName: 'First Recipient',
-          dataType: SharedDataType.history,
-          isEnabled: false,
-        ),
-        const SharingCell(
-          recipientId: 'mem-first-recipient',
-          recipientName: 'First Recipient',
-          dataType: SharedDataType.wellness,
-          isEnabled: true,
-        ),
         SharingCell(
-          recipientId: 'mem-second-recipient',
-          recipientName: 'Second Recipient',
           dataType: SharedDataType.liveLocation,
           isEnabled: true,
           // A 4-hour session (10:00 -> 14:00). At the fixed test clock of 10:30
@@ -114,18 +94,8 @@ class _SpyPrivacyController extends PrivacyController {
           startedAtUtc: DateTime.utc(2026, 7, 12, 10),
           expiresAtUtc: DateTime.utc(2026, 7, 12, 14),
         ),
-        const SharingCell(
-          recipientId: 'mem-second-recipient',
-          recipientName: 'Second Recipient',
-          dataType: SharedDataType.history,
-          isEnabled: false,
-        ),
-        const SharingCell(
-          recipientId: 'mem-second-recipient',
-          recipientName: 'Second Recipient',
-          dataType: SharedDataType.wellness,
-          isEnabled: true,
-        ),
+        const SharingCell(dataType: SharedDataType.history, isEnabled: false),
+        const SharingCell(dataType: SharedDataType.wellness, isEnabled: true),
       ],
     ),
   );
@@ -178,7 +148,10 @@ EmergencyContact _activeContact() => const EmergencyContact(
   isActive: true,
 );
 
-Widget _app(_SpyPrivacyController controller, {EmergencyContactApi? contactApi}) {
+Widget _app(
+  _SpyPrivacyController controller, {
+  EmergencyContactApi? contactApi,
+}) {
   return ProviderScope(
     overrides: [
       authApiProvider.overrideWithValue(
@@ -187,6 +160,9 @@ Widget _app(_SpyPrivacyController controller, {EmergencyContactApi? contactApi})
       familyControllerProvider.overrideWith(_SeededFamilyController.new),
       emergencyContactApiProvider.overrideWithValue(
         contactApi ?? _hasContactApi(),
+      ),
+      profileControllerProvider.overrideWith(
+        () => _SeededProfileController(Role.guardian),
       ),
       privacyControllerProvider.overrideWith(() => controller),
       privacyNowProvider.overrideWithValue(
@@ -207,7 +183,9 @@ Widget _noCircleApp(Role? role, {EmergencyContactApi? contactApi}) {
       emergencyContactApiProvider.overrideWithValue(
         contactApi ?? _hasContactApi(),
       ),
-      profileControllerProvider.overrideWith(() => _SeededProfileController(role)),
+      profileControllerProvider.overrideWith(
+        () => _SeededProfileController(role),
+      ),
       privacyControllerProvider.overrideWith(_SpyPrivacyController.new),
       privacyNowProvider.overrideWithValue(
         () => DateTime.utc(2026, 7, 12, 10, 30),
@@ -220,11 +198,17 @@ Widget _noCircleApp(Role? role, {EmergencyContactApi? contactApi}) {
 /// Router-backed variant so the warning card's CTA (`context.push`) can
 /// actually resolve — mirrors `live_map_screen_test.dart`'s `_routerApp`
 /// convention.
-Widget _routerApp(_SpyPrivacyController controller, {EmergencyContactApi? contactApi}) {
+Widget _routerApp(
+  _SpyPrivacyController controller, {
+  EmergencyContactApi? contactApi,
+}) {
   final router = GoRouter(
     initialLocation: '/',
     routes: [
-      GoRoute(path: '/', builder: (context, state) => const PrivacyCenterScreen()),
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const PrivacyCenterScreen(),
+      ),
       GoRoute(
         path: '/settings/emergency-contacts',
         builder: (context, state) =>
@@ -241,6 +225,9 @@ Widget _routerApp(_SpyPrivacyController controller, {EmergencyContactApi? contac
       emergencyContactApiProvider.overrideWithValue(
         contactApi ?? _noContactApi(),
       ),
+      profileControllerProvider.overrideWith(
+        () => _SeededProfileController(Role.guardian),
+      ),
       privacyControllerProvider.overrideWith(() => controller),
       privacyNowProvider.overrideWithValue(
         () => DateTime.utc(2026, 7, 12, 10, 30),
@@ -255,19 +242,33 @@ void main() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
-  testWidgets('renders toggle matrix and duration controls', (tester) async {
+  testWidgets('renders one personal privacy control surface', (tester) async {
     final controller = _SpyPrivacyController();
 
     await tester.pumpWidget(_app(controller));
 
-    expect(find.text('Privacy Center'), findsWidgets);
-    expect(find.text('First Recipient'), findsOneWidget);
-    expect(find.text('Second Recipient'), findsOneWidget);
-    expect(find.text('Live location'), findsNWidgets(2));
-    expect(find.text('History'), findsNWidgets(2));
-    expect(find.text('Wellness'), findsNWidgets(2));
+    expect(find.text('Privacy Center'), findsOneWidget);
+    expect(find.text('Your privacy'), findsOneWidget);
+    expect(
+      find.text(
+        'You decide who can see your live location, history, and wellness. Guardians cannot change these controls for you.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('My sharing access'), findsOneWidget);
+    expect(
+      find.text(
+        'Choose what your family circle can see from your account. These controls affect only your data.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('First Recipient'), findsNothing);
+    expect(find.text('Second Recipient'), findsNothing);
+    expect(find.text('Live location access'), findsOneWidget);
+    expect(find.text('History access'), findsOneWidget);
+    expect(find.text('Wellness access'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('temporary-share-mem-second-recipient-custom')),
+      find.byKey(const ValueKey('temporary-share-circle-custom')),
       300,
       scrollable: find.byType(Scrollable),
     );
@@ -291,30 +292,28 @@ void main() {
     await tester.pump();
 
     expect(controller.toggleCallCount, 1);
-    expect(controller.lastRecipientId, 'mem-first-recipient');
+    expect(controller.lastRecipientId, isNull);
     expect(controller.lastDataType, SharedDataType.liveLocation);
     expect(controller.lastEnabled, isFalse);
   });
 
-  testWidgets('4-hour duration chip uses the selected recipient row', (
+  testWidgets('4-hour duration chip updates the current user default', (
     tester,
   ) async {
     final controller = _SpyPrivacyController();
 
     await tester.pumpWidget(_app(controller));
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('temporary-share-mem-second-recipient-4h')),
+      find.byKey(const ValueKey('temporary-share-circle-4h')),
       300,
       scrollable: find.byType(Scrollable),
     );
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('temporary-share-mem-second-recipient-4h')),
-    );
+    await tester.tap(find.byKey(const ValueKey('temporary-share-circle-4h')));
     await tester.pump();
 
     expect(controller.temporaryShareCallCount, 1);
-    expect(controller.lastRecipientId, 'mem-second-recipient');
+    expect(controller.lastRecipientId, isNull);
     expect(controller.lastDataType, SharedDataType.liveLocation);
     expect(controller.lastDuration, const Duration(hours: 4));
   });
@@ -324,13 +323,13 @@ void main() {
 
     await tester.pumpWidget(_app(controller));
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('temporary-share-mem-second-recipient-custom')),
+      find.byKey(const ValueKey('temporary-share-circle-custom')),
       300,
       scrollable: find.byType(Scrollable),
     );
     await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(const ValueKey('temporary-share-mem-second-recipient-custom')),
+      find.byKey(const ValueKey('temporary-share-circle-custom')),
     );
     await tester.pumpAndSettle();
 
@@ -342,7 +341,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(controller.temporaryShareCallCount, 1);
-    expect(controller.lastRecipientId, 'mem-second-recipient');
+    expect(controller.lastRecipientId, isNull);
     expect(controller.lastDataType, SharedDataType.liveLocation);
     expect(controller.lastDuration, const Duration(hours: 6));
   });
@@ -375,10 +374,11 @@ void main() {
     final controller = _SpyPrivacyController();
 
     await tester.pumpWidget(_app(controller));
-    // Drag distance intentionally overshoots the scroll extent (Scrollable
-    // clamps it) -- widened after 03-07 added an "Emergency contacts" entry
-    // point above "Delete my data", pushing it further down.
-    await tester.drag(find.byType(ListView), const Offset(0, -700));
+    await tester.scrollUntilVisible(
+      find.text('Delete my data'),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete my data'));
     await tester.pumpAndSettle();
@@ -406,10 +406,7 @@ void main() {
       await tester.pumpWidget(_app(_SpyPrivacyController()));
       await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const ValueKey('sos-reach-warning')),
-        findsNothing,
-      );
+      expect(find.byKey(const ValueKey('sos-reach-warning')), findsNothing);
     },
   );
 
@@ -421,10 +418,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const ValueKey('sos-reach-warning')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const ValueKey('sos-reach-warning')), findsOneWidget);
       expect(find.text('SOS would reach no one'), findsOneWidget);
       expect(
         find.text(
@@ -444,10 +438,7 @@ void main() {
       await tester.pumpWidget(_noCircleApp(Role.guardian));
       await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const ValueKey('sos-reach-warning')),
-        findsNothing,
-      );
+      expect(find.byKey(const ValueKey('sos-reach-warning')), findsNothing);
     },
   );
 
@@ -459,10 +450,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const ValueKey('sos-reach-warning')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const ValueKey('sos-reach-warning')), findsOneWidget);
       expect(find.text('No circle yet'), findsOneWidget);
     },
   );

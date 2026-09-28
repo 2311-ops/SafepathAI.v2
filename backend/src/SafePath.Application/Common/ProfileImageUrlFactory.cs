@@ -22,6 +22,13 @@ public class ProfileImageUrlFactory
 
     private async Task<string?> SignPathAsync(string profileImagePath, CancellationToken cancellationToken)
     {
-        return await _storage.CreateSignedAvatarUrlAsync(profileImagePath, SignedUrlTtl, cancellationToken);
+        try
+        {
+            return await _storage.CreateSignedAvatarUrlAsync(profileImagePath, SignedUrlTtl, cancellationToken);
+        }
+        catch (ProfileImageStorageNotConfiguredException)
+        {
+            return null;
+        }
     }
 }

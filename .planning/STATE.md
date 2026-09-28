@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 4
-current_phase_name: Geofencing
-status: verifying
-stopped_at: Completed 03-09-PLAN.md (SOS-05/06 hold-to-cancel + OS backup trigger; phase 3's closing manual gate approved)
-last_updated: "2026-08-07T23:44:20.403Z"
-last_activity: 2026-08-08
-last_activity_desc: Completed quick task 260808-51d - Add ngrok remote-contributor testing section to start_mobile.md
+current_phase: 05
+current_phase_name: ai-analytics-family-dashboard
+status: ready_for_phase_05_planning
+stopped_at: "Phase 04 forced partial close; begin Phase 05 planning while Android/iOS physical acceptance remains deferred debt"
+last_updated: "2026-09-28T00:00:00Z"
+last_activity: 2026-09-28
+last_activity_desc: "Forced partial close for Phase 04 by user override; automated gates and code review are clean, Android/iOS physical acceptance remains deferred"
 progress:
   total_phases: 8
-  completed_phases: 4
-  total_plans: 44
-  completed_plans: 44
-  percent: 50
+  completed_phases: 5
+  total_plans: 61
+  completed_plans: 61
+  percent: 100
 ---
 
 # Project State
@@ -24,16 +24,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-16)
 
 **Core value:** The SOS system must always work — a single tap or covert Silent/Duress trigger reliably delivers an immediate alert with live location to a user's designated guardians within seconds, bypassing every routine and AI pipeline.
-**Current focus:** Phase 03 — sos-fast-path
+**Current focus:** Phase 05 - AI analytics and family dashboard
 
 ## Current Position
 
-Phase: 4 — Geofencing
-Plan: Not started
-Status: All plans complete — awaiting phase-level verification/closeout
-Last activity: 2026-08-08 — Completed quick task 260808-51d: Add ngrok remote-contributor testing section to start_mobile.md
+Phase: 05 (ai-analytics-family-dashboard) - READY TO PLAN
+Plan: Phase 04 has been forced-partial-closed by user override; start Phase 05 planning next
+Status: Phase 04 automated gates and code review are clean; remote Android and signed iPhone physical acceptance remain deferred debt
+Current blocker: 2026-09-28 - No Phase 05 blocker recorded yet. Do not claim Phase 04 device acceptance passed until the deferred Android/iOS evidence exists.
+Last activity: 2026-09-28 - Created 04-17 forced partial close summary, kept verification as human_needed, and carried physical acceptance debt forward.
 
-Progress: [██████████] 100%
+Progress: [##########] 100% of Phase 04 plans summarized
 
 ## Performance Metrics
 
@@ -92,6 +93,28 @@ Progress: [██████████] 100%
 | Phase 03-sos-fast-path P07 | 17min | 3 tasks | 17 files |
 | Phase 03 P08 | 45min | 3 tasks | 20 files |
 | Phase 03-sos-fast-path P09 | multi-session | 3 tasks | 12 files |
+| Phase quick-260811-3jq P01 | 15min | 1 tasks | 2 files |
+| Phase quick-260811-440 P01 | 12min | 1 tasks | 1 files |
+| Phase quick-260811-65q P01 | 20min | 2 tasks | 1 files |
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 04-geofencing P01 | 32min | 2 tasks | 13 files |
+| Phase 04 P04 | 68min | 2 tasks | 10 files |
+| Phase 04-geofencing P06 | 47min | 2 tasks | 8 files |
+| Phase 04-geofencing P07 | 32min | 2 tasks | 9 files |
+| Phase 04 P12 | 44min | 2 tasks | 7 files |
+| Phase 04-geofencing P09 | 20min | 2 tasks | 8 files |
+| Phase 04-geofencing P10 | 7min | 2 tasks | 7 files |
+| Phase 04-geofencing P15 | 18min | 2 tasks | 9 files |
+| Phase 04-geofencing P16 | 7min | 2 tasks | 4 files |
+| Phase 04 P11 | 75min | 2 tasks | 9 files |
+| Phase quick-260814-aft P01 | 15min | 3 tasks | 3 files |
+| Phase quick-260820-3tj P01 | 10min | 5 tasks | 9 files |
+| Phase quick-260820-53n P01 | 15min | 5 tasks | 6 files |
+| Phase quick-260820-5xp P01 | 35min | 4 tasks | 3 files |
+| Phase quick-260820-6mb P01 | 10min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -185,6 +208,34 @@ Recent decisions affecting current work:
 - [Phase ?]: [Quick 260807-qhg]: Consolidated the splash lockup into a shared AnimatedSafePathMark (ring trace + staggered per-letter wordmark + halo), both SplashScreen and StartupSplashOverlay now synced to 1800ms; fixed StartupSplashOverlay's Stopwatch-based progress (untestable under flutter_test's FakeAsync clock) to tick-count accumulation on the same Timer.periodic.
 - [Phase 03-09]: Cancellation is additive-only (never mutates/deletes SosDeliveryAttempt rows) and the quick_actions shortcut reuses SosController.arm() verbatim, registered only while authenticated.
 - [Phase 03-09]: Fixed a real bug found during Task 3 manual verification: SosLiveLocationService now reports a best-effort one-shot GPS fix on start() so a stationary sender's live location no longer waits on movement (see 03-09-SUMMARY.md).
+- [Phase ?]: [Quick 260811-440]: Fixed ManagePermissionsScreen's Remove-from-circle touch target (InkWell borderRadius + Padding) and token style (AppTypography.bodySecondary.copyWith), and added icon+title+body empty states matching privacy_center_screen.dart/invite_member_screen.dart sibling patterns.
+- [Phase ?]: [Quick 260811-65q]: Redesigned ManagePermissionsScreen's permission selector into a vertical, always-full-width _PermissionLevelRow Column (fixes SegmentedButton label truncation); added ProfileAvatar + capitalized-name + permission-label badge to member cards; moved Remove-from-circle behind a PopupMenuButton overflow menu (unchanged _confirmRemove flow).
+- [Quick 260812-wgl]: Migrated the SOS emergency-contact SMS fallback channel from TextBee to the WhatsApp Business Cloud API (Meta Graph API), fully behind the unchanged `ISmsGateway` seam: `WhatsAppOptions`/`WhatsAppSmsGateway` for sending a Utility-category template message, plus a new `ISmsDeliveryStatusParser` Application seam and `WhatsAppWebhookSignatureValidator`/`WhatsAppDeliveryStatusParser` wiring the real `X-Hub-Signature-256` HMAC-signed delivery-status callback and GET subscription handshake into the existing `SmsWebhookController`/`RecordSmsDeliveryStatusCommand` seam. `RecordSmsDeliveryStatusCommand` and `ISmsWebhookSignatureValidator` both moved from Twilio/TextBee-era form-encoded parameters to a raw-body shape, since the HMAC is computed over the exact JSON bytes. `SosAlertDispatcher`/`TriggerSosCommandHandler` changed only in doc-comment prose (SOS-01 held). All `TextBee*` classes and references removed from `backend/src`/`backend/tests`. WhatsApp Cloud API request/response/webhook shapes were verified against Meta's live docs post-execution (executor lacked WebFetch/WebSearch); that check also caught and fixed a stale pinned Graph API version (`v22.0` -> current stable `v26.0`) in `WhatsAppOptions`/`DependencyInjection.cs`/tests. Real end-to-end send still awaits the operator provisioning `backend/.env`.
+- [Quick 260813-09i]: `ISmsGateway.SendAsync`'s second parameter moved from a single composed `string` to an ordered `IReadOnlyList<string> templateParameters`, deliberately superseding the signature lock asserted in 260812-wgl's `<interface_contracts>`. Cause: the operator's actually-approved `sos_alert` template has three body placeholders while 260812-wgl assumed a single free-text one, so every real send would have failed on a Meta parameter-count mismatch. `SosAlertDispatcher` now builds three ordered values (sender display name, maps link with an explicit `Location unavailable` fallback when coordinates are absent, invariant-culture UTC timestamp) via `ComposeSmsTemplateParameters`, with its control flow and dependency set provably unchanged (`await`=18, `private readonly`=4, SOS-01 held). `WhatsAppSmsGateway` emits one normalized `WhatsAppTemplateParameter` per supplied value, in order, with an empty-value guard substituting a hyphen.
+- [Phase ?]: Geofence tracer persists only candidate callbacks; confirmation, push, activity, and SOS remain isolated.
+- [Phase ?]: Geofence process-death uploads use one credential-free WorkManager bridge and a shared Dart auth drain; native rows are acknowledged only after accepted or duplicate API success.
+- [Phase ?]: 04-06: Canonical geofence CRUD moved to GeofencesController; mutations issue a current-only registration generation.
+- [Phase ?]: 04-07: Geofence evidence uses server-owned clear-side accuracy envelopes and 120/60/30-second dwell with 50/30/15-metre hysteresis per sensitivity.
+- [Phase ?]: 04-07: Only confirmed evidence atomically records geofence activity, recipient feed rows, and pending routine jobs; candidate replay returns Duplicate.
+- [Phase ?]: 04-12: Safe-zone permission coordination runs only after authoritative CRUD save; no map-open or current-location prompt.
+- [Phase ?]: 04-12: Explicit user override bypassed incomplete 04-05 without creating evidence or completion metadata for it.
+- [Phase ?]: Routine feed identity and quiet-hours ownership derive solely from ICurrentUserService; no caller-supplied recipient id is accepted.
+- [Phase ?]: RoutineNotificationDispatcher only re-evaluates durable routine job timing; it has no SOS or push-sender dependency.
+- [Phase ?]: Routine notifications use a separate IRoutinePushSender and named Firebase app, so normal-priority transport cannot change SOS high-priority sender settings.
+- [Phase ?]: Routine jobs re-evaluate quiet hours immediately before delivery and retry provider failures with bounded exponential backoff.
+- [Phase ?]: Routine feed read state updates locally before the idempotent caller-owned read request; ordinary navigation never depends on push delivery.
+- [Phase ?]: Routine feed responses include memberDisplayName and safeZoneId so the client can render truthful rows and request family-scoped zone activity without coordinates.
+- [Phase ?]: Routine push routing uses a separate normal local channel/service, leaving SOS PushService critical semantics unchanged.
+- [Phase ?]: Routine tap routes validate UUID activity/zone IDs and remain in memory until authentication, without persisting tokens.
+- [Phase ?]: 04-11: Boot/package/GEOFENCE_NOT_AVAILABLE recovery is bounded and credential-free; authenticated canonical registration remains the only sync path.
+- [Phase ?]: 04-11: iOS uses Core Location plus an app-private outbox; 04-17 still requires Xcode and physical-device evidence.
+- [Phase quick-260814-aft]: SafeZoneDetailScreen's confirm dialog stays owned by the screen; SafeZoneDetailPage supplies only the post-confirmation handler, and family id resolution prefers loaded GeofenceListController state, falling back to FamilyController with an explicit load() for the cold-deep-link case.
+- [Phase ?]: No pre-supplied SVG markup existed for the 3 illustrations despite the plan calling them approved/designed - authored 3 original flat-vector illustrations using only locked AppColors tokens, matching required viewBox dims; user should review against any real approved artwork
+- [Phase quick-260820-53n]: Wired welcome-background.svg (full-bleed Welcome-screen backdrop), emergency-contacts.svg (EmergencyContactsScreen empty state), and zone-activity-empty.svg (ZoneActivityScreen empty state); committed the 3 pre-approved SVG assets which were on disk but untracked before this plan started.
+- [Phase ?]: [Quick 260820-5xp]: FadeTransition (not AnimatedBuilder+Opacity) drives the online presence dot's pulse -- avoids colliding with an existing find.byType(Opacity) single-match widget-test finder used for the marker's unrelated staleness-fade wrapper. _PresenceDotState creates its AnimationController eagerly in initState rather than a lazy late-final field initializer, since the offline/reduced-motion early-return path in build() never touches the controller and a lazy initializer would otherwise construct it for the first time inside dispose(), crashing mid-teardown.
+- [Phase quick-260820-6mb]: Live Map compact status pill separator span left unstyled (inherits base Text.rich style) rather than explicitly colored, per plan's simplicity guidance.
+- [Quick 260820-av2]: Extended SafePathCard with optional color/border params (D-01) rather than forking it — it had no such API despite the task brief's assumption; all 31 existing call sites stay pixel-identical since both params default to null. showDatePicker's initialDate/firstDate/lastDate normalized to date-only and clamped (D-02) to prevent an assertion crash from a UTC-midnight selectedDate.toLocal() exceeding lastDate before 02:00 local. Added a dedicated onDateSelected callback + _goToDate helper (D-03) instead of simulating N chevron taps for a date pick. TimelineNode's duration-badge text color (0xFF1E7A50) is a private const local to timeline_node.dart, not added to AppColors (D-04) — flagged for user acceptance since it's the one value in this task not drawn from the locked token file.
+- [Phase quick-260820-ciz]: Replaced 6 stock bottom-nav/Privacy-Center Guardian app-bar Material icons with the user's own full-colour PNGs (map.png, games.png, consumer-behavior.png, protection.png, join.png, participation.png), which were already on disk but untracked; _ShellTab collapsed from two IconData fields to one String iconAsset since the PNGs are single full-colour illustrations with no outlined/filled pair.
 
 ### Pending Todos
 
@@ -193,12 +244,14 @@ Recent decisions affecting current work:
 | Investigate sender-screen delivery chip not visually updating on Device A despite correct server-side Queued->Delivered tracking (found during 03-06 Task 3 verification 2026-08-05) | investigation | see 03-06-SUMMARY.md "Issues Encountered" |
 | Investigate FamilyController cold-start bootstrap issue: app relaunch showed "No circle yet" for a real family member until a full emulator reboot (found during 260805-uke Task 3 verification) | investigation | [todos/pending/2026-08-05-family-controller-cold-start-bootstrap-race.md](./todos/pending/2026-08-05-family-controller-cold-start-bootstrap-race.md) |
 | Live Map family/self pin visibly "rolls"/vibrates while panning left-right (post-260806-3zb maplibre_gl migration); suspected unguarded overlapping async reprojection calls resolving out of order | investigation | [todos/pending/2026-08-06-live-map-pin-jitter-during-pan.md](./todos/pending/2026-08-06-live-map-pin-jitter-during-pan.md) |
+| Flutter UI/UX polish pass: no page transitions app-wide, uneven animation coverage, buttons lack tactile feedback vs. the SOS button's polish, stock icons, 13 static ListViews, 2 Riverpod provider-in-class instances (found via `/flutter-ui` skill audit at Phase 04 planning close, 2026-08-11) | ui | [todos/pending/2026-08-11-flutter-ui-ux-polish-pass.md](./todos/pending/2026-08-11-flutter-ui-ux-polish-pass.md) |
+| Fix Supabase verification email SMTP sender + redirect URL allow-list — root cause found (Gmail self-send threading collapse, not a code bug), user deferring the Dashboard-only fix until a domain is purchased, before production | backend/auth | [todos/pending/2026-08-11-auth-verification-email-arrives-empty.md](./todos/pending/2026-08-11-auth-verification-email-arrives-empty.md) |
 
 ### Blockers/Concerns
 
 - [2026-08-05] 03-06 Task 3 (FCM push verification) is now **closed for Android**: Firebase project `safepath-ai-c11bd` provisioned, backend confirmed using `FirebasePushSender`, real push delivery + deep-link confirmed on a terminated Guardian device, delivery status confirmed Queued->Delivered->Acknowledged server-side. Apple Developer Program enrollment / APNs auth key / iOS TestFlight path has **not** been started — do not pick this up until the user explicitly decides to pursue it. The 03-07 airplane-mode offline SOS smoke test (03-07 D4) remains outstanding and can run in the same kind of session since it doesn't depend on Apple/iOS either.
 - [2026-08-05] 03-08-PLAN.md (live-location streaming window, SOS-04) is missing an explicit requirement: today's `LocationController` uses a plain `Geolocator.getPositionStream()` with no foreground-service wrapper, so it does not survive backgrounding or app-kill; 03-08's own plan only commits to surviving the phone being locked/backgrounded via `flutter_foreground_task`, not the sender fully force-killing the app (Android `stopWithTask` isn't addressed). Flagged directly in the plan file — resolve (or explicitly accept as a limitation) before/during 03-08's execution.
-- [2026-08-05] Twilio SMS provisioning (03-05's emergency-contact channel) is **not started**. The code side is fully built — `ISmsGateway`/`TwilioSmsGateway`/`LoggingSmsGateway` seam, E.164 normalization, the SMS arm of `SosAlertDispatcher`, and the signature-validated status webhook — but no `Twilio:AccountSid`/`AuthToken`/`FromNumber` are configured anywhere (checked `appsettings.json`, `appsettings.Development.json`, and the shell env), so the backend runs on `LoggingSmsGateway` and emergency-contact SMS is never actually sent, only logged. Explicitly deferred by the user — do not pick this up until they decide to pursue it. When it does happen: create a Twilio account, get a trial number, verify each demo emergency-contact's phone as a Verified Caller ID (trial accounts can only text verified numbers), set the three config values, and expose a public HTTPS URL (e.g. an ngrok tunnel) for `Twilio:StatusCallbackUrl` so the SMS channel can report real Delivered status instead of staying at Queued forever.
+- [2026-08-12] SOS emergency-contact SMS fallback (03-05's channel, migrated from TextBee to the WhatsApp Business Cloud API in quick task 260812-wgl) is **code-complete but not operator-provisioned**. `WhatsAppOptions`/`WhatsAppSmsGateway`/`WhatsAppWebhookSignatureValidator`/`WhatsAppDeliveryStatusParser` are built behind the unchanged `ISmsGateway` seam, and the SMS channel can now genuinely reach `Delivered` via a real HMAC-signed (`X-Hub-Signature-256`) delivery-status webhook — unlike TextBee, which had no delivery-status webhook at all and stayed at `Queued` forever. Nothing in `backend/.env` is populated yet, so the backend still runs on `LoggingSmsGateway`. Outstanding, operator-side only: populate `WhatsApp__*` values in `backend/.env` (see `docs/EXTERNAL-SETUP.md`, "WhatsApp Business Platform Setup"), expose the API over a public https origin (e.g. ngrok) and subscribe the Meta webhook to it, then run one real end-to-end SOS send to a WhatsApp-enabled emergency-contact number and confirm `GET /sos/{id}` shows Queued -> Delivered.
 
 Carried forward from research (see .planning/research/SUMMARY.md "Research Flags" and "Gaps to Address"):
 
@@ -225,6 +278,18 @@ Carried forward from research (see .planning/research/SUMMARY.md "Research Flags
 | 260807-qhg | Consolidated the splash lockup into a shared AnimatedSafePathMark (ring trace + staggered letter reveal + halo), synced both splash surfaces to 1800ms; fixed StartupSplashOverlay's Stopwatch-based progress to be FakeAsync-testable | 2026-08-07 | d6f667e, 2bb751f, c7be6c5, 1821d39 | | [260807-qhg-apply-splash-screen-enhancement-instruct](./quick/260807-qhg-apply-splash-screen-enhancement-instruct/) |
 | 260807-vqc | Added a country code picker (country_picker 2.0.28) to the profile phone-number field; composes/splits full E.164 numbers client-side, backend already normalized correctly (added regression tests only) | 2026-08-07 | b768b88, 7f7e94b, 15da58f | | [260807-vqc-add-a-country-code-picker-to-the-add-pho](./quick/260807-vqc-add-a-country-code-picker-to-the-add-pho/) |
 | 260808-51d | Added a start_mobile.md section for testing over an ngrok tunnel (remote contributor, different network) | 2026-08-08 | 8b430d8, 611292e | | [260808-51d-add-a-section-to-start-mobile-md-documen](./quick/260808-51d-add-a-section-to-start-mobile-md-documen/) |
+| 260810-vcf | Migrated the emergency-contact SMS fallback channel from Twilio to TextBee: new TextBeeSmsGateway/TextBeeOptions/TextBeeWebhookSignatureValidator behind the unchanged ISmsGateway seam, all Twilio references removed from backend/src and backend/tests, docs/EXTERNAL-SETUP.md and STATE.md updated for TextBee provisioning | 2026-08-10 | 2bc4367, b3f5ebe, 047b1b1 | | [260810-vcf-migrate-sms-gateway-from-twilio-to-textb](./quick/260810-vcf-migrate-sms-gateway-from-twilio-to-textb/) |
+| 260811-3jq | Restored the Invite/Permissions entry points that went missing when MainShell superseded the dead Phase-1 LandingStubScreen: added the same Guardian-gated IconButtons (person_add_alt_1 -> /circle/invite, tune -> /circle/permissions) to PrivacyCenterScreen's populated-state AppBar, reusing the stub's isGuardian gating logic verbatim | 2026-08-11 | 4c4073c | | [260811-3jq-add-missing-invite-permissions-entry-poi](./quick/260811-3jq-add-missing-invite-permissions-entry-poi/) |
+| 260811-440 | ui-ux-pro-max checklist pass on ManagePermissionsScreen: expanded the "Remove from circle" tap target to >=44pt, replaced its hardcoded TextStyle with the AppTypography.bodySecondary token, and gave both empty states (no circle / just you) the icon+title+body pattern already used by PrivacyCenterScreen and InviteMemberScreen | 2026-08-11 | 30474ad | | [260811-440-fix-touch-target-token-style-and-empty-s](./quick/260811-440-fix-touch-target-token-style-and-empty-s/) |
+| 260811-5oo | ManagePermissionsScreen member cards now show the person's displayName instead of the literal role word; PrivacyCenterScreen's per-recipient sharing matrix collapsed into one shared _SharedSharingControls card ("Your family") whose toggles/presets loop over every recipient via the existing per-recipient toggle/startTemporaryShare API | 2026-08-11 | c3f3005 | | [260811-5oo-show-member-names-instead-of-role-labels](./quick/260811-5oo-show-member-names-instead-of-role-labels/) |
+| 260811-65q | Redesigned ManagePermissionsScreen's permission selector into a vertical, always-full-width row list (fixes SegmentedButton truncation), added ProfileAvatar + capitalized-name + permission-label badge to member cards, and moved Remove-from-circle behind a PopupMenuButton overflow menu | 2026-08-11 | b5f5d79, ca2df9d | | [260811-65q-redesign-manage-permissions-screen-fix-t](./quick/260811-65q-redesign-manage-permissions-screen-fix-t/) |
+| 260812-wgl | Migrated the SOS fallback channel from TextBee to the WhatsApp Business Cloud API: new WhatsAppOptions/WhatsAppSmsGateway/WhatsAppWebhookSignatureValidator/WhatsAppDeliveryStatusParser behind the unchanged ISmsGateway seam, a real HMAC-signed delivery-status webhook + GET subscription handshake wired into SmsWebhookController/RecordSmsDeliveryStatusCommand (SMS channel can now reach Delivered), all TextBee references removed from backend/src and backend/tests, docs/EXTERNAL-SETUP.md and STATE.md updated; post-execution live-docs check fixed a stale pinned Graph API version (v22.0 -> v26.0) | 2026-08-12 | cd23241, 76103c8, 82e25f8, 7fbee65 | | [260812-wgl-migrate-sos-fallback-channel-from-textbe](./quick/260812-wgl-migrate-sos-fallback-channel-from-textbe/) |
+| 260813-09i | Fixed the WhatsApp SOS alert template parameter-count mismatch shipped in 260812-wgl: ISmsGateway.SendAsync's second parameter moved from a single composed string to an ordered IReadOnlyList<string>, SosAlertDispatcher.ComposeSmsTemplateParameters builds three ordered values (name, maps link or "Location unavailable" fallback, invariant-culture UTC timestamp), WhatsAppSmsGateway/LoggingSmsGateway/NoOpSmsGateway updated, tests pin the three-parameter arity/order/fallback/normalization, docs/EXTERNAL-SETUP.md records the confirmed three-placeholder template shape | 2026-08-13 | c84072f, 04a5b7b | | [260813-09i-fix-whatsapp-sos-alert-template-paramete](./quick/260813-09i-fix-whatsapp-sos-alert-template-paramete/) |
+| 260814-8r2 | Wired the Phase 04 Safe Zones UI flow, which existed as unconnected components: added SafeZonesPage/SafeZoneEditorPage/SafeZoneReviewPage/SafeZoneDetailPage Riverpod-connected wrappers, pointed /safe-zones, /safe-zones/add, the new /safe-zones/add/review, and the new /safe-zones/:zoneId/edit routes at them, added SafeZoneDraft.fromZone + editor prefill for the edit path, fixed a real bug where geofence_controller.dart's loadFamily reset a non-empty guardian-recipient selection on review, and added a router-level integration test (safe_zone_router_flow_test.dart) so this class of route-defined-but-unwired gap has automated coverage | 2026-08-14 | 69ecc5c, b90fada, 3e59e95 | | [260814-8r2-wire-up-phase-04-safe-zones-ui-flow-list](./quick/260814-8r2-wire-up-phase-04-safe-zones-ui-flow-list/) |
+| 260814-aft | Wired the two remaining dead affordances on SafeZoneDetailScreen left out of 260814-8r2: onDeleteConfirmed resolves a family id (preferring loaded GeofenceListController state, falling back to FamilyController with an explicit load() for a cold deep link) then calls the existing GeofenceListController.deleteZone, navigating back to /safe-zones only on success; onOpenSettings delegates to locationPermissionServiceProvider.openAppSettings() (it opens OS app settings for background-location permission, not the edit route). No second confirmation dialog added — the screen's existing AlertDialog stays the sole confirm gate. Added router-level test coverage for delete-confirm, delete-cancel, and open-settings | 2026-08-14 | 901b2db, 2c13fdf | | [260814-aft-wire-up-delete-zone-and-open-settings-af](./quick/260814-aft-wire-up-delete-zone-and-open-settings-af/) |
+| 260820-53n | Wired the 3 pre-approved SVG illustrations into WelcomeScreen (full-bleed backdrop), EmergencyContactsScreen (empty state), and ZoneActivityScreen (empty state); also committed the 3 SVG assets themselves, which were on disk but untracked in git before this plan started | 2026-08-20 | e2f2bf5, a271dd1, d70fff6, 7c3ac42 | | [260820-53n-wire-3-already-created-svg-illustration-](./quick/260820-53n-wire-3-already-created-svg-illustration-/) |
+| 260820-av2 | Redesigned the Activity screen to the approved mockup: icon-led header, tappable member-selector pill + avatar bottom sheet, human date label with a clamped date picker and today-capped next-day chevron, colour-coded icon-led stat cards, a map icon on View route, and green transit timeline nodes with duration pills. Extended SafePathCard/StatTile/PrimaryButton/TimelineNode backward-compatibly (all new params default null); registered the 4 activity-*.png icons. Zero edits to the pre-existing history_timeline_screen_test.dart; 2 pre-existing unrelated test failures found and logged, not fixed | 2026-08-20 | 7a3ce45, f7203e9 | | [260820-av2-redesign-activity-screen-history-timelin](./quick/260820-av2-redesign-activity-screen-history-timelin/) |
+| 260820-ciz | Replaced 6 stock Material icons with the user's own full-colour PNGs: the 4 MainShell bottom-nav tab icons (map/games/consumer-behavior/protection.png) and the 2 Privacy Center Guardian app-bar icons (join/participation.png). _ShellTab collapsed from two IconData fields to one String iconAsset since the PNGs are single full-colour illustrations; Image.asset rendered untinted with excludeFromSemantics:true so existing Semantics/tooltip labels stay the sole announcement. All 6 PNGs were already on disk but untracked; committed alongside the code referencing them | 2026-08-20 | c67aefd, 982b308 | | [260820-ciz-replace-6-bottom-nav-and-circle-manageme](./quick/260820-ciz-replace-6-bottom-nav-and-circle-manageme/) |
 
 ## Deferred Items
 
@@ -236,6 +301,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-07T22:54:14.464Z
-Stopped at: Completed 03-09-PLAN.md (SOS-05/06 hold-to-cancel + OS backup trigger; phase 3's closing manual gate approved)
-Resume file: None
+Last session: 2026-09-28T00:00:00Z
+Stopped at: Phase 04 forced partial close; begin Phase 05 planning. Phase 04 physical checkpoint is deferred, with generation 2 acknowledgement, Android boundary/process-death evidence, signed iPhone evidence, and APNs evidence still pending.
+Resume file: .planning/phases/04-geofencing/.continue-here.md

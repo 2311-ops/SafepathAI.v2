@@ -8,6 +8,14 @@ import 'app.dart';
 import 'core/config/supabase_config.dart';
 import 'core/os_shortcuts/quick_actions_service.dart';
 import 'core/push/push_service.dart';
+import 'features/geofencing/application/geofence_registration_controller.dart';
+import 'features/geofencing/data/geofence_background_entrypoint.dart';
+import 'features/geofencing/data/geofence_candidate_uploader.dart';
+
+/// Android WorkManager resolves named headless entrypoints from the app's
+/// root Dart library, then delegates the actual drain to the geofence module.
+@pragma('vm:entry-point')
+Future<void> geofenceBackgroundMain() => runGeofenceBackgroundDrain();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,13 +33,15 @@ Future<void> main() async {
     // default). The FCM channel simply stays inactive until Task 3's human
     // Firebase setup is done; PushServiceController below also guards its
     // own calls so this never crashes app startup.
-    debugPrint('Firebase.initializeApp failed (no Firebase project configured yet?): $error');
+    debugPrint(
+      'Firebase.initializeApp failed (no Firebase project configured yet?): $error',
+    );
   }
 
-  await Supabase.initialize(
-    url: supabaseUrl,
-    publishableKey: supabaseAnonKey,
-  );
+  await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseAnonKey);
+  // A killed-process geofence callback remains in native storage until this
+  // authenticated cold-relaunch drain receives accepted/duplicate from the API.
+  await drainGeofenceCandidatesAfterAuthRestoration();
 
   final container = ProviderContainer();
   // Bootstraps the FCM token lifecycle (register on sign-in, remove on
@@ -46,6 +56,11 @@ Future<void> main() async {
   // invocation handler (SOS-06) alongside the push/deep-link bootstrap
   // above — same startup-time-wiring convention, one shared ProviderContainer.
   container.read(quickActionsServiceProvider);
+  // Mirrors the authenticated server geofence registration into native
+  // Android/iOS monitoring on sign-in and clears it on sign-out (GEO-02).
+  // Reading it here is required: NotifierProvider.build() only runs once
+  // something reads the provider, and nothing else in the app tree did.
+  container.read(geofenceRegistrationControllerProvider);
 
   runApp(
     UncontrolledProviderScope(container: container, child: const SafePathApp()),

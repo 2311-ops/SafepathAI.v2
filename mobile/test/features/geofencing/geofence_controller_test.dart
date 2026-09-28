@@ -1,0 +1,294 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/features/geofencing/application/geofence_controller.dart';
+import 'package:mobile/features/geofencing/data/geofence_api.dart';
+import 'package:mobile/features/geofencing/data/geofence_models.dart';
+
+void main() {
+  group('GeofenceController', () {
+    test('uses accessible safe-zone defaults and preserves category names', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final controller = container.read(geofenceControllerProvider.notifier);
+
+      expect(controller.draft.radiusMeters, 100);
+      expect(controller.draft.sensitivity, SafeZoneSensitivity.reliable);
+      expect(controller.draft.notifyAssignedMember, isFalse);
+      controller.selectCategory(SafeZoneCategory.school);
+      expect(controller.draft.name, 'School');
+      controller.setName('Maya school');
+      controller.selectCategory(SafeZoneCategory.home);
+      expect(controller.draft.name, 'Maya school');
+    });
+
+    test('new add flow resets stale custom drafts and seeds defaults', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final controller = container.read(geofenceControllerProvider.notifier);
+
+      controller.selectCategory(SafeZoneCategory.custom);
+      controller.setName('');
+      controller.setAssignedMember('old-member');
+
+      controller.startNewDraft(
+        familyId: 'family-1',
+        activeGuardianIds: const {'guardian-1'},
+        defaultAssignedMemberId: 'member-1',
+        initialCenter: const SafeZoneCenter(
+          latitude: 30.0444,
+          longitude: 31.2357,
+        ),
+      );
+
+      expect(controller.draft.familyId, 'family-1');
+      expect(controller.draft.category, SafeZoneCategory.home);
+      expect(controller.draft.name, 'Home');
+      expect(controller.draft.hasExplicitCenter, isTrue);
+      expect(controller.draft.assignedMemberId, 'member-1');
+      expect(controller.draft.guardianRecipientIds, {'guardian-1'});
+      expect(controller.isReadyForReview, isTrue);
+    });
+
+    test('review validation explains missing fields after a bad tap', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final controller = container.read(geofenceControllerProvider.notifier);
+
+      controller.startNewDraft(
+        familyId: 'family-1',
+        activeGuardianIds: const {},
+      );
+      controller.setName('');
+
+      expect(controller.validateForReview(), isFalse);
+      expect(controller.state.validation.name, 'Enter a zone name.');
+      expect(
+        controller.state.validation.location,
+        'Choose a zone location before review.',
+      );
+      expect(controller.state.validation.member, 'Choose a family member.');
+      expect(
+        controller.state.validation.recipients,
+        'Select at least one Guardian to receive alerts.',
+      );
+    });
+
+    test(
+      'validates name, member, radius, and guardian recipients before review',
+      () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final controller = container.read(geofenceControllerProvider.notifier);
+
+        controller.setName('');
+        controller.loadDraftForEdit(
+          controller.draft.copyWith(radiusMeters: 99),
+        );
+
+        expect(controller.validateForReview(), isFalse);
+        expect(controller.state.validation.name, isNotNull);
+        expect(controller.state.validation.location, isNotNull);
+        expect(controller.state.validation.member, isNotNull);
+        expect(controller.state.validation.radius, isNotNull);
+        expect(controller.state.validation.recipients, isNotNull);
+      },
+    );
+
+    test(
+      'maps presets and fine slider values while rejecting invalid radii',
+      () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final controller = container.read(geofenceControllerProvider.notifier);
+
+        controller.selectRadiusPreset(1000);
+        expect(controller.draft.radiusMeters, 1000);
+        controller.setRadiusMeters(1125);
+        expect(controller.draft.radiusMeters, 1125);
+        controller.setRadiusMeters(1111);
+        expect(controller.draft.radiusMeters, 1125);
+      },
+    );
+
+    test(
+      'saves first, then retains a needs-permission inactive zone on denial',
+      () async {
+        final api = _FakeGeofenceApi();
+        final permission = _FakeSavePermissionCoordinator(
+          SafeZoneActivation.needsLocationPermission,
+        );
+        final container = ProviderContainer(
+          overrides: [
+            geofenceApiProvider.overrideWithValue(api),
+            geofenceSavePermissionCoordinatorProvider.overrideWithValue(
+              permission,
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final controller = container.read(geofenceControllerProvider.notifier);
+        _makeValid(controller);
+
+        final result = await controller.save();
+
+        expect(result, isTrue);
+        expect(api.createCalls, 1);
+        expect(permission.calls, 1);
+        expect(
+          controller.state.savedZone!.activation,
+          SafeZoneActivation.needsLocationPermission,
+        );
+        expect(controller.state.savedZone!.isActive, isFalse);
+      },
+    );
+
+    test(
+      'keeps the entered draft when the authoritative API rejects a save',
+      () async {
+        final api = _FakeGeofenceApi(throwsOnCreate: true);
+        final container = ProviderContainer(
+          overrides: [geofenceApiProvider.overrideWithValue(api)],
+        );
+        addTearDown(container.dispose);
+        final controller = container.read(geofenceControllerProvider.notifier);
+        _makeValid(controller);
+
+        final result = await controller.save();
+
+        expect(result, isFalse);
+        expect(controller.draft.name, 'Home');
+        expect(controller.state.saveError, isNotNull);
+      },
+    );
+
+    test('toggles a listed zone active and inactive', () async {
+      final api = _FakeGeofenceApi();
+      final container = ProviderContainer(
+        overrides: [geofenceApiProvider.overrideWithValue(api)],
+      );
+      addTearDown(container.dispose);
+      final controller = container.read(
+        geofenceListControllerProvider.notifier,
+      );
+
+      await controller.load('family-1');
+      expect(controller.state.zones.single.isActive, isTrue);
+
+      await controller.toggleZone(controller.state.zones.single, false);
+      expect(api.setActiveCalls, 1);
+      expect(api.lastSetActiveValue, isFalse);
+      expect(
+        controller.state.zones.single.activation,
+        SafeZoneActivation.inactive,
+      );
+
+      await controller.toggleZone(controller.state.zones.single, true);
+      expect(api.setActiveCalls, 2);
+      expect(api.lastSetActiveValue, isTrue);
+      expect(
+        controller.state.zones.single.activation,
+        SafeZoneActivation.active,
+      );
+    });
+  });
+}
+
+void _makeValid(GeofenceController controller) {
+  controller.setName('Home');
+  controller.setCenter(
+    const SafeZoneCenter(latitude: 30.0444, longitude: 31.2357),
+  );
+  controller.setAssignedMember('member-1');
+  controller.setGuardianRecipients(const {'guardian-1'});
+}
+
+class _FakeGeofenceApi implements GeofenceApi {
+  _FakeGeofenceApi({this.throwsOnCreate = false});
+
+  final bool throwsOnCreate;
+  int createCalls = 0;
+  int setActiveCalls = 0;
+  bool? lastSetActiveValue;
+
+  @override
+  Future<List<SafeZone>> list(String familyId) async => [
+    const SafeZone(
+      id: 'zone-1',
+      name: 'Home',
+      category: SafeZoneCategory.home,
+      center: SafeZoneCenter(latitude: 30.0444, longitude: 31.2357),
+      radiusMeters: 100,
+      assignedMemberId: 'member-1',
+      sensitivity: SafeZoneSensitivity.reliable,
+      guardianRecipientIds: {'guardian-1'},
+      notifyAssignedMember: false,
+    ),
+  ];
+
+  @override
+  Future<SafeZone> get(String familyId, String zoneId) async => SafeZone(
+    id: zoneId,
+    name: 'Home',
+    category: SafeZoneCategory.home,
+    center: const SafeZoneCenter(latitude: 30.0444, longitude: 31.2357),
+    radiusMeters: 100,
+    assignedMemberId: 'member-1',
+    sensitivity: SafeZoneSensitivity.reliable,
+    guardianRecipientIds: const {'guardian-1'},
+    notifyAssignedMember: false,
+  );
+
+  @override
+  Future<List<GeofenceActivity>> activity(
+    String familyId,
+    GeofenceActivityFilters filters,
+  ) async => const [];
+
+  @override
+  Future<SafeZone> create(SafeZoneDraft draft) async {
+    createCalls++;
+    if (throwsOnCreate) throw const GeofenceApiException('Save failed');
+    return SafeZone(
+      id: 'zone-1',
+      name: draft.name,
+      category: draft.category,
+      center: draft.center,
+      radiusMeters: draft.radiusMeters,
+      assignedMemberId: draft.assignedMemberId!,
+      sensitivity: draft.sensitivity,
+      guardianRecipientIds: draft.guardianRecipientIds,
+      notifyAssignedMember: draft.notifyAssignedMember,
+    );
+  }
+
+  @override
+  Future<SafeZone> update(String zoneId, SafeZoneDraft draft) => create(draft);
+
+  @override
+  Future<SafeZoneActivation> setActive(
+    String familyId,
+    String zoneId,
+    bool active,
+  ) async {
+    setActiveCalls++;
+    lastSetActiveValue = active;
+    return active ? SafeZoneActivation.active : SafeZoneActivation.inactive;
+  }
+
+  @override
+  Future<void> delete(String familyId, String zoneId) async {}
+}
+
+class _FakeSavePermissionCoordinator
+    implements GeofenceSavePermissionCoordinator {
+  _FakeSavePermissionCoordinator(this.result);
+
+  final SafeZoneActivation result;
+  int calls = 0;
+
+  @override
+  Future<SafeZoneActivation> requestAfterSave() async {
+    calls++;
+    return result;
+  }
+}

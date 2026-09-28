@@ -8,7 +8,7 @@ credentials that exist outside the repo.
 
 Nothing here is required to build, test, or demo this project. The backend falls back to a
 logging implementation for both push (`LoggingPushSender`) and SMS (`LoggingSmsGateway`) whenever
-Firebase or Twilio credentials are absent, and the mobile app catches and logs a failed
+Firebase or WhatsApp credentials are absent, and the mobile app catches and logs a failed
 `Firebase.initializeApp` rather than crashing. This document is required only to exercise real
 push delivery end to end and to ship a signed iOS build to TestFlight.
 
@@ -34,7 +34,7 @@ specifically until Apple Developer Program enrolment completes.
 | Apple Developer Program membership | Paid, annual | APNs auth key, TestFlight, iOS code signing |
 | Firebase project | Free | FCM push on Android and iOS, backend push sender |
 | Codemagic account | Free tier (500 build minutes/month, macOS M2) | `codemagic.yaml` CI builds, TestFlight upload |
-| Twilio account | Free trial, then paid | Real SMS delivery (see "Still outstanding") |
+| WhatsApp Business Cloud API (Meta Graph API) | Free for Utility-category template sends within Meta's free tier conversation limits | Real SOS fallback SMS delivery plus a genuine HMAC-signed delivery-status webhook (see "Still outstanding") |
 
 ## Firebase Project and App Registration
 
@@ -93,10 +93,24 @@ maps to the `Firebase:ProjectId` configuration value the code reads).
 | --- | --- |
 | `Firebase__ProjectId` | Firebase project id, from `Firebase Console -> Project settings -> General -> Project ID` |
 | `Firebase__CredentialsPath` | Absolute path to a Firebase service-account JSON key, from `Firebase Console -> Project settings -> Service accounts -> Generate new private key` |
-| `Twilio__AccountSid` | Twilio Account SID (already-live SMS fallback channel, see "Still outstanding") |
-| `Twilio__AuthToken` | Twilio Auth Token |
-| `Twilio__FromNumber` | Twilio sending phone number in E.164 form |
-| `Twilio__StatusCallbackUrl` | Publicly reachable URL Twilio posts delivery-status webhooks to |
+| `WhatsApp__AccessToken` | Meta System User access token with `whatsapp_business_messaging` + `whatsapp_business_management` scopes, from `Meta Business Suite -> Business settings -> Users -> System users -> Generate new token` |
+| `WhatsApp__PhoneNumberId` | The sending phone number's id, from `Meta App Dashboard -> WhatsApp -> API Setup -> Phone number ID` |
+| `WhatsApp__WabaId` | The WhatsApp Business Account id, from `Meta App Dashboard -> WhatsApp -> API Setup -> WhatsApp Business Account ID` |
+| `WhatsApp__AppSecret` | The Meta app's secret, from `Meta App Dashboard -> App settings -> Basic -> App secret` — used only to verify `X-Hub-Signature-256` on inbound status callbacks |
+| `WhatsApp__WebhookVerifyToken` | An operator-chosen random string; must be typed identically into `Meta App Dashboard -> WhatsApp -> Configuration -> Webhook -> Verify token` |
+| `WhatsApp__TemplateName` | The approved Utility-category template name (the SOS alert template). Must NOT be a separate Authentication-category template (e.g. `otp_verification`) — Meta locks those to OTP-only. The template body must carry exactly three body placeholders (see "WhatsApp Business Platform Setup" step 4) — the backend always sends three ordered template parameters |
+| `WhatsApp__TemplateLanguage` | Optional; defaults to `en` when unset |
+| `WhatsApp__BaseUrl` | Optional; defaults to `https://graph.facebook.com` when unset |
+| `WhatsApp__ApiVersion` | Optional; defaults to the Graph API version pinned in `WhatsAppOptions` when unset |
+
+Future geofence WhatsApp alerts should reserve a separate Utility-category template named
+`geofence_alert`. This is the confirmed template name for now, but still later Phase 04 work only:
+the current
+`WhatsApp__TemplateName` key is SOS-only and should not be reused for routine geofence alerts.
+The intended `geofence_alert` body placeholders are, in order: `{{1}}` member name, `{{2}}`
+entered/exited, `{{3}}` zone name, and `{{4}}` time.
+The geofence webhook callback should be provided after deployment, once the app has a public HTTPS
+origin.
 
 `03-06-PLAN.md`'s `user_setup` block named these variables `FIREBASE_PROJECT_ID` and
 `GOOGLE_APPLICATION_CREDENTIALS`. Those names are superseded: the shipped
@@ -104,14 +118,59 @@ maps to the `Firebase:ProjectId` configuration value the code reads).
 `Firebase:CredentialsPath`, and the names in the table above are authoritative.
 
 Save the Firebase service-account JSON file outside the repository and set
-`Firebase__CredentialsPath` to its absolute path. Never commit it.
+`Firebase__CredentialsPath` to its absolute path. Never commit it. All WhatsApp values above go
+only into the local gitignored `backend/.env` and never into `appsettings.json` or any committed
+file.
 
 Observable success signal: on restart, the API logs "Push sender active: FirebasePushSender
 (Firebase credentials configured)" rather than the logging sender, and separately logs "SMS
-gateway active: TwilioSmsGateway (Twilio credentials configured)" rather than its own logging
+gateway active: WhatsAppSmsGateway (WhatsApp credentials configured)" rather than its own logging
 fallback. If either log line still names the logging implementation after setting the
 corresponding keys, the values were not read (check for typos in the key names or a missing
 restart).
+
+## WhatsApp Business Platform Setup
+
+The SOS emergency-contact fallback channel sends through the WhatsApp Business Cloud API (Meta
+Graph API) when configured, and through `LoggingSmsGateway` (free, no account) when not.
+
+1. Create a Meta app and a WhatsApp Business Account (WABA), or reuse existing ones.
+   Location: `developers.facebook.com/apps -> Create App -> Business -> add the WhatsApp
+   product`.
+2. Generate a System User access token with the `whatsapp_business_messaging` and
+   `whatsapp_business_management` permissions.
+   Location: `Meta Business Suite -> Business settings -> Users -> System users -> Generate new
+   token`.
+   A temporary 24-hour token issued from `API Setup` will expire and is not suitable for anything
+   beyond a first smoke test — use the System User token for anything that needs to keep working.
+3. Locate the Phone Number ID (`1190449597495068`) and WABA ID (`1605779661263531`).
+   Location: `Meta App Dashboard -> WhatsApp -> API Setup`.
+4. Create and submit the Utility-category SOS template for approval (e.g. `sos_alert`), containing
+   three body placeholders, in order: the triggering member's name, the location link, and the
+   trigger timestamp. The placeholder count must match what the backend sends, or Meta rejects
+   every send with a parameter-count mismatch. For example, the template body might read: `{{1}}
+   triggered an SOS on SafePath and needs help. Location: {{2}}. Time: {{3}}.`
+   Location: `Meta App Dashboard -> WhatsApp -> Message Templates -> Create Template`.
+   Do **not** use the separately-approved `otp_verification` Authentication-category template for
+   SOS content — Meta locks Authentication templates to OTP-only, and setting it as
+   `WhatsApp__TemplateName` will fail every send.
+   Future geofence notifications should use their own Utility-category template named
+   `geofence_alert`; do not reuse the SOS `sos_alert` template or route routine geofence alerts
+   through the SOS fallback channel. Its body placeholders should be `{{1}}` member name, `{{2}}`
+   entered/exited, `{{3}}` zone name, and `{{4}}` time. Provide the geofence webhook callback
+   after deployment, when the public HTTPS origin is known.
+5. Subscribe the webhook once the API is reachable over a public https origin: set the callback
+   URL to that origin plus `/webhooks/sms/status`, set the verify token to match
+   `WhatsApp__WebhookVerifyToken` exactly, and subscribe the WABA to the `messages` field — no
+   status callback arrives until this subscription is active.
+   Location: `Meta App Dashboard -> WhatsApp -> Configuration -> Webhook`.
+
+Two recipient-side caveats that will otherwise surprise the operator:
+
+- An emergency contact must have WhatsApp installed on the number stored in
+  `EmergencyContact.PhoneNumberE164` — the send fails otherwise.
+- Unverified/development Meta apps are limited to sending to pre-registered test recipient
+  numbers until the business is verified.
 
 ## App Store Connect API Key
 
@@ -242,6 +301,6 @@ to outlive any single phase.
 | OpenStreetMap production tile-hosting provider (MapTiler, Stadia Maps, or Thunderforest) | OSM's own tile server (`tile.openstreetmap.org`) is rate-limited and its usage policy disallows production app traffic at scale; see `.planning/phases/02-real-time-location-history-privacy/02-01-USER-SETUP.md` | Before any real-user traffic; no key is needed for development | Outstanding |
 | Android release signing keystore | The app module's `release` build type is still signed with the debug keystore (`mobile/android/app/build.gradle.kts`) | Before a real Play Store release; the `android-apk` Codemagic workflow deliberately builds `--debug` to avoid masking this gap | Outstanding |
 | Release-configuration APNs production entitlement | `aps-environment` is `development` for every build configuration today; see "Production APNs entitlement" above | Before any TestFlight or App Store push delivery can be trusted | Outstanding |
-| Twilio account and phone number provisioning | Real SMS delivery to emergency contacts; the code path is complete since 03-05 but no live Twilio account, verified numbers, or public status-callback URL exist yet | Before a real SMS can be sent or a Delivered status observed end to end | Outstanding (code-complete, unprovisioned) |
+| WhatsApp Business Cloud API provisioning | Real SOS SMS delivery to emergency contacts plus a genuine Delivered status; the code path is complete since quick task 260812-wgl but `backend/.env` is not yet populated and the webhook is not yet subscribed | Before a real SOS SMS can be sent or a delivery status can be confirmed | Outstanding (code-complete, unprovisioned) |
 | Supabase Storage `avatar` bucket | Backend-mediated avatar upload/delete/signed-URL creation reads/writes this private bucket | Already required for profile-photo features | Done (verified in 02-13) |
 | Six Labors ImageSharp license | ImageSharp 4.0.0 enforces a build-time license (`sixlabors.lic` or `SIXLABORS_LICENSE_KEY`); required to build the backend at all | Every backend build, including CI | Outstanding for CI (a local uncommitted license file exists per developer machine per 02-13) |

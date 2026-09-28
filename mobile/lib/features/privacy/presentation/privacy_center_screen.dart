@@ -11,8 +11,10 @@ import '../../../shared_widgets/no_circle_cta.dart';
 import '../../../shared_widgets/safepath_card.dart';
 import '../../../shared_widgets/toggle_row.dart';
 import '../../auth/data/auth_api.dart';
+import '../../auth/data/auth_models.dart';
 import '../../family/application/family_controller.dart';
 import '../../family/data/family_models.dart';
+import '../../profile/application/profile_controller.dart';
 import '../../sos/presentation/sos_reach_warning_card.dart';
 import '../application/privacy_controller.dart';
 import '../data/privacy_models.dart';
@@ -63,16 +65,14 @@ class PrivacyCenterScreen extends ConsumerWidget {
 
   Future<void> _startCustomTemporaryShare(
     BuildContext context,
-    WidgetRef ref, {
-    required String recipientId,
-  }) async {
+    WidgetRef ref,
+  ) async {
     final duration = await _showCustomDurationDialog(context);
     if (duration == null || !context.mounted) return;
 
-    await ref
+    ref
         .read(privacyControllerProvider.notifier)
         .startTemporaryShare(
-          recipientId: recipientId,
           dataType: SharedDataType.liveLocation,
           duration: duration,
         );
@@ -164,10 +164,21 @@ class PrivacyCenterScreen extends ConsumerWidget {
         ref.watch(privacyControllerProvider).value ?? const PrivacyState();
     final currentUserId = ref.watch(authApiProvider).currentSession?.user.id;
     final familyId = familyState?.family?.id;
-    final recipients = (familyState?.members ?? const <FamilyMemberView>[])
-        .where((member) => member.userId != currentUserId)
-        .toList();
     final now = ref.watch(privacyNowProvider)();
+    final profileState = ref.watch(profileControllerProvider).value;
+    final profileUserId = profileState?.profile?.userId;
+    final effectiveUserId = currentUserId ?? profileUserId;
+    final hasFamily = familyId != null;
+    final members = familyState?.members ?? const <FamilyMemberView>[];
+    FamilyMemberView? currentMember;
+    for (final member in members) {
+      if (member.userId == effectiveUserId) {
+        currentMember = member;
+        break;
+      }
+    }
+    final effectiveRole = currentMember?.role ?? profileState?.profile?.role;
+    final isGuardian = effectiveRole == Role.guardian;
 
     if ((familyState?.isLoading ?? false) || privacyState.isLoading) {
       return const Scaffold(
@@ -190,7 +201,31 @@ class PrivacyCenterScreen extends ConsumerWidget {
       backgroundColor: AppColors.appBg,
       appBar: AppBar(
         title: const Text('Privacy Center'),
-        actions: const [LogoutAction()],
+        actions: [
+          if (hasFamily && isGuardian)
+            IconButton(
+              icon: Image.asset(
+                'assets/icons/join.png',
+                width: 24,
+                height: 24,
+                excludeFromSemantics: true,
+              ),
+              tooltip: 'Invite',
+              onPressed: () => context.push('/circle/invite'),
+            ),
+          if (hasFamily && isGuardian)
+            IconButton(
+              icon: Image.asset(
+                'assets/icons/participation.png',
+                width: 24,
+                height: 24,
+                excludeFromSemantics: true,
+              ),
+              tooltip: 'Circle members',
+              onPressed: () => context.push('/circle/permissions'),
+            ),
+          const LogoutAction(),
+        ],
       ),
       body: SafeArea(
         child: RefreshIndicator(
@@ -204,10 +239,10 @@ class PrivacyCenterScreen extends ConsumerWidget {
               112,
             ),
             children: [
-              Text('Privacy Center', style: AppTypography.heading),
+              Text('Your privacy', style: AppTypography.heading),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                'Choose exactly what each family member can see.',
+                'You decide who can see your live location, history, and wellness. Guardians cannot change these controls for you.',
                 style: AppTypography.bodySecondary,
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -216,46 +251,31 @@ class PrivacyCenterScreen extends ConsumerWidget {
                 _ErrorCard(message: privacyState.error!),
                 const SizedBox(height: AppSpacing.md),
               ],
-              if (recipients.isEmpty)
-                const _EmptySharingCard()
-              else ...[
-                if (!_hasAnyEnabledShare(privacyState.matrix))
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: AppSpacing.md),
-                    child: _EmptySharingCard(),
-                  ),
-                for (final recipient in recipients) ...[
-                  _RecipientMatrix(
-                    recipient: recipient,
-                    matrix: privacyState.matrix,
-                    onChanged: (dataType, enabled) => ref
-                        .read(privacyControllerProvider.notifier)
-                        .toggle(
-                          recipientId: recipient.memberId,
-                          dataType: dataType,
-                          enabled: enabled,
-                        ),
-                    activeShare: _activeShare(
-                      privacyState.matrix,
-                      recipient.memberId,
-                      now,
-                    ),
-                    onPresetSelected: (duration) => ref
-                        .read(privacyControllerProvider.notifier)
-                        .startTemporaryShare(
-                          recipientId: recipient.memberId,
-                          dataType: SharedDataType.liveLocation,
-                          duration: duration,
-                        ),
-                    onCustomSelected: () => _startCustomTemporaryShare(
-                      context,
-                      ref,
-                      recipientId: recipient.memberId,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                ],
-              ],
+              if (!_hasAnyEnabledShare(privacyState.matrix))
+                const Padding(
+                  padding: EdgeInsets.only(bottom: AppSpacing.md),
+                  child: _EmptySharingCard(),
+                ),
+              _PersonalSharingControls(
+                matrix: privacyState.matrix,
+                activeShare: _activeShare(privacyState.matrix, now),
+                onChanged: (dataType, enabled) {
+                  ref
+                      .read(privacyControllerProvider.notifier)
+                      .toggle(dataType: dataType, enabled: enabled);
+                },
+                onPresetSelected: (duration) {
+                  ref
+                      .read(privacyControllerProvider.notifier)
+                      .startTemporaryShare(
+                        dataType: SharedDataType.liveLocation,
+                        duration: duration,
+                      );
+                },
+                onCustomSelected: () =>
+                    _startCustomTemporaryShare(context, ref),
+              ),
+              const SizedBox(height: AppSpacing.lg),
               const SizedBox(height: AppSpacing.md),
               _PrivacyActionsSection(
                 isExporting: privacyState.isExporting,
@@ -276,15 +296,10 @@ class PrivacyCenterScreen extends ConsumerWidget {
   static bool _hasAnyEnabledShare(SharingMatrix matrix) =>
       matrix.entries.any((entry) => entry.isEnabled);
 
-  static ActiveShareView? _activeShare(
-    SharingMatrix matrix,
-    String recipientId,
-    DateTime now,
-  ) {
-    return matrix
-        .cellFor(recipientId, SharedDataType.liveLocation)
-        ?.describeActiveShare(now: now);
-  }
+  static ActiveShareView? _activeShare(SharingMatrix matrix, DateTime now) =>
+      matrix
+          .cellFor(null, SharedDataType.liveLocation)
+          ?.describeActiveShare(now: now);
 }
 
 class _PrivacyActionsSection extends StatelessWidget {
@@ -350,9 +365,8 @@ class _PrivacyActionsSection extends StatelessWidget {
   }
 }
 
-class _RecipientMatrix extends StatelessWidget {
-  const _RecipientMatrix({
-    required this.recipient,
+class _PersonalSharingControls extends StatelessWidget {
+  const _PersonalSharingControls({
     required this.matrix,
     required this.onChanged,
     required this.activeShare,
@@ -360,7 +374,6 @@ class _RecipientMatrix extends StatelessWidget {
     required this.onCustomSelected,
   });
 
-  final FamilyMemberView recipient;
   final SharingMatrix matrix;
   final void Function(SharedDataType dataType, bool enabled) onChanged;
   final ActiveShareView? activeShare;
@@ -369,60 +382,62 @@ class _RecipientMatrix extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = _recipientLabel(recipient, matrix);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(name, style: AppTypography.title),
-        const SizedBox(height: AppSpacing.sm),
-        for (final dataType in SharedDataType.values) ...[
-          ToggleRow(
-            label: dataType.label,
-            subtitle: _subtitle(dataType),
-            value: matrix.isEnabled(recipient.memberId, dataType),
-            onChanged: (enabled) => onChanged(dataType, enabled),
+    return SafePathCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('My sharing access', style: AppTypography.title),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Choose what your family circle can see from your account. These controls affect only your data.',
+            style: AppTypography.bodySecondary,
           ),
           const SizedBox(height: AppSpacing.sm),
+          for (final dataType in SharedDataType.values) ...[
+            ToggleRow(
+              label: _label(dataType),
+              subtitle: _subtitle(dataType),
+              value: matrix.isEnabled(null, dataType),
+              onChanged: (enabled) => onChanged(dataType, enabled),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          _TemporarySharingSection(
+            keySeed: 'circle',
+            activeShare: activeShare,
+            onPresetSelected: onPresetSelected,
+            onCustomSelected: onCustomSelected,
+          ),
         ],
-        _TemporarySharingSection(
-          recipientId: recipient.memberId,
-          activeShare: activeShare,
-          onPresetSelected: onPresetSelected,
-          onCustomSelected: onCustomSelected,
-        ),
-      ],
+      ),
     );
   }
 
-  static String _recipientLabel(
-    FamilyMemberView recipient,
-    SharingMatrix matrix,
-  ) {
-    for (final entry in matrix.entries) {
-      if (entry.recipientId == recipient.memberId &&
-          (entry.recipientName?.isNotEmpty ?? false)) {
-        return entry.recipientName!;
-      }
-    }
-    return recipient.role.wireValue;
-  }
+  static String _label(SharedDataType dataType) => switch (dataType) {
+    SharedDataType.liveLocation => 'Live location access',
+    SharedDataType.history => 'History access',
+    SharedDataType.wellness => 'Wellness access',
+  };
 
   static String _subtitle(SharedDataType dataType) => switch (dataType) {
-    SharedDataType.liveLocation => 'Current map pin and last-seen status',
-    SharedDataType.history => 'Timeline, route, and travel stats',
-    SharedDataType.wellness => 'Health and wellness summaries',
+    SharedDataType.liveLocation =>
+      'Let your circle see your current map pin and last-seen status',
+    SharedDataType.history =>
+      'Let your circle see your timeline, routes, and travel stats',
+    SharedDataType.wellness =>
+      'Let your circle see your health and wellness summaries',
   };
 }
 
 class _TemporarySharingSection extends StatelessWidget {
   const _TemporarySharingSection({
-    required this.recipientId,
+    required this.keySeed,
     required this.activeShare,
     required this.onPresetSelected,
     required this.onCustomSelected,
   });
 
-  final String recipientId;
+  final String keySeed;
   final ActiveShareView? activeShare;
   final ValueChanged<Duration> onPresetSelected;
   final VoidCallback onCustomSelected;
@@ -439,25 +454,25 @@ class _TemporarySharingSection extends StatelessWidget {
           runSpacing: AppSpacing.sm,
           children: [
             _DurationChip(
-              key: ValueKey('temporary-share-$recipientId-1h'),
+              key: ValueKey('temporary-share-$keySeed-1h'),
               label: '1 hour',
               duration: const Duration(hours: 1),
               onSelected: onPresetSelected,
             ),
             _DurationChip(
-              key: ValueKey('temporary-share-$recipientId-4h'),
+              key: ValueKey('temporary-share-$keySeed-4h'),
               label: '4 hours',
               duration: const Duration(hours: 4),
               onSelected: onPresetSelected,
             ),
             _DurationChip(
-              key: ValueKey('temporary-share-$recipientId-8h'),
+              key: ValueKey('temporary-share-$keySeed-8h'),
               label: '8 hours',
               duration: const Duration(hours: 8),
               onSelected: onPresetSelected,
             ),
             ActionChip(
-              key: ValueKey('temporary-share-$recipientId-custom'),
+              key: ValueKey('temporary-share-$keySeed-custom'),
               label: const Text('Custom'),
               backgroundColor: AppColors.primaryTintBg,
               onPressed: onCustomSelected,

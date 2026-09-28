@@ -12,6 +12,10 @@ class FakeLocationPermissionService implements LocationPermissionService {
 
   LocationPermissionStatus status;
 
+  /// Number of times [openAppSettings] has been called. Additive counter for
+  /// tests that need to assert the OS settings seam was actually reached.
+  int openAppSettingsCalls = 0;
+
   @override
   Future<LocationPermissionStatus> checkPermission() async => status;
 
@@ -19,5 +23,8 @@ class FakeLocationPermissionService implements LocationPermissionService {
   Future<LocationPermissionStatus> requestPermission() async => status;
 
   @override
-  Future<bool> openAppSettings() async => true;
+  Future<bool> openAppSettings() async {
+    openAppSettingsCalls++;
+    return true;
+  }
 }

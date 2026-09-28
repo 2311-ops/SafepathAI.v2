@@ -115,7 +115,7 @@ class _StatusBadge extends StatelessWidget {
           child: Text(
             text,
             style: AppTypography.caption.copyWith(
-              color: isOnline ? AppColors.safe : AppColors.bodySecondary,
+              color: isOnline ? AppColors.safe : AppColors.offline,
               letterSpacing: 0.6,
             ),
           ),

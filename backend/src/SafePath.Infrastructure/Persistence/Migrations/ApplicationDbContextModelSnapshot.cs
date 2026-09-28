@@ -173,6 +173,238 @@ namespace SafePath.Infrastructure.Persistence.Migrations
                     b.ToTable("FamilyMembers", (string)null);
                 });
 
+            modelBuilder.Entity("SafePath.Domain.Entities.GeofenceActivity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("CompletedVisitDurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("MemberUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("RecordedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("RetainUntilUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SafeZoneDisplayName")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<Guid?>("SafeZoneId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Transition")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("VisitId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RetainUntilUtc");
+
+                    b.HasIndex("SafeZoneId");
+
+                    b.HasIndex("VisitId");
+
+                    b.HasIndex("MemberUserId", "OccurredAtUtc");
+
+                    b.ToTable("GeofenceActivities", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_GeofenceActivities_Transition", "\"Transition\" BETWEEN 0 AND 1");
+                        });
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.GeofenceCandidate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("AccuracyMeters")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("MemberUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ReceivedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RegistrationGeneration")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SafeZoneId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Transition")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId")
+                        .IsUnique();
+
+                    b.HasIndex("MemberUserId");
+
+                    b.HasIndex("SafeZoneId", "MemberUserId", "OccurredAtUtc");
+
+                    b.ToTable("GeofenceCandidates", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_GeofenceCandidates_Generation", "\"RegistrationGeneration\" > 0");
+
+                            t.HasCheckConstraint("CK_GeofenceCandidates_Transition", "\"Transition\" BETWEEN 0 AND 1");
+                        });
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.GeofenceConfirmationCandidate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("FirstObservedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("IntendedTransition")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("LastObservedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("MemberUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RegistrationGeneration")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SafeZoneId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MemberUserId");
+
+                    b.HasIndex("State", "LastObservedAtUtc");
+
+                    b.HasIndex("SafeZoneId", "MemberUserId", "RegistrationGeneration", "IntendedTransition")
+                        .IsUnique();
+
+                    b.ToTable("GeofenceConfirmationCandidates", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_GeofenceConfirmationCandidates_Generation", "\"RegistrationGeneration\" > 0");
+
+                            t.HasCheckConstraint("CK_GeofenceConfirmationCandidates_State", "\"State\" BETWEEN 0 AND 3");
+
+                            t.HasCheckConstraint("CK_GeofenceConfirmationCandidates_Transition", "\"IntendedTransition\" BETWEEN 0 AND 1");
+                        });
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.GeofenceFeedItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActivityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ReadAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecipientUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.HasIndex("ActivityId", "RecipientUserId")
+                        .IsUnique();
+
+                    b.HasIndex("RecipientUserId", "CreatedAtUtc");
+
+                    b.ToTable("GeofenceFeedItems", (string)null);
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.GeofenceRoutineJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FeedItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("LastAttemptAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastFailureReason")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<DateTime>("NextAttemptAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecipientUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.HasIndex("FeedItemId")
+                        .IsUnique();
+
+                    b.HasIndex("RecipientUserId");
+
+                    b.HasIndex("State", "NextAttemptAtUtc");
+
+                    b.ToTable("GeofenceRoutineJobs", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_GeofenceRoutineJobs_State", "\"State\" BETWEEN 0 AND 5");
+                        });
+                });
+
             modelBuilder.Entity("SafePath.Domain.Entities.LocationPing", b =>
                 {
                     b.Property<Guid>("Id")
@@ -205,6 +437,177 @@ namespace SafePath.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "RecordedAtUtc");
 
                     b.ToTable("LocationPings", (string)null);
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.RecipientQuietHours", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<TimeOnly>("LocalEnd")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<TimeOnly>("LocalStart")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<Guid>("RecipientUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecipientUserId")
+                        .IsUnique();
+
+                    b.ToTable("RecipientQuietHours", (string)null);
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.SafeZone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssignedMemberUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CustomName")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<bool>("NotifyAssignedMember")
+                        .HasColumnType("boolean");
+
+                    b.Property<double>("RadiusMeters")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("Sensitivity")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedMemberUserId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("FamilyId", "AssignedMemberUserId", "IsActive");
+
+                    b.ToTable("SafeZones", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SafeZones_Category", "\"Category\" BETWEEN 0 AND 4");
+
+                            t.HasCheckConstraint("CK_SafeZones_Sensitivity", "\"Sensitivity\" BETWEEN 0 AND 2");
+                        });
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.SafeZoneRecipient", b =>
+                {
+                    b.Property<Guid>("SafeZoneId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RecipientUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("SafeZoneId", "RecipientUserId");
+
+                    b.HasIndex("RecipientUserId");
+
+                    b.ToTable("SafeZoneRecipients", (string)null);
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.SafeZoneRegistration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AcknowledgedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Generation")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("IssuedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("MemberUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SafeZoneId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MemberUserId");
+
+                    b.HasIndex("SafeZoneId", "Generation")
+                        .IsUnique();
+
+                    b.ToTable("SafeZoneRegistrations", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SafeZoneRegistrations_Generation", "\"Generation\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.SafeZoneRegistrationActivation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<Guid>("SafeZoneRegistrationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("StateChangedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SafeZoneRegistrationId")
+                        .IsUnique();
+
+                    b.HasIndex("State", "StateChangedAtUtc");
+
+                    b.ToTable("SafeZoneRegistrationActivations", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SafeZoneRegistrationActivations_State", "\"State\" BETWEEN 0 AND 3");
+                        });
                 });
 
             modelBuilder.Entity("SafePath.Domain.Entities.SharingPreference", b =>
@@ -449,11 +852,154 @@ namespace SafePath.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SafePath.Domain.Entities.GeofenceActivity", b =>
+                {
+                    b.HasOne("SafePath.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("MemberUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SafePath.Domain.Entities.SafeZone", null)
+                        .WithMany()
+                        .HasForeignKey("SafeZoneId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.GeofenceCandidate", b =>
+                {
+                    b.HasOne("SafePath.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("MemberUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SafePath.Domain.Entities.SafeZone", null)
+                        .WithMany()
+                        .HasForeignKey("SafeZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.GeofenceConfirmationCandidate", b =>
+                {
+                    b.HasOne("SafePath.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("MemberUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SafePath.Domain.Entities.SafeZone", null)
+                        .WithMany()
+                        .HasForeignKey("SafeZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.GeofenceFeedItem", b =>
+                {
+                    b.HasOne("SafePath.Domain.Entities.GeofenceActivity", null)
+                        .WithMany()
+                        .HasForeignKey("ActivityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SafePath.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("RecipientUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.GeofenceRoutineJob", b =>
+                {
+                    b.HasOne("SafePath.Domain.Entities.GeofenceFeedItem", null)
+                        .WithMany()
+                        .HasForeignKey("FeedItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SafePath.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("RecipientUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SafePath.Domain.Entities.LocationPing", b =>
                 {
                     b.HasOne("SafePath.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.RecipientQuietHours", b =>
+                {
+                    b.HasOne("SafePath.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("RecipientUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.SafeZone", b =>
+                {
+                    b.HasOne("SafePath.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedMemberUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SafePath.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SafePath.Domain.Entities.Family", null)
+                        .WithMany()
+                        .HasForeignKey("FamilyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.SafeZoneRecipient", b =>
+                {
+                    b.HasOne("SafePath.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("RecipientUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SafePath.Domain.Entities.SafeZone", null)
+                        .WithMany()
+                        .HasForeignKey("SafeZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.SafeZoneRegistration", b =>
+                {
+                    b.HasOne("SafePath.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("MemberUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SafePath.Domain.Entities.SafeZone", null)
+                        .WithMany()
+                        .HasForeignKey("SafeZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SafePath.Domain.Entities.SafeZoneRegistrationActivation", b =>
+                {
+                    b.HasOne("SafePath.Domain.Entities.SafeZoneRegistration", null)
+                        .WithMany()
+                        .HasForeignKey("SafeZoneRegistrationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

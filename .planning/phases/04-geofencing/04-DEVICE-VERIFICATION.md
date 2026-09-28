@@ -1,0 +1,166 @@
+---
+phase: 04-geofencing
+plan: 17
+status: human_needed
+created: 2026-08-14
+updated: 2026-09-28
+timezone: Africa/Cairo
+requirements: [GEO-01, GEO-02, GEO-03, NOTIF-02]
+---
+
+# Phase 04 Device Verification
+
+04-17 Task 1 automated gates were refreshed and passed on 2026-09-27. Task 2 and the earlier 04-05 tracer checkpoint remain open as human-needed acceptance debt: required Android and iOS physical acceptance evidence has not been produced.
+
+Per PR-04, Phase 4 is not approved/closed until signed physical iPhone + APNs evidence exists alongside Android physical movement/recovery evidence. `04-05-SUMMARY.md` records a deferred partial checkpoint only; no 04-05 evidence was fabricated or retroactively claimed.
+
+## Forced Partial Close: 2026-09-28
+
+By explicit user override, Phase 04 is being advanced operationally so Phase 05 can begin. This does not change this artifact's verification status: Android/iOS physical acceptance remains `human_needed`, and the normal `gsd-ship` gate is not satisfied.
+
+The override is recorded in `04-17-SUMMARY.md`. Deferred acceptance debt is tracked in `deferred-items.md` for a later hardening pass, tentatively Phase 07 / pre-production acceptance.
+
+## Review Repair Verification: 2026-09-28
+
+`04-05` was marked deferred-partial so the phase could proceed through automated review without claiming missing physical evidence. The Phase 4 code review initially found two blockers and two warnings; all were fixed and the final `04-REVIEW.md` status is `clean`.
+
+| Gate | Command / evidence | Result |
+|---|---|---|
+| Backend focused regression | `dotnet test backend/tests/SafePath.Application.Tests/SafePath.Application.Tests.csproj --no-restore --configuration Release --filter FullyQualifiedName~RoutineNotificationDispatcherTests --verbosity minimal` | PASS: 4 tests |
+| Flutter focused regression | `flutter test --no-pub test/features/geofencing/geofence_candidate_uploader_test.dart` | PASS: 5 tests |
+| Android native unit test | `mobile/android/gradlew.bat :app:testDebugUnitTest --console=plain` | PASS: BUILD SUCCESSFUL |
+| Backend full suite | `dotnet test backend/SafePath.sln --no-restore --configuration Release --verbosity minimal` | PASS: 232 application tests, 25 API integration tests; Domain test assembly has no tests |
+| Backend clean rebuild | `dotnet build backend/SafePath.sln --no-restore --configuration Release --no-incremental --verbosity minimal` | PASS: zero warnings, zero errors |
+| Flutter analysis | `flutter analyze --no-pub` | PASS: no issues |
+| Flutter full suite | `flutter test --no-pub --reporter expanded --timeout 60s` | PASS: 466 tests |
+| Model drift | `dotnet ef migrations has-pending-model-changes --no-build --configuration Release --project backend/src/SafePath.Infrastructure --startup-project backend/src/SafePath.Api` | PASS: no pending model changes |
+| Code review | `.planning/phases/04-geofencing/04-REVIEW.md` | PASS: clean after fixes |
+
+Repairs made during review:
+
+- Shared Android geofence outbox MethodChannel registration between foreground `MainActivity` and the headless WorkManager engine.
+- Kept OS-visible routine push notification text generic while preserving identifier-only routing data.
+- Retried routine push jobs when the provider accepts zero device tokens and persisted invalid-token pruning before retry scheduling.
+- Acknowledged malformed/permanent native candidate rows while retaining transient network/auth failures for retry.
+
+## Current Verification: 2026-09-27
+
+| Gate | Command / evidence | Result |
+|---|---|---|
+| Backend full suite | `dotnet test backend/SafePath.sln --no-restore --configuration Release --verbosity minimal` | PASS after clock-skew fix: 231 application tests, 25 API integration tests; command exit 0 |
+| Backend clean rebuild | `dotnet build backend/SafePath.sln --no-restore --configuration Release --no-incremental --verbosity minimal` | PASS: zero warnings, zero errors |
+| Flutter full suite | `flutter test --no-pub --reporter expanded --timeout 60s` | PASS: 461 tests |
+| Flutter analysis | `flutter analyze --no-pub` | PASS: no issues |
+| Native Android worker test | `gradlew.bat :app:testDebugUnitTest --console=plain` | PASS: BUILD SUCCESSFUL; JUnit XML records 1 test, 0 failures/errors |
+| Model drift | `dotnet ef migrations has-pending-model-changes --no-build --configuration Release --project backend/src/SafePath.Infrastructure --startup-project backend/src/SafePath.Api` | PASS: no pending model changes |
+| Database migration state | Same EF projects/configuration with `migrations list` | PASS: all 12 migrations applied, through `20260811173100_AddGeofencing` |
+| Android build and launch | `flutter run --no-pub -d R58M30TGNXV --no-resident --dart-define-from-file=env.json --dart-define=API_BASE_URL=https://exclude-driving-maternal.ngrok-free.dev` | PASS: debug APK built, installed, and launched |
+| Remote API | Tunnel `/openapi/v1.json`, with ngrok bypass header | HTTP 200 |
+| Signed-in API | Connected phone session calling `/me` and `/families/mine` | HTTP 200; Google sign-in succeeded |
+| SOS dependency isolation | Scoped source scan of geofence backend, Dart, Kotlin, and Swift code | No AlertHub/SosAlertDispatcher/SosController/foreground-service dependencies found |
+| Routine payload | `RoutinePushWorker` payload inspected | Only type, activityId, zoneId; no coordinates |
+| Presentation isolation | Scoped geofence presentation scan | No SOS/error red references found |
+| Map SDK boundary | Dart import scan | Only `vector_map.dart` imports MapLibre |
+
+Environment: Windows, .NET SDK 9.0.205, EF CLI 9.0.3/runtime 9.0.9, Flutter 3.44.5, Dart 3.12.2, Samsung SM A305F/Android 11/API 30. EF's tool-version warning and Gradle deprecation warnings did not fail the checks.
+
+The first Debug backend test build hit Windows DLL locks from the live API. The successful Release run used separate build output without stopping the API. An earlier interrupted Flutter run was not counted as evidence. Logs under `.planning/tmp/phase04-*` are local, ignored artifacts. The native XML result, not PowerShell's stderr pipeline status, establishes the worker test result.
+
+### Repairs
+
+Commit `76694fa` restores the existing `BatteryIndicator` to `LiveMemberMarker`, expands its projected bounds to 86 x 96, checks the marker in those bounds, and scrolls the splash navigation test's login link into view. The initial Flutter run had 459 passes and 2 failures; the full rerun passed all 461.
+
+### Current Device Setup
+
+Update 17:56 UTC: Member is online. Created zone `e8c005b1-4bd9-43ec-a845-9bf2acd56e45` (100m, Conservative, generation 1) through Guardian production API. Source Member fix at 17:52:16.352 UTC was 250 seconds old with 16.5m accuracy; user had reported friend stationary awaiting permission to walk. Zone acknowledgement is pending. Both needsSync and needsLocationPermission are true because no acknowledgement exists; this alone does not diagnose OS permission state. Cold reopen requested. This supersedes the earlier zero-zone status below.
+
+- Supabase project is now `dvhxboclavtudtwzifst`; the August accounts and test-zone IDs below are historical, not current fixtures.
+- Created `Phase 04 Test Circle`, family ID `40bdffff-c601-47a1-9a8b-7394813dde56`, using the signed-in account's production API.
+- The connected account is the test Guardian. Fine/coarse/background location are granted on its Samsung phone.
+- The user selected their friend's remote Android phone for the monitored Member and boundary test.
+- A 24-hour, single-use Member invitation was generated and given to the user privately. Its code/token is intentionally omitted from this committed document.
+- Confirmed Member Youssef Ghallab (`f4026a11-435d-4eb6-8a74-c70ccb3caacc`) joined. User reports OPPO A52 / Android 11 and no walking yet. Last member fix was stale, so zero zones remain; obtain a fresh fix before creating and acknowledging a 100 m zone.
+- No current-project registration acknowledgement, real boundary candidate, headless upload, offline replay, push delivery, or SOS concurrency is claimed.
+- Signed iPhone/macOS/Xcode/APNs acceptance remains unverified and required by PR-04.
+
+Next: follow `04-REMOTE-ANDROID-VERIFICATION.md` from fresh location and registration. Backend audit and warning details are in `04-BACKEND-HEALTH.md`. Do not create 04-05 or 04-17 completion summaries until their physical gates pass.
+
+## Historical Environment Evidence: 2026-08-14
+
+| Tool | Evidence |
+|---|---|
+| .NET SDK | `9.0.316` |
+| dotnet-ef | `9.0.9` via `F:\DevTools\dotnet-tools` with `DOTNET_ROOT=F:\DevTools\dotnet` |
+| Flutter | `3.44.9` stable; framework revision `6b182d2c7585eba26d4edce0f97630effd256c33` |
+| Dart SDK | `3.12.2` |
+| Gradle wrapper | `9.1.0-all` |
+| Android Java runtime | Android Studio JBR `25.0.2` for debug build; app unit test also ran successfully under configured Java tooling |
+
+## Historical Automated Gate Results: 2026-08-14
+
+| Gate | Command | Result |
+|---|---|---|
+| Backend full suite | `F:\DevTools\dotnet\dotnet.exe test backend\SafePath.sln --no-restore` | PASS: 228/228 application tests and 24/24 API integration tests |
+| EF database update | `dotnet-ef database update --project backend\src\SafePath.Infrastructure --startup-project backend\src\SafePath.Api` | PASS: database already up to date; no migrations applied |
+| EF model drift | `dotnet-ef migrations has-pending-model-changes --project backend\src\SafePath.Infrastructure --startup-project backend\src\SafePath.Api` | PASS: no pending model changes |
+| Flutter analyze | `flutter analyze` | PASS: no issues found |
+| Flutter full suite | `flutter test` | PASS: 427/427 tests |
+| Android debug APK | `flutter build apk --debug --dart-define-from-file=env.json` | PASS: built `mobile\build\app\outputs\flutter-apk\app-debug.apk` |
+| Android app unit tests | `mobile\android\gradlew.bat :app:testDebugUnitTest` | PASS: `BUILD SUCCESSFUL` |
+
+Notes:
+
+- The Android build command used `env.json`; secret/env values are intentionally not copied into this artifact.
+- Android/Gradle emitted non-blocking warnings about deprecated Kotlin Gradle plugin usage, deprecated Gradle features, and Java source/target 8 warnings in plugin code. The build and app unit gate passed.
+- A later attempt to rerun only `test\features\geofencing test\features\sos` was blocked by the command approval layer; the full `flutter test` gate above already executed and covered those test directories.
+
+## Structural Isolation Checks
+
+| Check | Result | Evidence |
+|---|---|---|
+| Geofence code excludes SOS/foreground-service dependencies | PASS | `rg` found no `AlertHub`, `SosAlertDispatcher`, `SosController`, `flutter_foreground_task`, `ForegroundService`, or foreground-service references in scoped geofence backend/mobile/native paths |
+| Routine notification payload contains no coordinates | PASS | Coordinate identifier scan over routine push/feed implementation lines found no latitude/longitude/coordinate payload fields |
+| Geofence presentation avoids SOS red styling | PASS | `rg` found no `AppColors.sos`, `AppColors.danger`, `AppColors.error`, `Colors.red`, or locked SOS red literals in `mobile/lib/features/geofencing/presentation` |
+| Only `VectorMap` imports MapLibre | PASS | `maplibre_gl` import appears only in `mobile/lib/features/location/presentation/vector_map.dart` |
+
+## Additional Fixes Made During 04-17 Automation
+
+| Commit | Reason |
+|---|---|
+| `36e3a48` | Cleared the final geofence uploader analyzer infos so `flutter analyze` is green |
+| `7e1464a` | Restored per-recipient Privacy Center controls so the full Flutter suite is green and the screen again matches its “each family member” privacy promise |
+
+## Historical Physical Acceptance Status: 2026-08-14
+
+| Platform | Status | Evidence / blocker |
+|---|---|---|
+| Android physical device | BLOCKED | `adb devices -l` returned no attached devices at verification time. No movement, boundary accuracy, process-death, reboot, permission-revoked, quiet-hours, push/feed/activity, or concurrent SOS evidence was captured. |
+| iOS physical device | BLOCKED | Current executor is Windows. No supported macOS/Xcode environment, signed physical iPhone, Always-location authorization, APNs credential, Core Location relaunch, or APNs tap-to-activity evidence was supplied. |
+
+## Required Human Acceptance Before Phase Closure
+
+Android must still prove:
+
+- Guardian creates/reviews/saves a 100 m zone on a real Google Play Services device.
+- Background permission is granted after Save and native registration reaches Active ack.
+- Ambiguous boundary accuracy does not alert.
+- Sustained clear crossing yields exactly one activity/feed/push.
+- Swipe/process death and reboot recovery do not duplicate events.
+- Cold-relaunch fallback drains pending evidence.
+- Permission revocation marks zone inactive.
+- Quiet hours create feed now but defer routine push.
+- Concurrent SOS remains immediate.
+
+iOS must still prove:
+
+- Signed physical iPhone build on supported macOS/Xcode.
+- WhenInUse, Always, denied, and recovery flows.
+- 20-region cap behavior.
+- Terminated Core Location relaunch and authenticated drain.
+- APNs routine push and tap-to-activity.
+- Quiet-hours behavior.
+- Concurrent SOS remains immediate.
+
+## Verdict
+
+Automated verification is green. Device acceptance is blocked. Phase 4 must remain open until the Android and iOS physical acceptance checklist above is completed with evidence.

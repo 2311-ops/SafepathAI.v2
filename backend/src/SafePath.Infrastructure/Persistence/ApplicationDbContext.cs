@@ -21,6 +21,16 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<SosDeliveryAttempt> SosDeliveryAttempts => Set<SosDeliveryAttempt>();
     public DbSet<EmergencyContact> EmergencyContacts => Set<EmergencyContact>();
     public DbSet<UserDeviceToken> UserDeviceTokens => Set<UserDeviceToken>();
+    public DbSet<SafeZone> SafeZones => Set<SafeZone>();
+    public DbSet<SafeZoneRecipient> SafeZoneRecipients => Set<SafeZoneRecipient>();
+    public DbSet<SafeZoneRegistration> SafeZoneRegistrations => Set<SafeZoneRegistration>();
+    public DbSet<GeofenceCandidate> GeofenceCandidates => Set<GeofenceCandidate>();
+    public DbSet<GeofenceConfirmationCandidate> GeofenceConfirmationCandidates => Set<GeofenceConfirmationCandidate>();
+    public DbSet<SafeZoneRegistrationActivation> SafeZoneRegistrationActivations => Set<SafeZoneRegistrationActivation>();
+    public DbSet<GeofenceActivity> GeofenceActivities => Set<GeofenceActivity>();
+    public DbSet<GeofenceFeedItem> GeofenceFeedItems => Set<GeofenceFeedItem>();
+    public DbSet<GeofenceRoutineJob> GeofenceRoutineJobs => Set<GeofenceRoutineJob>();
+    public DbSet<RecipientQuietHours> RecipientQuietHours => Set<RecipientQuietHours>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +44,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new SosDeliveryAttemptConfiguration());
         modelBuilder.ApplyConfiguration(new EmergencyContactConfiguration());
         modelBuilder.ApplyConfiguration(new UserDeviceTokenConfiguration());
+        GeofencingConfiguration.Configure(modelBuilder);
 
         base.OnModelCreating(modelBuilder);
     }

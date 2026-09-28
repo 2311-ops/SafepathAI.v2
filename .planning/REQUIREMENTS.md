@@ -48,9 +48,9 @@
 
 ### Geofencing (GEO)
 
-- [ ] **GEO-01**: Guardian can create a safe zone (Home, School, University, Workplace) with a defined radius
-- [ ] **GEO-02**: User/guardian receives enter/exit notifications for a safe zone, using native OS geofencing APIs with dwell-time/hysteresis to prevent GPS-drift false positives
-- [ ] **GEO-03**: User can view a zone activity log per geofence
+- [x] **GEO-01**: Guardian can create a safe zone (Home, School, University, Workplace) with a defined radius
+- [x] **GEO-02**: User/guardian receives enter/exit notifications for a safe zone, using native OS geofencing APIs with dwell-time/hysteresis to prevent GPS-drift false positives
+- [x] **GEO-03**: User can view a zone activity log per geofence
 
 ### Emergency SOS System (SOS)
 
@@ -64,7 +64,7 @@
 ### Smart Notifications (NOTIF)
 
 - [x] **NOTIF-01**: User receives a low-battery alert for themselves or a family member
-- [ ] **NOTIF-02**: User receives a geofence enter/exit alert
+- [x] **NOTIF-02**: User receives a geofence enter/exit alert
 - [x] **NOTIF-03**: User receives an SOS alert
 - [ ] **NOTIF-04**: User receives an inactivity alert
 - [ ] **NOTIF-05**: Alert push notifications carry the plain-language explanation, not just a bare alert
@@ -206,10 +206,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SOS-06 | Phase 3 | Complete |
 | NOTIF-03 | Phase 3 | Complete |
 | DESIGN-02 | Phase 3 | Complete |
-| GEO-01 | Phase 4 | Pending |
-| GEO-02 | Phase 4 | Pending |
-| GEO-03 | Phase 4 | Pending |
-| NOTIF-02 | Phase 4 | Pending |
+| GEO-01 | Phase 4 | Complete |
+| GEO-02 | Phase 4 | Complete |
+| GEO-03 | Phase 4 | Complete |
+| NOTIF-02 | Phase 4 | Complete |
 | AI-01 | Phase 5 | Pending |
 | AI-02 | Phase 5 | Pending |
 | AI-03 | Phase 5 | Pending |

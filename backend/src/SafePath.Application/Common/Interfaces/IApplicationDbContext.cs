@@ -19,6 +19,16 @@ public interface IApplicationDbContext
     DbSet<SosDeliveryAttempt> SosDeliveryAttempts { get; }
     DbSet<EmergencyContact> EmergencyContacts { get; }
     DbSet<UserDeviceToken> UserDeviceTokens { get; }
+    DbSet<SafeZone> SafeZones { get; }
+    DbSet<SafeZoneRecipient> SafeZoneRecipients { get; }
+    DbSet<SafeZoneRegistration> SafeZoneRegistrations { get; }
+    DbSet<GeofenceCandidate> GeofenceCandidates { get; }
+    DbSet<GeofenceConfirmationCandidate> GeofenceConfirmationCandidates { get; }
+    DbSet<SafeZoneRegistrationActivation> SafeZoneRegistrationActivations { get; }
+    DbSet<GeofenceActivity> GeofenceActivities { get; }
+    DbSet<GeofenceFeedItem> GeofenceFeedItems { get; }
+    DbSet<GeofenceRoutineJob> GeofenceRoutineJobs { get; }
+    DbSet<RecipientQuietHours> RecipientQuietHours { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -57,6 +57,12 @@ abstract final class AppColors {
 
   /// Secondary body text color (subtitles, helper text).
   static const Color bodySecondary = Color(0xFF52697A);
+
+  /// Dedicated slate-grey token for presence "offline" indicators (map
+  /// marker/rail-card badge dots, inline presence text, member detail
+  /// OFFLINE badge). Distinct from the general-purpose [bodySecondary] text
+  /// color — must never be confused with or replace [sosRed] / [sosRedDeep].
+  static const Color offline = Color(0xFF8B96A3);
   static const Color toggleOffTrack = Color(0xFFDCE8EC);
   static const Color memberViolet = Color(0xFF6E66C9);
   static const Color memberPink = Color(0xFFC95E8F);

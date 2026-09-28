@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../deep_link/deep_link_service.dart';
+import '../push/push_service.dart';
+import '../push/routine_push_service.dart';
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/application/auth_state.dart';
 import '../../features/auth/data/auth_api.dart';
@@ -18,6 +22,10 @@ import '../../features/family/presentation/accept_invite_screen.dart';
 import '../../features/family/presentation/create_circle_screen.dart';
 import '../../features/family/presentation/invite_member_screen.dart';
 import '../../features/family/presentation/manage_permissions_screen.dart';
+import '../../features/geofencing/data/geofence_models.dart';
+import '../../features/geofencing/presentation/notifications_screen.dart';
+import '../../features/geofencing/presentation/quiet_hours_screen.dart';
+import '../../features/geofencing/presentation/safe_zones_page.dart';
 import '../../features/home/presentation/main_shell.dart';
 import '../../features/location/application/permission_controller.dart';
 import '../../features/location/presentation/battery_transparency_screen.dart';
@@ -59,6 +67,14 @@ const _authenticatedOnlyRoutes = {
   '/battery-info',
   '/privacy/policy',
   '/profile',
+  '/safe-zones',
+  '/safe-zones/add',
+  '/safe-zones/add/review',
+  '/safe-zones/:zoneId',
+  '/safe-zones/:zoneId/edit',
+  '/notifications',
+  '/notifications/quiet-hours',
+  '/zone-activity',
   '/sos/session',
   '/sos/responder/:sessionId',
   '/settings/emergency-contacts',
@@ -93,7 +109,7 @@ class _AuthRefreshListenable extends ChangeNotifier {
 final routerProvider = Provider<GoRouter>((ref) {
   final refreshListenable = _AuthRefreshListenable(ref);
 
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/splash',
     overridePlatformDefaultLocation: true,
     refreshListenable: refreshListenable,
@@ -256,6 +272,51 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProfileScreen(),
       ),
       GoRoute(
+        path: '/safe-zones',
+        name: 'safe-zones',
+        builder: (context, state) => const SafeZonesPage(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        name: 'notifications',
+        builder: (context, state) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: '/notifications/quiet-hours',
+        name: 'quiet-hours',
+        builder: (context, state) => const QuietHoursPage(),
+      ),
+      GoRoute(
+        path: '/zone-activity',
+        name: 'zone-activity',
+        builder: (context, state) =>
+            RoutineActivityPage(zoneId: state.uri.queryParameters['zoneId']),
+      ),
+      GoRoute(
+        path: '/safe-zones/add',
+        name: 'safe-zones-add',
+        builder: (context, state) => const SafeZoneEditorPage(),
+      ),
+      GoRoute(
+        path: '/safe-zones/add/review',
+        name: 'safe-zones-review',
+        builder: (context, state) => const SafeZoneReviewPage(),
+      ),
+      GoRoute(
+        path: '/safe-zones/:zoneId',
+        name: 'safe-zones-detail',
+        builder: (context, state) => SafeZoneDetailPage(
+          zoneId: state.pathParameters['zoneId']!,
+          zone: state.extra as SafeZone?,
+        ),
+      ),
+      GoRoute(
+        path: '/safe-zones/:zoneId/edit',
+        name: 'safe-zones-edit',
+        builder: (context, state) =>
+            SafeZoneEditorPage(initialZone: state.extra as SafeZone?),
+      ),
+      GoRoute(
         path: '/sos/session',
         name: 'sos-session',
         builder: (context, state) => const SenderEmergencySessionScreen(),
@@ -263,9 +324,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/sos/responder/:sessionId',
         name: 'sos-responder',
-        builder: (context, state) => ResponderAlertScreen(
-          sessionId: state.pathParameters['sessionId']!,
-        ),
+        builder: (context, state) =>
+            ResponderAlertScreen(sessionId: state.pathParameters['sessionId']!),
       ),
       GoRoute(
         path: '/settings/emergency-contacts',
@@ -297,4 +357,36 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  // Routine pushes have their own service and normal-priority local channel.
+  // Keeping this composition outside PushService prevents routine tap handling
+  // from changing the existing SOS critical route or notification semantics.
+  final routinePushService = RoutinePushService(
+    messaging: FirebaseMessagingClient(),
+    navigate: (zoneId) =>
+        router.goNamed('zone-activity', queryParameters: {'zoneId': zoneId}),
+    notifier: RoutineLocalNotificationPresenter(),
+  );
+  unawaited(
+    routinePushService.initialize().catchError((
+      Object error,
+      StackTrace stack,
+    ) {
+      debugPrint(
+        'RoutinePushService.initialize failed (Firebase not configured yet?): $error',
+      );
+    }),
+  );
+  ref.listen<AuthState>(authControllerProvider, (previous, next) {
+    unawaited(
+      routinePushService
+          .onAuthStateChanged(next is AuthAuthenticated)
+          .catchError((Object error, StackTrace stack) {
+            debugPrint('RoutinePushService.onAuthStateChanged failed: $error');
+          }),
+    );
+  }, fireImmediately: true);
+  ref.onDispose(routinePushService.dispose);
+
+  return router;
 });

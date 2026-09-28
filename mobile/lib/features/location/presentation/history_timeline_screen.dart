@@ -97,6 +97,8 @@ class HistoryTimelineScreen extends ConsumerWidget {
                 onPreviousDay: () =>
                     _moveDay(ref, historyState, selectedMember, -1),
                 onNextDay: () => _moveDay(ref, historyState, selectedMember, 1),
+                onDateSelected: (picked) =>
+                    _goToDate(ref, selectedMember, picked),
               ),
               const SizedBox(height: AppSpacing.lg),
               if (historyState.error != null)
@@ -130,6 +132,7 @@ class HistoryTimelineScreen extends ConsumerWidget {
                 else ...[
                   PrimaryButton(
                     label: 'View route',
+                    icon: Icons.map_outlined,
                     onPressed: () => showRouteStatsSheet(
                       context: context,
                       history: historyState.history,
@@ -146,6 +149,18 @@ class HistoryTimelineScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  static void _goToDate(
+    WidgetRef ref,
+    FamilyMemberView? selectedMember,
+    DateTime picked,
+  ) {
+    if (selectedMember == null) return;
+    final range = _dayRange(picked);
+    ref
+        .read(historyControllerProvider.notifier)
+        .load(selectedMember.userId, range.$1, range.$2);
   }
 
   static FamilyMemberView? _selectedMember(
@@ -200,6 +215,31 @@ class HistoryTimelineScreen extends ConsumerWidget {
   }
 }
 
+const List<String> _weekdayAbbrevs = [
+  'Mon',
+  'Tue',
+  'Wed',
+  'Thu',
+  'Fri',
+  'Sat',
+  'Sun',
+];
+
+const List<String> _monthAbbrevs = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
 class _HistoryHeader extends StatelessWidget {
   const _HistoryHeader({
     required this.members,
@@ -208,6 +248,7 @@ class _HistoryHeader extends StatelessWidget {
     required this.onMemberChanged,
     required this.onPreviousDay,
     required this.onNextDay,
+    required this.onDateSelected,
   });
 
   final List<FamilyMemberView> members;
@@ -216,9 +257,13 @@ class _HistoryHeader extends StatelessWidget {
   final ValueChanged<String> onMemberChanged;
   final VoidCallback onPreviousDay;
   final VoidCallback onNextDay;
+  final ValueChanged<DateTime> onDateSelected;
 
   @override
   Widget build(BuildContext context) {
+    final selectedMember = _findMember(members, selectedUserId);
+    final isToday = _isSameLocalDay(selectedDate.toLocal(), DateTime.now());
+
     return SafePathCard(
       radius: 20,
       child: Column(
@@ -233,9 +278,12 @@ class _HistoryHeader extends StatelessWidget {
                   color: AppColors.primaryTintBg,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(
-                  Icons.route_outlined,
-                  color: AppColors.primaryTeal,
+                child: Center(
+                  child: Image.asset(
+                    'assets/icons/activity-history.png',
+                    width: 26,
+                    height: 26,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -243,10 +291,18 @@ class _HistoryHeader extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Activity history', style: AppTypography.title),
+                    Text(
+                      'Activity history',
+                      style: AppTypography.title.copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     Text(
                       'Review trips, stops, and distance by family member.',
-                      style: AppTypography.bodySecondary,
+                      style: AppTypography.bodySecondary.copyWith(
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -254,19 +310,10 @@ class _HistoryHeader extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          DropdownButtonFormField<String>(
-            initialValue: selectedUserId,
-            decoration: const InputDecoration(labelText: 'Family member'),
-            items: [
-              for (final member in members)
-                DropdownMenuItem(
-                  value: member.userId,
-                  child: Text(_memberName(member)),
-                ),
-            ],
-            onChanged: (value) {
-              if (value != null) onMemberChanged(value);
-            },
+          _MemberSelectorPill(
+            members: members,
+            selectedMember: selectedMember,
+            onMemberChanged: onMemberChanged,
           ),
           const SizedBox(height: AppSpacing.md),
           DecoratedBox(
@@ -289,21 +336,38 @@ class _HistoryHeader extends StatelessWidget {
                   ),
                   Expanded(
                     child: Center(
-                      child: Text(
-                        _dateLabel(selectedDate),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.ink,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => _pickDate(context),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.calendar_today_outlined,
+                              size: 15,
+                              color: AppColors.primaryTeal,
+                            ),
+                            const SizedBox(width: AppSpacing.xs),
+                            Flexible(
+                              child: Text(
+                                _dateLabel(selectedDate),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.caption.copyWith(
+                                  color: AppColors.ink,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
                   IconButton.filledTonal(
                     tooltip: 'Next day',
-                    onPressed: onNextDay,
+                    onPressed: isToday ? null : onNextDay,
                     icon: const Icon(Icons.chevron_right),
                   ),
                 ],
@@ -315,6 +379,42 @@ class _HistoryHeader extends StatelessWidget {
     );
   }
 
+  Future<void> _pickDate(BuildContext context) async {
+    final now = DateTime.now();
+    final lastDate = DateTime(now.year, now.month, now.day);
+    final firstDate = DateTime(now.year - 1, now.month, now.day);
+    final localSelected = selectedDate.toLocal();
+    var initialDate = DateTime(
+      localSelected.year,
+      localSelected.month,
+      localSelected.day,
+    );
+    if (initialDate.isAfter(lastDate)) initialDate = lastDate;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+    );
+    if (picked != null) onDateSelected(picked);
+  }
+
+  static FamilyMemberView? _findMember(
+    List<FamilyMemberView> members,
+    String? userId,
+  ) {
+    if (userId == null) return null;
+    for (final member in members) {
+      if (member.userId == userId) return member;
+    }
+    return null;
+  }
+
+  static bool _isSameLocalDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
   static String _memberName(FamilyMemberView member) {
     final displayName = member.displayName?.trim();
     if (displayName != null && displayName.isNotEmpty) return displayName;
@@ -323,9 +423,169 @@ class _HistoryHeader extends StatelessWidget {
 
   static String _dateLabel(DateTime date) {
     final local = date.toLocal();
-    final month = local.month.toString().padLeft(2, '0');
-    final day = local.day.toString().padLeft(2, '0');
-    return '${local.year}-$month-$day';
+    final weekday = _weekdayAbbrevs[local.weekday - 1];
+    final month = _monthAbbrevs[local.month - 1];
+    return '$weekday, $month ${local.day}';
+  }
+}
+
+class _MemberSelectorPill extends StatelessWidget {
+  const _MemberSelectorPill({
+    required this.members,
+    required this.selectedMember,
+    required this.onMemberChanged,
+  });
+
+  final List<FamilyMemberView> members;
+  final FamilyMemberView? selectedMember;
+  final ValueChanged<String> onMemberChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = selectedMember == null
+        ? 'Select member'
+        : _HistoryHeader._memberName(selectedMember!);
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: members.isEmpty ? null : () => _openMemberSheet(context),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: const EdgeInsets.symmetric(
+            vertical: 10,
+            horizontal: 14,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.hairline, width: 0.5),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 15,
+                backgroundColor: AppColors.primaryTeal,
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Flexible(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.keyboard_arrow_down,
+                color: AppColors.bodySecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openMemberSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: AppSpacing.lg,
+            ),
+            child: SizedBox(
+              height: 130,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                ),
+                itemCount: members.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(width: AppSpacing.md),
+                itemBuilder: (_, index) {
+                  final member = members[index];
+                  final isSelected = member.userId == selectedMember?.userId;
+                  final memberName = _HistoryHeader._memberName(member);
+                  final memberInitial = memberName.isNotEmpty
+                      ? memberName[0].toUpperCase()
+                      : '?';
+                  final avatarColor = const [
+                    AppColors.primaryTeal,
+                    AppColors.memberViolet,
+                    AppColors.memberPink,
+                  ][index % 3];
+
+                  return GestureDetector(
+                    onTap: () {
+                      onMemberChanged(member.userId);
+                      Navigator.of(sheetContext).pop();
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: avatarColor,
+                            shape: BoxShape.circle,
+                            border: isSelected
+                                ? Border.all(
+                                    color: AppColors.primaryTeal,
+                                    width: 2.5,
+                                  )
+                                : null,
+                          ),
+                          child: Text(
+                            memberInitial,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          memberName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.bodySecondary,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -342,6 +602,15 @@ class _StatsRow extends StatelessWidget {
           child: StatTile(
             value: _distanceLabel(stats.distanceMeters),
             label: 'Distance',
+            icon: Image.asset(
+              'assets/icons/activity-distance.png',
+              width: 24,
+              height: 24,
+            ),
+            backgroundColor: AppColors.primaryTintBg,
+            borderColor: AppColors.hairline,
+            valueColor: AppColors.primaryTeal,
+            labelColor: AppColors.primaryTeal,
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -349,11 +618,32 @@ class _StatsRow extends StatelessWidget {
           child: StatTile(
             value: _durationLabel(stats.timeAway),
             label: 'Time away',
+            icon: Image.asset(
+              'assets/icons/activity-time-away.png',
+              width: 24,
+              height: 24,
+            ),
+            backgroundColor: AppColors.cautionBg,
+            borderColor: AppColors.cautionBorder,
+            valueColor: AppColors.cautionText,
+            labelColor: AppColors.cautionText,
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
-          child: StatTile(value: '${stats.stopCount}', label: 'Stops'),
+          child: StatTile(
+            value: '${stats.stopCount}',
+            label: 'Stops',
+            icon: Image.asset(
+              'assets/icons/activity-stops.png',
+              width: 24,
+              height: 24,
+            ),
+            backgroundColor: AppColors.memberViolet.withValues(alpha: 0.12),
+            borderColor: AppColors.memberViolet.withValues(alpha: 0.3),
+            valueColor: AppColors.memberViolet,
+            labelColor: AppColors.memberViolet,
+          ),
         ),
       ],
     );
@@ -377,6 +667,7 @@ class _TimelineList extends StatelessWidget {
               subtitle: nodes[i].subtitle,
               isTransit: nodes[i].isTransit,
               showConnector: i != nodes.length - 1,
+              durationLabel: nodes[i].durationLabel,
             ),
         ],
       ),
@@ -393,6 +684,9 @@ class _TimelineList extends StatelessWidget {
           subtitle:
               '${_timeLabel(first.recordedAtUtc)} - ${_timeLabel(last.recordedAtUtc)}',
           isTransit: true,
+          durationLabel: _durationLabel(
+            last.recordedAtUtc.difference(first.recordedAtUtc),
+          ),
         ),
       ];
     }
@@ -427,11 +721,13 @@ class _TimelineEntry {
     required this.title,
     required this.subtitle,
     required this.isTransit,
+    this.durationLabel,
   });
 
   final String title;
   final String subtitle;
   final bool isTransit;
+  final String? durationLabel;
 }
 
 class _EmptyHistory extends StatelessWidget {

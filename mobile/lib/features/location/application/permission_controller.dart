@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -73,8 +76,22 @@ final locationPermissionServiceProvider = Provider<LocationPermissionService>(
 class PermissionController extends Notifier<PermissionPrimingState> {
   @override
   PermissionPrimingState build() {
-    Future.microtask(checkPermission);
+    // Permission checks are started from provider construction, so there is
+    // no caller available to await the future.  Platform permission APIs can
+    // time out on some Android/OEM builds; never leave that fire-and-forget
+    // future as an unhandled Dart exception.
+    // Keep the original microtask timing so Riverpod has installed the state
+    // returned below before checkPermission() writes its first update.
+    unawaited(Future<void>.microtask(_checkPermissionInBackground));
     return const PermissionPrimingState(isChecking: true);
+  }
+
+  Future<void> _checkPermissionInBackground() async {
+    try {
+      await checkPermission();
+    } catch (error) {
+      debugPrint('Location permission check failed: $error');
+    }
   }
 
   Future<LocationPermissionStatus> checkPermission() async {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -70,18 +71,10 @@ class _CreateCircleScreenState extends ConsumerState<CreateCircleScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryTeal,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: const Icon(
-                    Icons.diversity_3,
-                    color: Colors.white,
-                    size: 32,
-                  ),
+                SvgPicture.asset(
+                  'assets/illustrations/family-connect.svg',
+                  width: 100,
+                  height: 100,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text('Name your circle', style: AppTypography.heading),

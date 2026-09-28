@@ -7,6 +7,7 @@ using SafePath.Application.Location;
 using SafePath.Application.Profile;
 using SafePath.Application.Privacy;
 using SafePath.Application.Sos;
+using SafePath.Application.Geofencing;
 
 namespace SafePath.Application;
 
@@ -42,7 +43,7 @@ public static class DependencyInjection
         services.AddSingleton(sp =>
         {
             // Sos:LiveWindowMinutes, default 15 (same "no config = safe default" shape as
-            // FirebaseOptions/TwilioOptions) — lets a demo shorten the live-location window
+            // FirebaseOptions/WhatsAppOptions) — lets a demo shorten the live-location window
             // without a rebuild. IConfiguration is registered by the host automatically, so this
             // does not require widening AddApplication's own signature.
             var configuration = sp.GetService<IConfiguration>();
@@ -64,6 +65,26 @@ public static class DependencyInjection
         services.AddScoped<ICommandHandler<RegisterDeviceTokenCommand, RegisterDeviceTokenResult>, RegisterDeviceTokenCommandHandler>();
         services.AddScoped<ICommandHandler<RemoveDeviceTokenCommand, bool>, RemoveDeviceTokenCommandHandler>();
         services.AddScoped<ICommandHandler<ConfirmPushReceiptCommand, ConfirmPushReceiptResult>, ConfirmPushReceiptCommandHandler>();
+        services.AddScoped<ICommandHandler<CreateSafeZoneCommand, CreateSafeZoneResult>, CreateSafeZoneCommandHandler>();
+        services.AddScoped<ICommandHandler<GetMySafeZoneRegistrationQuery, SafeZoneRegistrationDto?>, GetMySafeZoneRegistrationQueryHandler>();
+        services.AddScoped<ICommandHandler<AcknowledgeSafeZoneRegistrationCommand, bool>, AcknowledgeSafeZoneRegistrationCommandHandler>();
+        services.AddScoped<ICommandHandler<SubmitGeofenceCandidateCommand, SubmitGeofenceCandidateResult>, SubmitGeofenceCandidateCommandHandler>();
+        services.AddScoped<ICommandHandler<SubmitGeofenceEvidenceCommand, SubmitGeofenceEvidenceResult>, SubmitGeofenceEvidenceCommandHandler>();
+        services.AddScoped<ICommandHandler<CreateZoneCommand, ZoneMutationResult>, CreateZoneCommandHandler>();
+        services.AddScoped<ICommandHandler<UpdateZoneCommand, ZoneMutationResult>, UpdateZoneCommandHandler>();
+        services.AddScoped<ICommandHandler<EnableZoneCommand, ZoneMutationResult>, EnableZoneCommandHandler>();
+        services.AddScoped<ICommandHandler<DisableZoneCommand, ZoneMutationResult>, DisableZoneCommandHandler>();
+        services.AddScoped<ICommandHandler<DeleteZoneCommand, ZoneMutationResult>, DeleteZoneCommandHandler>();
+        services.AddScoped<ICommandHandler<ListZonesQuery, IReadOnlyList<ZoneDto>>, ListZonesQueryHandler>();
+        services.AddScoped<ICommandHandler<GetZoneQuery, ZoneDto?>, GetZoneQueryHandler>();
+        services.AddScoped<ICommandHandler<GetMyZoneRegistrationsQuery, IReadOnlyList<ZoneDto>>, GetMyZoneRegistrationsQueryHandler>();
+        services.AddScoped<ICommandHandler<AcknowledgeCurrentZoneRegistrationCommand, bool>, AcknowledgeCurrentZoneRegistrationCommandHandler>();
+        services.AddScoped<ICommandHandler<GetGeofenceActivityQuery, IReadOnlyList<GeofenceActivityDto>>, GetGeofenceActivityQueryHandler>();
+        services.AddScoped<ICommandHandler<GetRoutineNotificationsQuery, IReadOnlyList<RoutineNotificationDto>>, GetRoutineNotificationsQueryHandler>();
+        services.AddScoped<ICommandHandler<MarkRoutineNotificationReadCommand, bool>, MarkRoutineNotificationReadCommandHandler>();
+        services.AddScoped<ICommandHandler<GetQuietHoursQuery, QuietHoursDto>, GetQuietHoursQueryHandler>();
+        services.AddScoped<ICommandHandler<UpdateQuietHoursCommand, QuietHoursDto>, UpdateQuietHoursCommandHandler>();
+        services.AddScoped<RoutineNotificationDispatcher>();
 
         return services;
     }

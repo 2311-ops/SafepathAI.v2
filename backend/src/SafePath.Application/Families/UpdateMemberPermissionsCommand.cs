@@ -4,7 +4,7 @@ using SafePath.Domain.Enums;
 
 namespace SafePath.Application.Families;
 
-/// <summary>Guardian-gated update of a member's visibility permission level (FAM-04).</summary>
+/// <summary>Guardian-gated update of a member's legacy circle permission label (FAM-04).</summary>
 public record UpdateMemberPermissionsCommand(Guid CallerUserId, Guid FamilyId, Guid MemberId, PermissionLevel Permissions);
 
 public record UpdateMemberPermissionsResult(Guid MemberId, PermissionLevel Permissions);

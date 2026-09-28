@@ -1,11 +1,7 @@
-// Google Services (Firebase) Gradle plugin — version declared here (root
-// project) with apply false; mobile/android/app/build.gradle.kts applies it
-// without a version. Required for FCM (03-06); resolved via the google()
-// repository already declared in settings.gradle.kts's pluginManagement
-// block. Applying this plugin requires google-services.json to be present
-// at build time (mobile/android/app/) — absent that file, `flutter build
-// apk` fails while `flutter test`/`flutter analyze` are unaffected (they
-// never invoke the native Android Gradle build).
+// Google Services (Firebase) Gradle plugin — version declared here with
+// apply false. The app module applies it only when its gitignored
+// google-services.json exists, so local builds can use the documented
+// no-FCM fallback while provisioned builds retain full Firebase processing.
 plugins {
     id("com.google.gms.google-services") version "4.4.4" apply false
 }

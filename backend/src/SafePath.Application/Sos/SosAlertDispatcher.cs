@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using SafePath.Application.Common.Interfaces;
 using SafePath.Domain.Entities;
@@ -9,12 +10,16 @@ namespace SafePath.Application.Sos;
 /// SOS-only multi-channel fan-out. This class is structurally incapable of writing
 /// <see cref="SosDeliveryStatus.Delivered"/> or <see cref="SosDeliveryStatus.Acknowledged"/> —
 /// those two states are only ever written by AlertHub.ConfirmReceipt (SignalR), the FCM receipt
-/// callback added in plan 03-06, the Twilio status webhook added in plan 03-05, and
-/// AcknowledgeSosCommand. Do not "helpfully" mark a row Delivered on a successful send here:
-/// dispatching to a channel proves nothing about whether it actually arrived (D-10,
-/// 03-RESEARCH.md Pitfall 1). Each channel's dispatch is independently try/caught so one dead
-/// channel can never take the whole emergency down (03-RESEARCH.md "hidden single point of
-/// failure").
+/// callback added in plan 03-06, the SMS provider status webhook added in plan 03-05 (migrated
+/// to the WhatsApp Business Cloud API in quick task 260812-wgl), and AcknowledgeSosCommand.
+/// Unlike the previously configured SMS provider, the WhatsApp status webhook is a genuinely
+/// live, HMAC-signed callback — the SMS channel can now actually reach Delivered through
+/// <c>RecordSmsDeliveryStatusCommand</c>. This class itself remains structurally incapable of
+/// writing Delivered no matter which provider is configured: dispatching to a channel proves
+/// nothing about whether it actually arrived (D-10, 03-RESEARCH.md Pitfall 1). Do not
+/// "helpfully" mark a row Delivered on a successful send here. Each channel's dispatch is
+/// independently try/caught so one dead channel can never take the whole emergency down
+/// (03-RESEARCH.md "hidden single point of failure").
 /// </summary>
 public class SosAlertDispatcher : ISosAlertDispatcher
 {
@@ -208,7 +213,8 @@ public class SosAlertDispatcher : ISosAlertDispatcher
             .SingleOrDefaultAsync(cancellationToken);
         senderName = string.IsNullOrWhiteSpace(senderName) ? "A family member" : senderName;
 
-        var body = ComposeSmsBody(senderName, session.Latitude, session.Longitude);
+        var templateParameters = ComposeSmsTemplateParameters(
+            senderName, session.Latitude, session.Longitude, session.TriggeredAtUtc);
 
         foreach (var attempt in contactRows)
         {
@@ -219,7 +225,7 @@ public class SosAlertDispatcher : ISosAlertDispatcher
 
             try
             {
-                var result = await _smsGateway.SendAsync(contact.PhoneNumberE164, body, cancellationToken);
+                var result = await _smsGateway.SendAsync(contact.PhoneNumberE164, templateParameters, cancellationToken);
                 attempt.Status = SosDeliveryStatus.Queued;
                 attempt.QueuedAtUtc = DateTime.UtcNow;
                 attempt.ProviderMessageId = result.ProviderMessageId;
@@ -235,19 +241,27 @@ public class SosAlertDispatcher : ISosAlertDispatcher
     }
 
     /// <summary>
-    /// Sender display name + a short emergency statement + a maps link built from the session's
-    /// coordinates (omitted when null) — never the recipient's own phone number. Kept under 320
-    /// characters (at most two SMS segments on a trial balance).
+    /// Builds the three ordered template parameters the approved <c>sos_alert</c> WhatsApp
+    /// template expects, in placeholder order: the triggering member's display name; a maps link
+    /// built from the session's coordinates, or the literal fallback text <c>Location
+    /// unavailable</c> when either coordinate is null (WhatsApp has no way to omit a placeholder);
+    /// and the trigger time rendered in invariant-culture UTC so the value cannot drift with the
+    /// host locale. Never includes the recipient emergency contact's own phone number. Each
+    /// element is truncated to 320 characters (the old whole-body cap, now applied per element) so
+    /// an unbounded display name cannot breach Meta's per-parameter length limit.
     /// </summary>
-    private static string ComposeSmsBody(string senderDisplayName, double? latitude, double? longitude)
+    private static IReadOnlyList<string> ComposeSmsTemplateParameters(
+        string senderDisplayName, double? latitude, double? longitude, DateTime triggeredAtUtc)
     {
-        var body = $"{senderDisplayName} triggered an SOS on SafePath and needs help.";
-        if (latitude is { } lat && longitude is { } lng)
-        {
-            body += $" Location: https://maps.google.com/?q={lat},{lng}";
-        }
+        var locationText = latitude is { } lat && longitude is { } lng
+            ? $"https://maps.google.com/?q={lat},{lng}"
+            : "Location unavailable";
 
-        return body.Length > 320 ? body[..320] : body;
+        var timestampText = triggeredAtUtc.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture);
+
+        return new[] { senderDisplayName, locationText, timestampText }
+            .Select(value => value.Length > 320 ? value[..320] : value)
+            .ToList();
     }
 
     private async Task MarkChannelFailed(

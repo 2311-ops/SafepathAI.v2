@@ -171,27 +171,53 @@ void main() {
   });
 
   test(
-    'Google sign-in times out if the native picker never completes',
+    'Google sign-in allows account selection longer than the network timeout',
     () async {
+      final tokens = Completer<GoogleSignInTokens>();
+      var exchangeCalled = false;
       final api = SupabaseAuthApi(
         client(),
-        googleSignInTokensProvider: () =>
-            Completer<GoogleSignInTokens>().future,
-        googleNativeSignInTimeout: const Duration(milliseconds: 1),
+        googleSignInTokensProvider: () => tokens.future,
+        googleIdTokenSignIn:
+            ({required String idToken, required String accessToken}) async {
+              exchangeCalled = true;
+            },
+        googleTokenExchangeTimeout: const Duration(milliseconds: 1),
       );
 
-      await expectLater(
-        api.signInWithGoogle(),
-        throwsA(
-          isA<AuthApiException>()
-              .having((error) => error.issue, 'issue', AuthIssue.unknown)
-              .having(
-                (error) => error.message,
-                'message',
-                contains('timed out'),
-              ),
+      final signIn = api.signInWithGoogle();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(exchangeCalled, isFalse);
+      tokens.complete(
+        const GoogleSignInTokens(
+          idToken: 'google-id-token',
+          accessToken: 'google-access-token',
         ),
       );
+      expect(await signIn, isTrue);
+      expect(exchangeCalled, isTrue);
     },
   );
+
+  test('Google sign-in times out a stalled Supabase token exchange', () async {
+    final api = SupabaseAuthApi(
+      client(),
+      googleSignInTokensProvider: () async => const GoogleSignInTokens(
+        idToken: 'google-id-token',
+        accessToken: 'google-access-token',
+      ),
+      googleIdTokenSignIn:
+          ({required String idToken, required String accessToken}) =>
+              Completer<void>().future,
+      googleTokenExchangeTimeout: const Duration(milliseconds: 1),
+    );
+    await expectLater(
+      api.signInWithGoogle(),
+      throwsA(
+        isA<AuthApiException>()
+            .having((error) => error.issue, 'issue', AuthIssue.network)
+            .having((error) => error.message, 'message', contains('timed out')),
+      ),
+    );
+  });
 }

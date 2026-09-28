@@ -16,28 +16,35 @@ void main() {
     tester,
   ) async {
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
+    try {
+      await tester.pumpWidget(
+        wrap(const MemberMapPin(label: 'You', isSelf: true)),
+      );
+      await tester.pump();
 
-    await tester.pumpWidget(wrap(const MemberMapPin(label: 'You', isSelf: true)));
-    await tester.pump();
-
-    expect(find.bySemanticsLabel('You, current location'), findsOneWidget);
+      expect(find.bySemanticsLabel('You, current location'), findsOneWidget);
+    } finally {
+      semantics.dispose();
+    }
   });
 
   testWidgets('announces the label and stale status as one node', (
     tester,
   ) async {
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
-    final recordedAt = DateTime.now()
-        .toUtc()
-        .subtract(const Duration(minutes: 5));
+    try {
+      final recordedAt = DateTime.now()
+          .toUtc()
+          .subtract(const Duration(minutes: 5));
 
-    await tester.pumpWidget(
-      wrap(MemberMapPin(label: 'Sam', recordedAt: recordedAt)),
-    );
-    await tester.pump();
+      await tester.pumpWidget(
+        wrap(MemberMapPin(label: 'Sam', recordedAt: recordedAt)),
+      );
+      await tester.pump();
 
-    expect(find.bySemanticsLabel('Sam, Last seen 5 min ago'), findsOneWidget);
+      expect(find.bySemanticsLabel('Sam, Last seen 5 min ago'), findsOneWidget);
+    } finally {
+      semantics.dispose();
+    }
   });
 }

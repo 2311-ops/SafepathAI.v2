@@ -1,8 +1,9 @@
 import '../../auth/data/auth_models.dart';
 
 /// Mirrors the backend `Domain.Enums.PermissionLevel` wire values (plan 05:
-/// `SafePath.Domain.Enums.PermissionLevel`). Governs how much of a member's
-/// location/activity is visible to the rest of the circle.
+/// `SafePath.Domain.Enums.PermissionLevel`). This is legacy circle metadata;
+/// live location, history, and wellness visibility is governed by each user's
+/// Privacy Center sharing preferences.
 enum PermissionLevel {
   viewOnly('ViewOnly'),
   fullLocation('FullLocation'),

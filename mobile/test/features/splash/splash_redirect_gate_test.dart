@@ -134,6 +134,7 @@ void main() {
 
       expect(find.text('Create your circle'), findsOneWidget);
 
+      await tester.ensureVisible(find.text('I already have an account'));
       await tester.tap(find.text('I already have an account'));
       await tester.pumpAndSettle();
 

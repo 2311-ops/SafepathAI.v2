@@ -24,13 +24,27 @@ String get apiBaseUrl {
 /// (no interceptors) is used internally for the refresh call itself so the
 /// interceptor never recurses into itself.
 Dio buildDio(String baseUrl, {required AuthApi authApi}) {
-  final refreshDio = Dio(BaseOptions(baseUrl: baseUrl));
+  final options = _baseOptionsFor(baseUrl);
+  final refreshDio = Dio(options);
 
-  final dio = Dio(BaseOptions(baseUrl: baseUrl));
+  final dio = Dio(options);
   dio.interceptors.add(
     AuthInterceptor(authApi: authApi, refreshDio: refreshDio),
   );
   return dio;
+}
+
+BaseOptions _baseOptionsFor(String baseUrl) {
+  return BaseOptions(baseUrl: baseUrl, headers: apiDefaultHeadersFor(baseUrl));
+}
+
+Map<String, String> apiDefaultHeadersFor(String baseUrl) {
+  final host = Uri.tryParse(baseUrl)?.host.toLowerCase();
+  if (host != null && host.endsWith('.ngrok-free.dev')) {
+    return {'ngrok-skip-browser-warning': 'true'};
+  }
+
+  return const {};
 }
 
 /// Riverpod provider exposing the single [Dio] instance for the app.

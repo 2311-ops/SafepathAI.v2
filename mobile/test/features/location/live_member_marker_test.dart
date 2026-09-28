@@ -12,7 +12,9 @@ void main() {
 
   Widget wrap(Widget child) {
     return MaterialApp(
-      home: Scaffold(body: Center(child: child)),
+      home: Scaffold(
+        body: Center(child: SizedBox(width: 86, height: 96, child: child)),
+      ),
     );
   }
 
@@ -204,6 +206,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('72%'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('shows no battery figure when battery percent is unknown', (

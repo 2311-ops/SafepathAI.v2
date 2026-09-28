@@ -3,14 +3,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 using SafePath.Application.Common.Interfaces;
+using SafePath.Infrastructure.Geofencing;
 using SafePath.Infrastructure.Identity;
 using SafePath.Infrastructure.Persistence;
 using SafePath.Infrastructure.Push;
 using SafePath.Infrastructure.RealTime;
 using SafePath.Infrastructure.Sms;
 using SafePath.Infrastructure.Storage;
-using Twilio.Clients;
 
 namespace SafePath.Infrastructure;
 
@@ -18,8 +19,19 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        var defaultConnectionString = configuration.GetConnectionString("DefaultConnection");
+        if (!string.IsNullOrWhiteSpace(defaultConnectionString))
+        {
+            defaultConnectionString = BuildDefaultConnectionString(defaultConnectionString);
+        }
+
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            options.UseNpgsql(
+                defaultConnectionString,
+                npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorCodesToAdd: null)));
 
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
 
@@ -37,67 +49,75 @@ public static class DependencyInjection
         services.AddScoped<ILocationBroadcastService, LocationBroadcastService>();
         services.AddScoped<IAlertBroadcastService, AlertBroadcastService>();
         services.AddHostedService<SharingPreferenceSweepService>();
+        services.AddHostedService<GeofenceRetentionService>();
+        services.AddHostedService<RoutinePushWorker>();
         services.AddSingleton<IProfileImageValidator, ImageSharpProfileImageValidator>();
-        services.AddHttpClient<IProfileImageStorage, SupabaseProfileImageStorage>((_, client) =>
+
+        var profileStorageSupabaseUrl = configuration["Supabase:Url"];
+        var profileStorageServiceRoleKey = configuration["Supabase:ServiceRoleKey"];
+        if (string.IsNullOrWhiteSpace(profileStorageSupabaseUrl) ||
+            string.IsNullOrWhiteSpace(profileStorageServiceRoleKey))
         {
-            var supabaseUrl = configuration["Supabase:Url"]
-                ?? throw new InvalidOperationException("Supabase:Url is not configured.");
-            var serviceRoleKey = configuration["Supabase:ServiceRoleKey"]
-                ?? throw new InvalidOperationException("Supabase:ServiceRoleKey is not configured.");
-
-            if (string.IsNullOrWhiteSpace(serviceRoleKey))
-            {
-                throw new InvalidOperationException("Supabase:ServiceRoleKey is not configured.");
-            }
-
-            client.BaseAddress = new Uri($"{supabaseUrl.TrimEnd('/')}/storage/v1/");
-            client.DefaultRequestHeaders.Add("apikey", serviceRoleKey);
-
-            if (serviceRoleKey.StartsWith("eyJ", StringComparison.Ordinal))
-            {
-                client.DefaultRequestHeaders.Authorization = new("Bearer", serviceRoleKey);
-            }
-        });
-
-        var twilioOptions = new TwilioOptions
+            services.AddScoped<IProfileImageStorage, DisabledProfileImageStorage>();
+        }
+        else
         {
-            AccountSid = configuration["Twilio:AccountSid"],
-            AuthToken = configuration["Twilio:AuthToken"],
-            FromNumber = configuration["Twilio:FromNumber"],
-            StatusCallbackUrl = configuration["Twilio:StatusCallbackUrl"],
+            services.AddHttpClient<IProfileImageStorage, SupabaseProfileImageStorage>((_, client) =>
+            {
+                client.BaseAddress = new Uri($"{profileStorageSupabaseUrl.TrimEnd('/')}/storage/v1/");
+                client.DefaultRequestHeaders.Add("apikey", profileStorageServiceRoleKey);
+
+                if (profileStorageServiceRoleKey.StartsWith("eyJ", StringComparison.Ordinal))
+                {
+                    client.DefaultRequestHeaders.Authorization = new("Bearer", profileStorageServiceRoleKey);
+                }
+            });
+        }
+
+        var whatsAppOptions = new WhatsAppOptions
+        {
+            AccessToken = configuration["WhatsApp:AccessToken"],
+            PhoneNumberId = configuration["WhatsApp:PhoneNumberId"],
+            WabaId = configuration["WhatsApp:WabaId"],
+            AppSecret = configuration["WhatsApp:AppSecret"],
+            WebhookVerifyToken = configuration["WhatsApp:WebhookVerifyToken"],
+            TemplateName = configuration["WhatsApp:TemplateName"] ?? "sos_alert",
+            TemplateLanguage = configuration["WhatsApp:TemplateLanguage"] ?? "en",
+            BaseUrl = configuration["WhatsApp:BaseUrl"] ?? "https://graph.facebook.com",
+            ApiVersion = configuration["WhatsApp:ApiVersion"] ?? "v26.0",
         };
-        services.AddSingleton(twilioOptions);
+        services.AddSingleton(whatsAppOptions);
 
-        // The default with no Twilio configuration present is LoggingSmsGateway (D-07) — a
-        // fresh clone builds, tests, and demos the whole SOS pipeline with no Twilio account
-        // and no spend. Logged once here (a throwaway bootstrap logger, since the DI container
-        // has not been built yet at this point) so the operator is never confused about why no
-        // real SMS arrived.
+        // The default with no WhatsApp configuration present is LoggingSmsGateway (D-07) — a
+        // fresh clone builds, tests, and demos the whole SOS pipeline with no WhatsApp Business
+        // account and no cost. Logged once here (a throwaway bootstrap logger, since the DI
+        // container has not been built yet at this point) so the operator is never confused
+        // about why no real SMS arrived.
         using (var bootstrapLoggerFactory = LoggerFactory.Create(builder => builder.AddConsole()))
         {
             var bootstrapLogger = bootstrapLoggerFactory.CreateLogger("SafePath.Infrastructure.Sms");
-            if (twilioOptions.IsConfigured)
+            if (whatsAppOptions.IsConfigured)
             {
-                bootstrapLogger.LogInformation("SMS gateway active: TwilioSmsGateway (Twilio credentials configured).");
+                bootstrapLogger.LogInformation("SMS gateway active: WhatsAppSmsGateway (WhatsApp credentials configured).");
             }
             else
             {
-                bootstrapLogger.LogInformation("SMS gateway active: LoggingSmsGateway (no Twilio credentials configured — SMS sends are logged only, never sent).");
+                bootstrapLogger.LogInformation("SMS gateway active: LoggingSmsGateway (no WhatsApp credentials configured — SMS sends are logged only, never sent).");
             }
         }
 
-        if (twilioOptions.IsConfigured)
+        if (whatsAppOptions.IsConfigured)
         {
-            services.AddSingleton<ITwilioRestClient>(_ =>
-                new TwilioRestClient(twilioOptions.AccountSid!, twilioOptions.AuthToken!, twilioOptions.AccountSid));
-            services.AddScoped<ISmsGateway, TwilioSmsGateway>();
+            services.AddHttpClient<ISmsGateway, WhatsAppSmsGateway>(client =>
+                client.BaseAddress = new Uri(whatsAppOptions.BaseUrl.TrimEnd('/') + "/"));
         }
         else
         {
             services.AddScoped<ISmsGateway, LoggingSmsGateway>();
         }
 
-        services.AddScoped<ISmsWebhookSignatureValidator, TwilioWebhookSignatureValidator>();
+        services.AddScoped<ISmsWebhookSignatureValidator, WhatsAppWebhookSignatureValidator>();
+        services.AddScoped<ISmsDeliveryStatusParser, WhatsAppDeliveryStatusParser>();
 
         var firebaseOptions = new FirebaseOptions
         {
@@ -127,12 +147,54 @@ public static class DependencyInjection
         if (firebaseOptions.IsConfigured)
         {
             services.AddScoped<IPushSender, FirebasePushSender>();
+            services.AddScoped<IRoutinePushSender, FirebaseRoutinePushSender>();
         }
         else
         {
             services.AddScoped<IPushSender, LoggingPushSender>();
+            services.AddScoped<IRoutinePushSender, LoggingRoutinePushSender>();
         }
 
         return services;
+    }
+
+    private static string BuildDefaultConnectionString(string connectionString)
+    {
+        var configuredKeys = connectionString
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(part => part.Split('=', 2)[0].Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var builder = new NpgsqlConnectionStringBuilder(connectionString);
+
+        if (!configuredKeys.Contains("Timeout") &&
+            !configuredKeys.Contains("Connection Timeout"))
+        {
+            builder.Timeout = 60;
+        }
+
+        if (!configuredKeys.Contains("Command Timeout"))
+        {
+            builder.CommandTimeout = 60;
+        }
+
+        if (!configuredKeys.Contains("Keepalive"))
+        {
+            builder.KeepAlive = 30;
+        }
+
+        if (builder.Port == 6543)
+        {
+            if (!configuredKeys.Contains("Pooling"))
+            {
+                builder.Pooling = false;
+            }
+
+            if (!configuredKeys.Contains("Max Auto Prepare"))
+            {
+                builder.MaxAutoPrepare = 0;
+            }
+        }
+
+        return builder.ConnectionString;
     }
 }
