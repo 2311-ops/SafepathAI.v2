@@ -14,6 +14,12 @@ requirements: [GEO-01, GEO-02, GEO-03, NOTIF-02]
 
 Per PR-04, Phase 4 is not approved/closed until signed physical iPhone + APNs evidence exists alongside Android physical movement/recovery evidence. `04-05-SUMMARY.md` records a deferred partial checkpoint only; no 04-05 evidence was fabricated or retroactively claimed.
 
+## Forced Partial Close: 2026-09-28
+
+By explicit user override, Phase 04 is being advanced operationally so Phase 05 can begin. This does not change this artifact's verification status: Android/iOS physical acceptance remains `human_needed`, and the normal `gsd-ship` gate is not satisfied.
+
+The override is recorded in `04-17-SUMMARY.md`. Deferred acceptance debt is tracked in `deferred-items.md` for a later hardening pass, tentatively Phase 07 / pre-production acceptance.
+
 ## Review Repair Verification: 2026-09-28
 
 `04-05` was marked deferred-partial so the phase could proceed through automated review without claiming missing physical evidence. The Phase 4 code review initially found two blockers and two warnings; all were fixed and the final `04-REVIEW.md` status is `clean`.
